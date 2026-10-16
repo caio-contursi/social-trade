@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" viewBox="0 0 720 260" fill="none">
+  <defs>
+    <filter id="paper-shadow" x="-30%" y="-20%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#426f73" flood-opacity=".2"/>
+    </filter>
+  </defs>
+  <g filter="url(#paper-shadow)" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(70 28)">
+      <path d="M-20 76C-39 67-53 78-68 98m108-22c19-9 33 2 48 22" stroke="#D99BB6" stroke-width="12"/>
+      <circle cx="-68" cy="98" r="7" fill="#F2C9D8"/><circle cx="68" cy="98" r="7" fill="#F2C9D8"/>
+      <path d="M-22 81Q0 70 22 81L29 135Q0 146-29 135Z" fill="#E9AFC2" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-15 136L-18 178M15 136L18 178" stroke="#A9799A" stroke-width="13"/>
+      <path d="M-18 177l-11 8m47-8 11 8" stroke="#D999B3" stroke-width="10"/>
+      <circle cy="52" r="20" fill="#F4C9A8" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-20 50Q-18 28 1 29Q19 30 20 49Q9 43 2 39Q-7 48-20 50Z" fill="#776078"/>
+      <path d="M-8 87l8 9 8-9" stroke="#FFF5F5" stroke-width="3"/>
+    </g>
+    <g transform="translate(210 28)">
+      <path d="M-20 76C-39 67-53 78-68 98m108-22c19-9 33 2 48 22" stroke="#95B999" stroke-width="12"/>
+      <circle cx="-68" cy="98" r="7" fill="#C8E1C5"/><circle cx="68" cy="98" r="7" fill="#C8E1C5"/>
+      <path d="M-22 81Q0 70 22 81L29 135Q0 146-29 135Z" fill="#B9D8B7" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-15 136L-18 178M15 136L18 178" stroke="#718D87" stroke-width="13"/>
+      <path d="M-18 177l-11 8m47-8 11 8" stroke="#93B699" stroke-width="10"/>
+      <circle cy="52" r="20" fill="#D89B78" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-20 49Q-17 28 2 29Q19 31 20 48L13 43Q4 48-7 42Q-13 49-20 49Z" fill="#5F5268"/>
+      <path d="M-8 87l8 9 8-9" stroke="#F8FFF2" stroke-width="3"/>
+    </g>
+    <g transform="translate(350 28)">
+      <path d="M-20 76C-39 67-53 78-68 98m108-22c19-9 33 2 48 22" stroke="#D6B36E" stroke-width="12"/>
+      <circle cx="-68" cy="98" r="7" fill="#F1DDA8"/><circle cx="68" cy="98" r="7" fill="#F1DDA8"/>
+      <path d="M-22 81Q0 70 22 81L29 135Q0 146-29 135Z" fill="#F0D18B" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-15 136L-18 178M15 136L18 178" stroke="#A58160" stroke-width="13"/>
+      <path d="M-18 177l-11 8m47-8 11 8" stroke="#D0AD6B" stroke-width="10"/>
+      <circle cy="52" r="20" fill="#F0C5A4" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-20 50Q-18 29 0 29Q19 30 20 50Q10 43 0 41Q-10 47-20 50Z" fill="#956B58"/>
+      <path d="M-8 87l8 9 8-9" stroke="#FFFCF1" stroke-width="3"/>
+    </g>
+    <g transform="translate(490 28)">
+      <path d="M-20 76C-39 67-53 78-68 98m108-22c19-9 33 2 48 22" stroke="#78BFC2" stroke-width="12"/>
+      <circle cx="-68" cy="98" r="7" fill="#BFE9E6"/><circle cx="68" cy="98" r="7" fill="#BFE9E6"/>
+      <path d="M-22 81Q0 70 22 81L29 135Q0 146-29 135Z" fill="#A9DFDD" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-15 136L-18 178M15 136L18 178" stroke="#527C7E" stroke-width="13"/>
+      <path d="M-18 177l-11 8m47-8 11 8" stroke="#77B6B7" stroke-width="10"/>
+      <circle cy="52" r="20" fill="#E8BFA5" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-20 49Q-17 28 1 29Q19 30 20 50L11 43Q3 48-6 42Q-12 48-20 49Z" fill="#52666B"/>
+      <path d="M-8 87l8 9 8-9" stroke="#F9F6FF" stroke-width="3"/>
+    </g>
+    <g transform="translate(630 28)">
+      <path d="M-20 76C-39 67-53 78-68 98m108-22c19-9 33 2 48 22" stroke="#E5A27E" stroke-width="12"/>
+      <circle cx="-68" cy="98" r="7" fill="#F4C9AF"/><circle cx="68" cy="98" r="7" fill="#F4C9AF"/>
+      <path d="M-22 81Q0 70 22 81L29 135Q0 146-29 135Z" fill="#F0B393" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-15 136L-18 178M15 136L18 178" stroke="#866D66" stroke-width="13"/>
+      <path d="M-18 177l-11 8m47-8 11 8" stroke="#D99775" stroke-width="10"/>
+      <circle cy="52" r="20" fill="#C98F70" stroke="#FFF9F2" stroke-width="4"/>
+      <path d="M-20 49Q-17 28 1 29Q19 30 20 50L11 43Q3 48-6 42Q-12 48-20 49Z" fill="#51485D"/>
+      <path d="M-8 87l8 9 8-9" stroke="#FFF6F0" stroke-width="3"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,1 @@
+"""SocialTrade web application."""
