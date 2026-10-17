@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@fontsource-variable/dm-sans";
-import "@fontsource-variable/manrope";
+import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/fraunces/full-italic.css";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 

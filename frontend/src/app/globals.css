@@ -3,6 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tokens e regras de uso: docs/design.md */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -23,9 +24,14 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--foreground);
-  --font-sans: "DM Sans Variable", sans-serif;
-  --font-display: "Manrope Variable", sans-serif;
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-energy: var(--energy);
+  --color-energy-foreground: var(--energy-foreground);
+  --color-ink: var(--ink-panel);
+  --color-ink-foreground: var(--ink-panel-foreground);
+  --color-logo-surface: #ffffff;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -33,47 +39,59 @@
 }
 
 :root {
-  --background: #fcfcf9;
-  --foreground: #183a36;
-  --card: #ffffff;
-  --card-foreground: #183a36;
-  --popover: #fff;
-  --popover-foreground: #183a36;
-  --primary: #196c61;
-  --primary-foreground: #fff;
-  --secondary: #e9f2ec;
-  --secondary-foreground: #27574d;
-  --muted: #f0f3ee;
-  --muted-foreground: #5e716a;
-  --accent: #e4f1e9;
-  --accent-foreground: #175f53;
-  --destructive: #b33535;
-  --border: #dfe7df;
-  --input: #d4dfd7;
-  --ring: #328a78;
-  --radius: 0.85rem;
-  --sidebar: #f3f7f1;
+  --background: #faf7f0;
+  --foreground: #12302a;
+  --card: #fffdf8;
+  --card-foreground: #12302a;
+  --popover: #fffdf8;
+  --popover-foreground: #12302a;
+  --primary: #155e52;
+  --primary-foreground: #ffffff;
+  --secondary: #ece9df;
+  --secondary-foreground: #1d4a41;
+  --muted: #f2ede2;
+  --muted-foreground: #4f625b;
+  --accent: #e7efe6;
+  --accent-foreground: #155e52;
+  --destructive: #b0302a;
+  --border: #e6dfd1;
+  --input: #8f8676; /* contorno funcional: 3,4:1 sobre papel */
+  --ring: #1f7a69;
+  --radius: 0.9rem;
+  --sidebar: #12302a;
+  --sidebar-foreground: #e9efe9;
+  --energy: #f2b53c;
+  --energy-foreground: #2b1e04;
+  --ink-panel: #12302a;
+  --ink-panel-foreground: #eef3ee;
+  --focus-ring: var(--ring);
 }
 .dark {
-  --background: #122421;
-  --foreground: #e9f2ec;
-  --card: #1a302b;
-  --card-foreground: #e9f2ec;
-  --popover: #1a302b;
-  --popover-foreground: #e9f2ec;
-  --primary: #8ed9bf;
-  --primary-foreground: #103d32;
-  --secondary: #29443b;
-  --secondary-foreground: #def1e4;
-  --muted: #203a32;
-  --muted-foreground: #b0c7ba;
-  --accent: #294a3c;
-  --accent-foreground: #d4f3df;
-  --destructive: #ffabab;
-  --border: #365347;
-  --input: #496255;
-  --ring: #8ed9bf;
-  --sidebar: #182e27;
+  --background: #0f1d1a;
+  --foreground: #eef3ee;
+  --card: #162824;
+  --card-foreground: #eef3ee;
+  --popover: #162824;
+  --popover-foreground: #eef3ee;
+  --primary: #7fd3b8;
+  --primary-foreground: #0f1d1a;
+  --secondary: #213833;
+  --secondary-foreground: #d7e8df;
+  --muted: #1a2f2a;
+  --muted-foreground: #a9bdb4;
+  --accent: #23403a;
+  --accent-foreground: #cdeee1;
+  --destructive: #ffaba4;
+  --border: #2e4740;
+  --input: #6a8a80; /* contorno funcional: 4,1:1 sobre cartão */
+  --ring: #7fd3b8;
+  --sidebar: #0b1614;
+  --sidebar-foreground: #e9efe9;
+  --energy: #f5c463;
+  --energy-foreground: #2b1e04;
+  --ink-panel: #0b1614;
+  --ink-panel-foreground: #eef3ee;
+  --focus-ring: var(--ring);
 }
 @layer base {
   * {
@@ -97,19 +115,19 @@
   h2,
   h3 {
     font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variation-settings:
+      "SOFT" 50,
+      "WONK" 0;
     text-wrap: balance;
   }
   h1,
   h2 {
-    letter-spacing: -0.045em;
-  }
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 4px;
+    letter-spacing: -0.02em;
   }
   ::selection {
-    background: #badfcc;
-    color: #12382e;
+    background: #f6d68f;
+    color: #12302a;
   }
 }
 @layer components {
@@ -129,8 +147,64 @@
     @apply fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-primary px-5 py-3 text-primary-foreground focus:translate-y-0;
   }
   .page-title {
-    @apply font-display text-3xl font-semibold tracking-tight sm:text-4xl;
+    @apply font-display text-[2rem] leading-tight font-medium sm:text-[2.5rem];
   }
+  /* Palavra de ênfase do título: itálico verde com traço âmbar decorativo.
+     Dentro de .ink-panel vira itálico âmbar (contraste 7,7:1). */
+  .title-mark {
+    font-style: italic;
+    color: var(--primary);
+    background-image: linear-gradient(
+      transparent 78%,
+      color-mix(in srgb, var(--energy) 75%, transparent) 78% 92%,
+      transparent 92%
+    );
+    padding-inline: 0.04em;
+  }
+  /* Escalas de título: editorial (páginas públicas) e operacional (painel, formulários). */
+  .display-1 {
+    font-size: clamp(2.75rem, 6vw, 5rem);
+    line-height: 1.02;
+    font-weight: 500;
+  }
+  .display-2 {
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.08;
+    font-weight: 500;
+  }
+  /* Blocos escuros: texto, links e foco próprios (contrastes em docs/design.md). */
+  .ink-panel {
+    background: var(--ink-panel);
+    color: var(--ink-panel-foreground);
+  }
+  .ink-panel,
+  .on-ink {
+    --focus-ring: var(--energy);
+  }
+  .ink-panel .title-mark {
+    color: var(--energy);
+    background-image: none;
+  }
+  .ink-panel .eyebrow {
+    color: var(--energy);
+  }
+  /* Padrão de pontos das capas de causa (usa a cor da tinta da capa). */
+  .dot-pattern {
+    background-image: radial-gradient(currentColor 1.1px, transparent 1.4px);
+    background-size: 16px 16px;
+  }
+}
+/* Fora de @layer de propósito: regras sem camada vencem as utilidades do Tailwind,
+   então o contorno opaco aparece mesmo nos componentes com outline-none.
+   Contraste: verde 4,9:1 sobre o papel; âmbar 7,7:1 sobre os blocos escuros. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+/* Itens de menu ficam dentro de contêineres com overflow recortado: contorno para dentro. */
+[data-slot="select-item"]:focus-visible,
+[data-slot^="dropdown-menu-"][role^="menuitem"]:focus-visible {
+  outline-offset: -2px;
 }
 @media (prefers-reduced-motion: reduce) {
   *,
