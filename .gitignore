@@ -3,3 +3,14 @@
 __pycache__/
 *.py[cod]
 *.db
+
+# Front-end Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*
+!frontend/.env.example
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+frontend/playwright-report/
+frontend/test-results/
