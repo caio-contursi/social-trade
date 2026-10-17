@@ -74,13 +74,6 @@ export default async function HomePage() {
       <main id="conteudo">
         <section className="page-container grid items-center gap-12 pt-10 pb-16 sm:pt-14 sm:pb-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:pt-16 lg:pb-24">
           <div>
-            <p className="mb-7 inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-xs font-semibold text-foreground">
-              <span
-                aria-hidden="true"
-                className="size-2 rounded-full bg-energy"
-              />
-              Uma ponte entre quem apoia e quem transforma
-            </p>
             <h1 className="max-w-2xl display-1">
               Apoiar uma causa. <span className="title-mark">Transformar</span>{" "}
               uma realidade.
@@ -114,7 +107,7 @@ export default async function HomePage() {
               </div>
             </dl>
           </div>
-          <div className="relative pb-10 lg:pl-4">
+          <div className="relative pb-10">
             <div className="relative aspect-[1.05] overflow-hidden rounded-[2rem] bg-secondary sm:aspect-[1.15] lg:aspect-[.92]">
               <Image
                 src="/images/voluntariado.jpg"
@@ -129,7 +122,7 @@ export default async function HomePage() {
                 Imagem ilustrativa
               </p>
             </div>
-            <div className="absolute right-6 -bottom-1 left-4 rounded-2xl border bg-card p-5 shadow-xl shadow-primary/10 sm:right-14 sm:left-8">
+            <div className="absolute inset-x-5 -bottom-1 rounded-2xl border bg-card p-5 shadow-xl shadow-primary/10 sm:inset-x-12">
               <div className="flex items-center gap-4">
                 <BrandMark className="size-11" />
                 <div>
