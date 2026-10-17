@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">
+  <title>SocialTrade</title>
+  <rect width="36" height="36" rx="10" fill="#155e52"/>
+  <path d="M8 23c2.6-9.6 17.4-9.6 20 0" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="8" cy="23" r="3.6" fill="#f2b53c"/>
+  <circle cx="28" cy="23" r="3.6" fill="#f2b53c"/>
+</svg>

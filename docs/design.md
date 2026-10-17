@@ -10,7 +10,7 @@ O SocialTrade liga quem apoia (empresas e pessoas) a quem transforma (projetos s
 - **Uma cor de energia.** Âmbar marca ação e ênfase. O verde continua sendo a cor da marca e dos botões principais sobre fundo claro.
 - **Cada causa com sua cor.** Os projetos ainda não têm fotos; a capa do card usa a cor e o ícone da causa principal, com um padrão de pontos.
 - **Títulos com voz.** Serifada editorial (Fraunces) nos títulos; DM Sans no texto corrido e nos controles.
-- **A marca é uma ponte:** um arco ligando dois pontos âmbar (`BrandMark` em `components/brand.tsx`).
+- **A marca é uma ponte:** um arco ligando dois pontos âmbar (`BrandMark` em `components/brand.tsx`). O favicon usa a mesma marca, com traço mais grosso para ficar legível em 16 px: `app/icon.svg` (navegadores atuais), `app/favicon.ico` (16, 32 e 48 px, para os antigos) e `app/apple-icon.png` (180 px, sem cantos, porque o iOS arredonda sozinho). O Next gera as tags `<link>`; o teste `e2e/icones.spec.ts` confere que elas existem e respondem como imagem.
 
 ## Princípios
 
