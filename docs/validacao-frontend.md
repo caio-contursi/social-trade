@@ -31,3 +31,7 @@ As operações de cadastro, suporte e edição foram executadas exclusivamente e
 A revisão visual é uma amostragem dos fluxos, não uma auditoria completa de acessibilidade ou segurança. A área de moderação foi implementada e tipada, mas suas mutações não foram exercitadas nesta revisão pelo navegador. Autorização e dados continuam sob responsabilidade da API.
 
 Pagamentos, transações Solana, verificação independente e prestação de contas financeira não foram implementados nesta etapa. A interface identifica esses recursos como futuros.
+
+## Suíte automatizada atual
+
+O registro acima descreve a validação inicial da interface. Os comandos atuais usam pytest, Vitest e Playwright, conforme [testes.md](testes.md). O runner unittest foi substituído por pytest.

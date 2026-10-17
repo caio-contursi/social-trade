@@ -56,19 +56,32 @@ A API informa a disponibilidade das demonstrações por `GET /api/catalog`, no c
 
 `verification_status="self_declared"` indica informação declarada pela instituição. `profile_completeness` mede o preenchimento da apresentação pública, de 0 a 100; não mede verificação, qualidade, regularidade fiscal ou garantia de impacto.
 
-## Verificação local
+## Testes automatizados
 
-Na raiz, instale as dependências de desenvolvimento e execute a suíte de API:
+Instale as dependências de desenvolvimento e execute a suíte de API a partir da raiz:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-$env:PYTHONDONTWRITEBYTECODE = '1'
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m pytest --cov=app --cov-report=term-missing --cov-report=xml:reports/api-coverage.xml --cov-fail-under=90 --junitxml=reports/api-junit.xml
 ```
 
-Com o ambiente virtual ativado, o mesmo comando é `python -m unittest discover -s tests -v`. A suíte usa um banco SQLite temporário isolado, desativa o carregamento de `.env` e a criação de contas de demonstração; não usa nem modifica o banco do projeto.
+Se o ambiente virtual foi criado sem pip, use `uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt`. A API usa um SQLite temporário, com leitura de `.env` e contas de demonstração desativadas.
 
-Para verificar e executar o build do front-end, dentro de `frontend/`:
+Para executar a verificação completa, dentro de `frontend/`:
+
+```powershell
+npm ci
+npx playwright install chromium
+npm run test:all
+```
+
+O comando executa API, verificação de tipos, Vitest com cobertura e Playwright. Também é possível usar `npm test`, `npm run test:watch`, `npm run test:coverage` e `npm run test:e2e` separadamente.
+
+O E2E gera um build separado em `.next-e2e` e inicia servidores próprios nas portas 8765 e 3100, com banco temporário e dados de teste. Não é necessário iniciar a aplicação manualmente. Os testes não usam nem modificam `socialtrade.db` ou os arquivos `.env` do projeto.
+
+Instruções de configuração, seleção do Python, portas alternativas, cobertura, relatórios e integração contínua estão em [docs/testes.md](docs/testes.md). O workflow roda em pushes e pull requests, com API no Windows e Ubuntu e frontend/E2E no Ubuntu.
+
+Para verificar e servir o build normal, dentro de `frontend/`:
 
 ```powershell
 npm run typecheck

@@ -92,10 +92,10 @@ Para a suíte de API, na raiz do repositório:
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 $env:PYTHONDONTWRITEBYTECODE = '1'
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-O comando equivalente com ambiente virtual ativado é `python -m unittest discover -s tests -v`. Os testes criam um SQLite temporário, impedem a leitura de `.env` e desativam o seed de demonstrações. Eles não modificam `socialtrade.db` ou contas existentes.
+O comando equivalente com ambiente virtual ativado é `python -m pytest`. Os testes criam um SQLite temporário, impedem a leitura de `.env` e desativam o seed de demonstrações. Eles não modificam `socialtrade.db` ou contas existentes.
 
 ## Direção visual e acessibilidade
 
@@ -145,3 +145,5 @@ A migração do front-end mantém o SQLite e as contas existentes. Não recria, 
 Na operação normal, a configuração preexistente `SOCIALTRADE_DEMO_USERS=true` mantém o comportamento do seed da API ao iniciar. A migração não muda esse seed. `false` desativa sua execução, mas não apaga contas já gravadas; produção deve usar configuração e dados próprios.
 
 Mantenha `.env`, `frontend/.env.local`, segredos e arquivos SQLite fora do versionamento. Exemplos versionados devem conter somente valores demonstrativos. Tokens e a chave `SOCIALTRADE_TOKEN_SECRET` não pertencem ao bundle do navegador nem a variáveis `NEXT_PUBLIC_*`. Revise HTTPS, autenticação, limites, migrações e backups antes de publicar.
+
+A suíte completa, incluindo componentes e jornadas de navegador, está documentada em [testes.md](testes.md).
