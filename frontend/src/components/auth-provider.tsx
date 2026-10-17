@@ -19,6 +19,7 @@ interface AuthContextValue {
   retrySession: () => Promise<void>;
   login: (data: LoginResponse) => void;
   logout: () => void;
+  expireSession: (expectedToken: string | null) => boolean;
   refreshUser: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,6 +41,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(storageKey);
     localStorage.removeItem("socialtrade_user");
   }, []);
+  const expireSession = useCallback(
+    (expectedToken: string | null) => {
+      if (
+        !expectedToken ||
+        sessionStorage.getItem(storageKey) !== expectedToken
+      )
+        return false;
+      logout();
+      return true;
+    },
+    [logout],
+  );
   const login = useCallback((data: LoginResponse) => {
     sessionVersion.current++;
     sessionStorage.setItem(storageKey, data.access_token);
@@ -51,9 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const refreshUser = useCallback(async () => {
     if (token) {
+      const version = sessionVersion.current;
       try {
-        setUser(await api<User>("/api/auth/me", { token }));
+        const account = await api<User>("/api/auth/me", { token });
+        if (version === sessionVersion.current) setUser(account);
       } catch (cause) {
+        if (version !== sessionVersion.current) return;
         if (cause instanceof ApiError && cause.status === 401) logout();
         throw cause;
       }
@@ -105,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         retrySession,
         login,
         logout,
+        expireSession,
         refreshUser,
       }}
     >

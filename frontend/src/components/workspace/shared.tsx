@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api, ApiError } from "@/lib/api";
 
 export function useSessionRequest() {
-  const { token, logout } = useAuth();
+  const { token, expireSession } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   return useCallback(
@@ -24,8 +24,11 @@ export function useSessionRequest() {
       try {
         return await api<T>(path, { ...options, token });
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          logout();
+        if (
+          error instanceof ApiError &&
+          error.status === 401 &&
+          expireSession(token)
+        ) {
           toast.error("Sua sessão expirou. Entre novamente para continuar.", {
             id: "session-expired",
           });
@@ -34,7 +37,7 @@ export function useSessionRequest() {
         throw error;
       }
     },
-    [token, logout, router, pathname],
+    [token, expireSession, router, pathname],
   );
 }
 
