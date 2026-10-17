@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { login, openWorkspaceMenu } from "./fixtures";
+import { login } from "./fixtures";
 
 // Cores de foco de docs/design.md: verde sobre o papel, âmbar nos blocos escuros.
 const RING = "rgb(31, 122, 105)";
@@ -31,12 +31,22 @@ async function expectFocusRing(page: Page, locator: Locator, color: string) {
 
 test("foco opaco e verde nos controles sobre o papel", async ({ page }) => {
   await page.goto("/");
-  await expectFocusRing(page, page.getByRole("link", { name: "Encontrar um projeto" }), RING);
-  await expectFocusRing(page, page.getByRole("link", { name: "Sou um projeto social" }), RING);
+  await expectFocusRing(
+    page,
+    page.getByRole("link", { name: "Encontrar um projeto" }),
+    RING,
+  );
+  await expectFocusRing(
+    page,
+    page.getByRole("link", { name: "Sou um projeto social" }),
+    RING,
+  );
   await page.goto("/projetos");
   await expectFocusRing(
     page,
-    page.getByRole("textbox", { name: "Buscar projetos por nome, cidade ou palavra" }),
+    page.getByRole("textbox", {
+      name: "Buscar projetos por nome, cidade ou palavra",
+    }),
     RING,
   );
 });
@@ -44,21 +54,38 @@ test("foco opaco e verde nos controles sobre o papel", async ({ page }) => {
 test("foco âmbar nos blocos escuros da página inicial", async ({ page }) => {
   await page.goto("/");
   const transparency = page.locator("#transparencia");
-  await expectFocusRing(page, transparency.getByRole("link", { name: "Conhecer os projetos" }), ENERGY);
   await expectFocusRing(
     page,
-    page.getByRole("contentinfo").getByRole("link", { name: "Acesse sua conta" }),
+    transparency.getByRole("link", { name: "Conhecer os projetos" }),
+    ENERGY,
+  );
+  await expectFocusRing(
+    page,
+    page
+      .getByRole("contentinfo")
+      .getByRole("link", { name: "Acesse sua conta" }),
     ENERGY,
   );
 });
 
-test("foco âmbar na navegação escura do painel, no computador e no celular", async ({ page }) => {
+test("foco âmbar na navegação escura do painel, no computador e no celular", async ({
+  page,
+  isMobile,
+}) => {
   await login(page);
-  await openWorkspaceMenu(page);
-  await expectFocusRing(page, page.getByRole("button", { name: "Sair da conta", exact: true }), ENERGY);
+  // No celular a navegação fica no menu; o clique espera o painel terminar de carregar.
+  if (isMobile)
+    await page.getByRole("button", { name: "Abrir menu do painel" }).click();
   await expectFocusRing(
     page,
-    page.getByRole("navigation", { name: "Navegação do painel" }).getByRole("link", { name: "Avisos" }),
+    page.getByRole("button", { name: "Sair da conta", exact: true }),
+    ENERGY,
+  );
+  await expectFocusRing(
+    page,
+    page
+      .getByRole("navigation", { name: "Navegação do painel" })
+      .getByRole("link", { name: "Avisos" }),
     ENERGY,
   );
 });
