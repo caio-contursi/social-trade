@@ -18,6 +18,16 @@ from app.security import hash_password, issue_token, verify_password
 app = FastAPI(title="SocialTrade", version="0.1.0", description="Cadastro e acompanhamento de organizações sociais.")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
+PUBLIC_ORGANIZATION_FIELDS = (
+    "id", "name", "slug", "organization_type", "city", "state", "founding_year",
+    "short_description", "objective", "impact_summary", "description", "website_url",
+    "instagram_url", "logo_url", "created_at",
+)
+EDITABLE_ORGANIZATION_FIELDS = (
+    "name", "organization_type", "cnpj", "city", "state", "founding_year",
+    "short_description", "objective", "impact_summary", "description", "website_url",
+    "instagram_url", "pix_key", "logo_url",
+)
 
 
 def slugify(value: str) -> str:
@@ -42,13 +52,17 @@ def generate_registration_number(db) -> str:
             return number
 
 
-def create_org(db, owner_id: int, data: dict) -> int:
+def validate_organization_catalog(data: dict) -> None:
     area_codes = {item["code"] for item in AREAS}
     service_codes = {item["code"] for item in SERVICES}
     if unknown := set(data["areas"]) - area_codes:
         raise HTTPException(status_code=422, detail=f"Áreas desconhecidas: {', '.join(sorted(unknown))}")
     if unknown := set(data.get("interested_services", [])) - service_codes:
         raise HTTPException(status_code=422, detail=f"Serviços desconhecidos: {', '.join(sorted(unknown))}")
+
+
+def create_org(db, owner_id: int, data: dict) -> int:
+    validate_organization_catalog(data)
     cursor = db.execute(
         """INSERT INTO organizations (owner_id,name,slug,organization_type,institution_kind,cnpj,city,state,founding_year,
            short_description,objective,impact_summary,description,website_url,instagram_url,pix_key,logo_url)
@@ -66,16 +80,57 @@ def create_org(db, owner_id: int, data: dict) -> int:
     return org_id
 
 
+def organization_profile_metadata(data: dict, owner_email: str) -> dict:
+    """Measure presentation completeness, never identity or financial verification.
+
+    Count name, type, city, state, summary, description, logo and a website/social
+    link equally; projects also count objectives, impact and at least one cause.
+    """
+    fields = ("name", "organization_type", "city", "state", "short_description", "description", "logo_url")
+    checks = [bool(str(data.get(field) or "").strip()) for field in fields]
+    checks.append(any(bool(str(data.get(field) or "").strip()) for field in ("website_url", "instagram_url")))
+    if data.get("institution_kind") == "project":
+        checks.extend(bool(str(data.get(field) or "").strip()) for field in ("objective", "impact_summary"))
+        checks.append(bool(data.get("areas")))
+    return {
+        "verification_status": "self_declared",
+        "profile_completeness": round(100 * sum(checks) / len(checks)),
+        "is_demo": owner_email.strip().lower().endswith("@socialtrade.local"),
+    }
+
+
 def organization_view(db, org_id: int) -> dict:
-    row = db.execute("SELECT * FROM organizations WHERE id=?", (org_id,)).fetchone()
+    row = db.execute(
+        "SELECT o.*,u.email AS owner_email FROM organizations o JOIN users u ON u.id=o.owner_id WHERE o.id=?",
+        (org_id,),
+    ).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Organização não encontrada.")
     result = dict(row)
+    owner_email = result.pop("owner_email")
     result["areas"] = [r[0] for r in db.execute("SELECT area_code FROM organization_areas WHERE organization_id=? ORDER BY area_code", (org_id,))]
     selected = {r[0] for r in db.execute("SELECT service_code FROM organization_services WHERE organization_id=?", (org_id,))}
     result["services"] = [{**item, "interested": item["code"] in selected} for item in SERVICES]
-    result["verification_status"] = "complete"
+    result.update(organization_profile_metadata(result, owner_email))
     return result
+
+
+def public_organization_view(db, row) -> dict:
+    result = {key: row[key] for key in PUBLIC_ORGANIZATION_FIELDS}
+    result["areas"] = [item[0] for item in db.execute(
+        "SELECT area_code FROM organization_areas WHERE organization_id=? ORDER BY area_code", (row["id"],),
+    )]
+    result.update(organization_profile_metadata({**result, "institution_kind": row["institution_kind"]}, row["owner_email"]))
+    return result
+
+
+def public_project_list(db) -> list[dict]:
+    columns = ",".join(f"o.{field}" for field in PUBLIC_ORGANIZATION_FIELDS)
+    rows = db.execute(
+        f"SELECT {columns},o.institution_kind,u.email AS owner_email FROM organizations o "
+        "JOIN users u ON u.id=o.owner_id WHERE o.institution_kind='project' ORDER BY o.created_at DESC,o.id DESC",
+    ).fetchall()
+    return [public_organization_view(db, row) for row in rows]
 
 
 def seed_demo_users() -> None:
@@ -149,7 +204,7 @@ def health():
 
 @app.get("/api/catalog")
 def catalog():
-    return {"organization_types": ORGANIZATION_TYPES, "areas": AREAS, "services": SERVICES, "roles": ROLE_LABELS}
+    return {"organization_types": ORGANIZATION_TYPES, "areas": AREAS, "services": SERVICES, "roles": ROLE_LABELS, "demo_users_enabled": DEMO_USERS_ENABLED}
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
@@ -247,13 +302,16 @@ def projects(user=Depends(current_user)):
         raise HTTPException(status_code=403, detail="A consulta de projetos para investimento é exclusiva de empresas doadoras.")
     db = connect()
     try:
-        rows = db.execute("SELECT id,name,slug,organization_type,city,state,founding_year,short_description,objective,impact_summary,description,website_url,instagram_url,logo_url,created_at FROM organizations WHERE institution_kind='project' ORDER BY created_at DESC").fetchall()
-        results = []
-        for row in rows:
-            item = dict(row)
-            item["areas"] = [value[0] for value in db.execute("SELECT area_code FROM organization_areas WHERE organization_id=? ORDER BY area_code", (row["id"],))]
-            results.append(item)
-        return results
+        return public_project_list(db)
+    finally:
+        db.close()
+
+
+@app.get("/api/public/projects")
+def public_projects():
+    db = connect()
+    try:
+        return public_project_list(db)
     finally:
         db.close()
 
@@ -285,13 +343,15 @@ def my_memberships(user=Depends(current_user)):
 def public_organization(slug: str):
     db = connect()
     try:
-        row = db.execute("SELECT * FROM organizations WHERE slug=?", (slug,)).fetchone()
+        columns = ",".join(f"o.{field}" for field in PUBLIC_ORGANIZATION_FIELDS)
+        row = db.execute(
+            f"SELECT {columns},o.institution_kind,u.email AS owner_email FROM organizations o "
+            "JOIN users u ON u.id=o.owner_id WHERE o.slug=?", (slug,),
+        ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Organização não encontrada.")
-        result = {key: row[key] for key in ("name", "slug", "organization_type", "city", "state", "founding_year", "short_description", "description", "website_url", "instagram_url", "logo_url", "created_at")}
-        result["areas"] = [item[0] for item in db.execute("SELECT area_code FROM organization_areas WHERE organization_id=? ORDER BY area_code", (row["id"],))]
+        result = public_organization_view(db, row)
         result["services"] = [item for item in SERVICES if item["status"] == "available"]
-        result["verification_status"] = "complete"
         return result
     finally:
         db.close()
@@ -301,6 +361,8 @@ def public_organization(slug: str):
 def add_organization(payload: OrganizationCreate, user=Depends(current_user)):
     if user["account_type"] != "project":
         raise HTTPException(status_code=403, detail="Somente contas de projetos sociais podem cadastrar organizações.")
+    if payload.institution_kind != "project":
+        raise HTTPException(status_code=422, detail="Contas de projetos sociais só podem cadastrar perfis de projetos.")
     with transaction() as db:
         org_id = create_org(db, user["id"], payload.model_dump())
     db = connect()
@@ -308,6 +370,30 @@ def add_organization(payload: OrganizationCreate, user=Depends(current_user)):
         return organization_view(db, org_id)
     finally:
         db.close()
+
+
+@app.patch("/api/organizations/{org_id}")
+def update_organization(org_id: int, payload: OrganizationCreate, user=Depends(current_user)):
+    data = payload.model_dump()
+    with transaction() as db:
+        row = db.execute("SELECT owner_id,institution_kind FROM organizations WHERE id=?", (org_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Organização não encontrada.")
+        if row["owner_id"] != user["id"] or user["account_type"] not in {"project", "donor"} or user["account_type"] != row["institution_kind"]:
+            raise HTTPException(status_code=403, detail="Somente o proprietário da instituição pode editar este perfil.")
+        if data["institution_kind"] != row["institution_kind"]:
+            raise HTTPException(status_code=422, detail="O tipo da instituição não pode ser alterado.")
+        validate_organization_catalog(data)
+        assignments = ",".join(f"{field}=?" for field in EDITABLE_ORGANIZATION_FIELDS)
+        db.execute(f"UPDATE organizations SET {assignments} WHERE id=?", (*[data[field] for field in EDITABLE_ORGANIZATION_FIELDS], org_id))
+        db.execute("DELETE FROM organization_areas WHERE organization_id=?", (org_id,))
+        db.executemany("INSERT INTO organization_areas (organization_id,area_code) VALUES (?,?)", [(org_id, code) for code in data["areas"]])
+        db.execute("DELETE FROM organization_services WHERE organization_id=?", (org_id,))
+        db.executemany(
+            "INSERT INTO organization_services (organization_id,service_code,interested) VALUES (?,?,1)",
+            [(org_id, code) for code in dict.fromkeys(data["interested_services"])],
+        )
+        return organization_view(db, org_id)
 
 
 @app.get("/api/announcements")

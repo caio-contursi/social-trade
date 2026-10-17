@@ -1,7 +1,7 @@
 import re
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 def valid_cnpj(value: str) -> str:
@@ -33,7 +33,7 @@ def valid_cpf(value: str) -> str:
 
 class OrganizationInput(BaseModel):
     name: str = Field(min_length=2, max_length=160)
-    organization_type: Literal["formal_ngo", "independent_project", "community_collective", "association", "religious_group", "student_project"]
+    organization_type: Literal["company", "formal_ngo", "independent_project", "community_collective", "association", "religious_group", "student_project"]
     institution_kind: Literal["donor", "project"] = "project"
     cnpj: str | None = Field(default=None, max_length=18)
     city: str = Field(min_length=2, max_length=100)
@@ -55,9 +55,11 @@ class OrganizationInput(BaseModel):
     def check_cnpj(cls, value: str | None) -> str | None:
         return valid_cnpj(value) if value and value.strip() else None
 
-    @field_validator("name", "city", "short_description")
+    @field_validator("name", "city", "short_description", mode="before")
     @classmethod
     def trim_required_text(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
         value = value.strip()
         if not value:
             raise ValueError("Este campo não pode ficar vazio.")
@@ -86,6 +88,8 @@ class OrganizationInput(BaseModel):
 
     @model_validator(mode="after")
     def project_has_areas(self):
+        if self.institution_kind == "project" and self.organization_type == "company":
+            raise ValueError("O tipo Empresa é exclusivo de instituições doadoras.")
         if self.institution_kind == "project" and not self.areas:
             raise ValueError("Selecione ao menos uma área de atuação para o projeto social.")
         return self
@@ -185,7 +189,7 @@ class ProfileUpdate(BaseModel):
 
 
 class OrganizationCreate(OrganizationInput):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class TicketInput(BaseModel):
