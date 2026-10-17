@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, AtSign, CalendarDays, CircleHelp, ExternalLink, Globe, Goal, HeartHandshake, Info, MapPin, Sprout } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  AtSign,
+  CalendarDays,
+  CircleHelp,
+  ExternalLink,
+  Globe,
+  Goal,
+  HeartHandshake,
+  Info,
+  MapPin,
+  Sprout,
+} from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageRetry } from "@/components/page-retry";
@@ -13,36 +26,331 @@ import { areaLabels, organizationLabels } from "@/lib/catalog";
 import { publicProject } from "@/lib/server-api";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Conheça o projeto", description: "Conheça a história, os objetivos e a atuação de um projeto social na SocialTrade." };
+export const metadata: Metadata = {
+  title: "Conheça o projeto",
+  description:
+    "Conheça a história, os objetivos e a atuação de um projeto social na SocialTrade.",
+};
 
 function externalUrl(value: string | null): string | null {
-  try { const url = new URL(value || ""); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.href : null; } catch { return null; }
+  try {
+    const url = new URL(value || "");
+    return ["http:", "https:"].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
 }
 
-export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProjectPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const { project, error } = await publicProject(slug);
   if (!project && !error) notFound();
-  if (error || !project) return <><SiteHeader /><main id="conteudo" className="page-container py-16"><Link href="/projetos" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Voltar aos projetos</Link><div className="rounded-2xl border bg-card p-8"><h1 className="text-3xl font-semibold">Este perfil não carregou agora.</h1><p className="mb-5 mt-4 text-muted-foreground">Tente novamente em instantes para conhecer a história do projeto.</p><PageRetry /></div></main><SiteFooter /></>;
+  if (error || !project)
+    return (
+      <>
+        <SiteHeader />
+        <main id="conteudo" className="page-container py-16">
+          <Link
+            href="/projetos"
+            className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" /> Voltar aos projetos
+          </Link>
+          <div className="rounded-2xl border bg-card p-8">
+            <h1 className="text-3xl font-semibold">
+              Este perfil não carregou agora.
+            </h1>
+            <p className="mb-5 mt-4 text-muted-foreground">
+              Tente novamente em instantes para conhecer a história do projeto.
+            </p>
+            <PageRetry />
+          </div>
+        </main>
+        <SiteFooter />
+      </>
+    );
   const website = externalUrl(project.website_url);
   const instagram = externalUrl(project.instagram_url);
-  const completeness = typeof project.profile_completeness === "number" ? Math.max(0, Math.min(100, project.profile_completeness)) : null;
-  return <><SiteHeader /><main id="conteudo">
-    <section className="border-b bg-secondary/30"><div className="page-container pb-10 pt-7 sm:pb-12 sm:pt-9"><Link href="/projetos" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Voltar aos projetos</Link><div className="grid items-center gap-8 lg:grid-cols-[1fr_320px]"><div><div className="mb-4 flex flex-wrap items-center gap-2"><Badge variant="secondary">{organizationLabels[project.organization_type] || "Projeto social"}</Badge>{project.is_demo && <Badge variant="outline" className="bg-background">Perfil de demonstração</Badge>}</div><h1 className="max-w-3xl text-4xl font-semibold sm:text-5xl">{project.name}</h1><p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">{project.short_description}</p><div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground"><span className="inline-flex items-center gap-1.5"><MapPin className="size-4" />{project.city}, {project.state}</span>{project.founding_year && <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-4" />Desde {project.founding_year}</span>}</div><div className="mt-6 flex flex-wrap gap-2">{project.areas.map(area => <Badge key={area} variant="outline" className="bg-background font-normal">{areaLabels[area] || area}</Badge>)}</div></div><ProjectVisual project={project} className="min-h-56 rounded-2xl border border-primary/5 lg:min-h-64" /></div></div></section>
-    <div className="page-container grid items-start gap-8 py-10 sm:py-14 lg:grid-cols-[1fr_340px] lg:gap-12">
-      <div className="space-y-8">
-        {project.is_demo && <div className="flex gap-3 rounded-xl border bg-muted/60 p-4 text-sm"><Info className="mt-0.5 size-4 shrink-0 text-primary" /><p className="leading-relaxed text-muted-foreground">Este é um perfil de demonstração, criado para apresentar a plataforma. Seus dados são exemplos.</p></div>}
-        <section aria-labelledby="about-title"><p className="eyebrow mb-3">Por trás da causa</p><h2 id="about-title" className="text-2xl font-semibold sm:text-3xl">Uma história para conhecer.</h2><p className="mt-5 whitespace-pre-line text-base leading-relaxed text-muted-foreground">{project.description || project.short_description}</p></section>
-        <section className="rounded-2xl border bg-card p-6 sm:p-8" aria-labelledby="goal-title"><div className="mb-4 flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-primary"><Goal className="size-5" strokeWidth={1.5} /></div><h2 id="goal-title" className="text-xl font-semibold">O que queremos transformar</h2></div><p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">{project.objective || "O projeto ainda não compartilhou seus objetivos neste perfil."}</p></section>
-        <section className="rounded-2xl border bg-card p-6 sm:p-8" aria-labelledby="results-title"><div className="mb-4 flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-primary"><Sprout className="size-5" strokeWidth={1.5} /></div><h2 id="results-title" className="text-xl font-semibold">Ações e resultados apresentados</h2></div><p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">{project.impact_summary || "O projeto ainda não compartilhou ações ou resultados neste perfil."}</p><p className="mt-5 border-t pt-4 text-xs leading-relaxed text-muted-foreground">Informações declaradas pelo próprio projeto. Resultados apresentados aqui ainda não passaram por validação independente pela SocialTrade.</p></section>
-        <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-5"><CircleHelp className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.5} /><div><p className="text-sm font-semibold">Conhecer também é parte de apoiar.</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Converse com os responsáveis, conheça as necessidades atuais e peça as informações que ajudem na sua decisão de contribuir.</p></div></div>
-      </div>
-      <aside className="space-y-5 lg:sticky lg:top-24">
-        <section className="rounded-2xl border bg-card p-6" aria-labelledby="contact-title"><div className="mb-5 flex size-11 items-center justify-center rounded-xl bg-secondary text-primary"><HeartHandshake className="size-6" strokeWidth={1.5} /></div><h2 id="contact-title" className="text-xl font-semibold">Uma conversa pode ser o começo.</h2><p className="mb-6 mt-3 text-sm leading-relaxed text-muted-foreground">Conheça os canais informados pelo projeto e aproxime-se da iniciativa.</p>{website || instagram ? <div className="space-y-3">{website && <Button asChild variant="outline" className="h-11 w-full justify-between"><a href={website} target="_blank" rel="noopener noreferrer"><span className="flex items-center gap-2"><Globe className="size-4" /> Visitar o site</span><ExternalLink className="size-3.5" /></a></Button>}{instagram && <Button asChild variant="outline" className="h-11 w-full justify-between"><a href={instagram} target="_blank" rel="noopener noreferrer"><span className="flex items-center gap-2"><AtSign className="size-4" /> Canal social informado</span><ExternalLink className="size-3.5" /></a></Button>}<p className="pt-1 text-xs leading-relaxed text-muted-foreground">Os links abrem canais externos à SocialTrade.</p></div> : <div className="rounded-xl border border-dashed bg-muted/40 p-4"><p className="text-sm font-medium">Canais ainda não informados</p><p className="mt-2 text-xs leading-relaxed text-muted-foreground">O projeto ainda não adicionou um site ou uma rede social pública para contato.</p></div>}</section>
-        <section className="rounded-2xl border bg-card p-6" aria-labelledby="profile-info-title"><h2 id="profile-info-title" className="text-sm font-semibold">Sobre as informações deste perfil</h2>{completeness !== null && <div className="mt-5"><div className="mb-2 flex justify-between gap-3 text-xs"><span className="text-muted-foreground">Apresentação preenchida</span><span className="font-medium">{completeness}%</span></div><Progress value={completeness} aria-label={`Apresentação do perfil ${completeness}% preenchida`} className="h-1.5" /></div>}<p className="mt-4 text-xs leading-relaxed text-muted-foreground">O conteúdo é fornecido pelo projeto. O preenchimento do perfil não representa uma certificação, uma verificação documental ou uma comprovação de resultados.</p></section>
-        <div className="rounded-2xl bg-secondary/60 p-6"><p className="text-sm font-semibold">Transparência em construção</p><p className="mt-3 text-xs leading-relaxed text-muted-foreground">Doações na plataforma, registro em Solana e prestação de contas ainda estão em desenvolvimento. Não há pagamentos disponíveis nesta etapa.</p></div>
-      </aside>
-    </div>
-    <section className="page-container pb-16 sm:pb-20"><div className="flex flex-col justify-between gap-5 rounded-2xl border bg-card p-6 sm:flex-row sm:items-center sm:p-8"><div><h2 className="text-xl font-semibold">Outras histórias também esperam por você.</h2><p className="mt-2 text-sm text-muted-foreground">Continue explorando e encontre novas conexões.</p></div><Button asChild variant="outline" className="shrink-0"><Link href="/projetos">Explorar projetos <ArrowUpRight className="size-4" /></Link></Button></div></section>
-  </main><SiteFooter /></>;
+  const completeness =
+    typeof project.profile_completeness === "number"
+      ? Math.max(0, Math.min(100, project.profile_completeness))
+      : null;
+  return (
+    <>
+      <SiteHeader />
+      <main id="conteudo">
+        <section className="border-b bg-secondary/30">
+          <div className="page-container pb-10 pt-7 sm:pb-12 sm:pt-9">
+            <Link
+              href="/projetos"
+              className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" /> Voltar aos projetos
+            </Link>
+            <div className="grid items-center gap-8 lg:grid-cols-[1fr_320px]">
+              <div>
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">
+                    {organizationLabels[project.organization_type] ||
+                      "Projeto social"}
+                  </Badge>
+                  {project.is_demo && (
+                    <Badge variant="outline" className="bg-background">
+                      Perfil de demonstração
+                    </Badge>
+                  )}
+                </div>
+                <h1 className="max-w-3xl text-4xl font-semibold sm:text-5xl">
+                  {project.name}
+                </h1>
+                <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+                  {project.short_description}
+                </p>
+                <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="size-4" />
+                    {project.city}, {project.state}
+                  </span>
+                  {project.founding_year && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarDays className="size-4" />
+                      Desde {project.founding_year}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {project.areas.map((area) => (
+                    <Badge
+                      key={area}
+                      variant="outline"
+                      className="bg-background font-normal"
+                    >
+                      {areaLabels[area] || area}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <ProjectVisual
+                project={project}
+                className="min-h-56 rounded-2xl border border-primary/5 lg:min-h-64"
+              />
+            </div>
+          </div>
+        </section>
+        <div className="page-container grid items-start gap-8 py-10 sm:py-14 lg:grid-cols-[1fr_340px] lg:gap-12">
+          <div className="space-y-8">
+            {project.is_demo && (
+              <div className="flex gap-3 rounded-xl border bg-muted/60 p-4 text-sm">
+                <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+                <p className="leading-relaxed text-muted-foreground">
+                  Este é um perfil de demonstração, criado para apresentar a
+                  plataforma. Seus dados são exemplos.
+                </p>
+              </div>
+            )}
+            <section aria-labelledby="about-title">
+              <p className="eyebrow mb-3">Por trás da causa</p>
+              <h2
+                id="about-title"
+                className="text-2xl font-semibold sm:text-3xl"
+              >
+                Uma história para conhecer.
+              </h2>
+              <p className="mt-5 whitespace-pre-line text-base leading-relaxed text-muted-foreground">
+                {project.description || project.short_description}
+              </p>
+            </section>
+            <section
+              className="rounded-2xl border bg-card p-6 sm:p-8"
+              aria-labelledby="goal-title"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-primary">
+                  <Goal className="size-5" strokeWidth={1.5} />
+                </div>
+                <h2 id="goal-title" className="text-xl font-semibold">
+                  O que queremos transformar
+                </h2>
+              </div>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {project.objective ||
+                  "O projeto ainda não compartilhou seus objetivos neste perfil."}
+              </p>
+            </section>
+            <section
+              className="rounded-2xl border bg-card p-6 sm:p-8"
+              aria-labelledby="results-title"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-primary">
+                  <Sprout className="size-5" strokeWidth={1.5} />
+                </div>
+                <h2 id="results-title" className="text-xl font-semibold">
+                  Ações e resultados apresentados
+                </h2>
+              </div>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {project.impact_summary ||
+                  "O projeto ainda não compartilhou ações ou resultados neste perfil."}
+              </p>
+              <p className="mt-5 border-t pt-4 text-xs leading-relaxed text-muted-foreground">
+                Informações declaradas pelo próprio projeto. Resultados
+                apresentados aqui ainda não passaram por validação independente
+                pela SocialTrade.
+              </p>
+            </section>
+            <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-5">
+              <CircleHelp
+                className="mt-0.5 size-5 shrink-0 text-primary"
+                strokeWidth={1.5}
+              />
+              <div>
+                <p className="text-sm font-semibold">
+                  Conhecer também é parte de apoiar.
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Converse com os responsáveis, conheça as necessidades atuais e
+                  peça as informações que ajudem na sua decisão de contribuir.
+                </p>
+              </div>
+            </div>
+          </div>
+          <aside className="space-y-5 lg:sticky lg:top-24">
+            <section
+              className="rounded-2xl border bg-card p-6"
+              aria-labelledby="contact-title"
+            >
+              <div className="mb-5 flex size-11 items-center justify-center rounded-xl bg-secondary text-primary">
+                <HeartHandshake className="size-6" strokeWidth={1.5} />
+              </div>
+              <h2 id="contact-title" className="text-xl font-semibold">
+                Uma conversa pode ser o começo.
+              </h2>
+              <p className="mb-6 mt-3 text-sm leading-relaxed text-muted-foreground">
+                Conheça os canais informados pelo projeto e aproxime-se da
+                iniciativa.
+              </p>
+              {website || instagram ? (
+                <div className="space-y-3">
+                  {website && (
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="h-11 w-full justify-between"
+                    >
+                      <a
+                        href={website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Globe className="size-4" /> Visitar o site
+                        </span>
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                  {instagram && (
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="h-11 w-full justify-between"
+                    >
+                      <a
+                        href={instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <AtSign className="size-4" /> Canal social informado
+                        </span>
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                  <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
+                    Os links abrem canais externos à SocialTrade.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed bg-muted/40 p-4">
+                  <p className="text-sm font-medium">
+                    Canais ainda não informados
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    O projeto ainda não adicionou um site ou uma rede social
+                    pública para contato.
+                  </p>
+                </div>
+              )}
+            </section>
+            <section
+              className="rounded-2xl border bg-card p-6"
+              aria-labelledby="profile-info-title"
+            >
+              <h2 id="profile-info-title" className="text-sm font-semibold">
+                Sobre as informações deste perfil
+              </h2>
+              {completeness !== null && (
+                <div className="mt-5">
+                  <div className="mb-2 flex justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">
+                      Apresentação preenchida
+                    </span>
+                    <span className="font-medium">{completeness}%</span>
+                  </div>
+                  <Progress
+                    value={completeness}
+                    aria-label={`Apresentação do perfil ${completeness}% preenchida`}
+                    className="h-1.5"
+                  />
+                </div>
+              )}
+              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                O conteúdo é fornecido pelo projeto. O preenchimento do perfil
+                não representa uma certificação, uma verificação documental ou
+                uma comprovação de resultados.
+              </p>
+            </section>
+            <div className="rounded-2xl bg-secondary/60 p-6">
+              <p className="text-sm font-semibold">
+                Transparência em construção
+              </p>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Doações na plataforma, registro em Solana e prestação de contas
+                ainda estão em desenvolvimento. Não há pagamentos disponíveis
+                nesta etapa.
+              </p>
+            </div>
+          </aside>
+        </div>
+        <section className="page-container pb-16 sm:pb-20">
+          <div className="flex flex-col justify-between gap-5 rounded-2xl border bg-card p-6 sm:flex-row sm:items-center sm:p-8">
+            <div>
+              <h2 className="text-xl font-semibold">
+                Outras histórias também esperam por você.
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Continue explorando e encontre novas conexões.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link href="/projetos">
+                Explorar projetos <ArrowUpRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
+  );
 }

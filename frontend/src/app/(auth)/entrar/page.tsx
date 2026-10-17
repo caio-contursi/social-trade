@@ -6,5 +6,15 @@ import { LoginForm } from "@/components/auth/login-form";
 export const metadata: Metadata = { title: "Entrar" };
 
 export default function LoginPage() {
-  return <AuthShell><Suspense fallback={<p className="text-muted-foreground">Preparando seu acesso...</p>}><LoginForm /></Suspense></AuthShell>;
+  return (
+    <AuthShell>
+      <Suspense
+        fallback={
+          <p className="text-muted-foreground">Preparando seu acesso...</p>
+        }
+      >
+        <LoginForm />
+      </Suspense>
+    </AuthShell>
+  );
 }
