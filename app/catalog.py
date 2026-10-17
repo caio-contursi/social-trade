@@ -1,4 +1,5 @@
 ORGANIZATION_TYPES = [
+    {"code": "company", "label": "Empresa"},
     {"code": "formal_ngo", "label": "ONG formalizada"},
     {"code": "independent_project", "label": "Projeto independente"},
     {"code": "community_collective", "label": "Coletivo comunitário"},

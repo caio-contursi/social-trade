@@ -1,7 +1,7 @@
 import re
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 def valid_cnpj(value: str) -> str:
@@ -33,7 +33,7 @@ def valid_cpf(value: str) -> str:
 
 class OrganizationInput(BaseModel):
     name: str = Field(min_length=2, max_length=160)
-    organization_type: Literal["formal_ngo", "independent_project", "community_collective", "association", "religious_group", "student_project"]
+    organization_type: Literal["company", "formal_ngo", "independent_project", "community_collective", "association", "religious_group", "student_project"]
     institution_kind: Literal["donor", "project"] = "project"
     cnpj: str | None = Field(default=None, max_length=18)
     city: str = Field(min_length=2, max_length=100)
@@ -55,9 +55,11 @@ class OrganizationInput(BaseModel):
     def check_cnpj(cls, value: str | None) -> str | None:
         return valid_cnpj(value) if value and value.strip() else None
 
-    @field_validator("name", "city", "short_description")
+    @field_validator("name", "city", "short_description", mode="before")
     @classmethod
     def trim_required_text(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
         value = value.strip()
         if not value:
             raise ValueError("Este campo não pode ficar vazio.")
@@ -86,6 +88,8 @@ class OrganizationInput(BaseModel):
 
     @model_validator(mode="after")
     def project_has_areas(self):
+        if self.institution_kind == "project" and self.organization_type == "company":
+            raise ValueError("O tipo Empresa é exclusivo de instituições doadoras.")
         if self.institution_kind == "project" and not self.areas:
             raise ValueError("Selecione ao menos uma área de atuação para o projeto social.")
         return self
@@ -113,9 +117,11 @@ class RegisterInput(BaseModel):
             raise ValueError("Use de 3 a 30 caracteres: letras, números ou sublinhado.")
         return value
 
-    @field_validator("full_name", "responsible_title")
+    @field_validator("full_name", "responsible_title", mode="before")
     @classmethod
     def trim_account_text(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
         value = value.strip()
         if not value:
             raise ValueError("Este campo não pode ficar vazio.")
@@ -146,10 +152,12 @@ class InstitutionRegisterInput(BaseModel):
     @field_validator("document")
     @classmethod
     def normalize_document(cls, value: str) -> str:
-        digits = re.sub(r"\D", "", value)
-        if len(digits) != 14:
-            raise ValueError("Informe um CNPJ com 14 dígitos.")
-        return digits
+        return valid_cnpj(value)
+
+    @field_validator("full_name", mode="before")
+    @classmethod
+    def trim_full_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def password_matches_and_kind(self):
@@ -183,14 +191,24 @@ class ProfileUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     responsible_title: str | None = Field(default=None, max_length=80)
 
+    @field_validator("full_name", "responsible_title", mode="before")
+    @classmethod
+    def trim_profile_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
 
 class OrganizationCreate(OrganizationInput):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class TicketInput(BaseModel):
     subject: str = Field(min_length=4, max_length=140)
     message: str = Field(min_length=10, max_length=4000)
+
+    @field_validator("subject", "message", mode="before")
+    @classmethod
+    def trim_ticket_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
 
 class TicketStatusInput(BaseModel):
@@ -200,4 +218,9 @@ class TicketStatusInput(BaseModel):
 class AnnouncementInput(BaseModel):
     title: str = Field(min_length=4, max_length=160)
     body: str = Field(min_length=10, max_length=3000)
-    category: str = Field(default="plataforma", max_length=40)
+    category: str = Field(default="plataforma", min_length=1, max_length=40)
+
+    @field_validator("title", "body", "category", mode="before")
+    @classmethod
+    def trim_announcement_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
