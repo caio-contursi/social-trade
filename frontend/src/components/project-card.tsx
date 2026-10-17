@@ -2,43 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  GraduationCap,
-  HeartHandshake,
-  HeartPulse,
-  Leaf,
-  MapPin,
-  PawPrint,
-  Utensils,
-} from "lucide-react";
+import { ArrowUpRight, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { areaLabels } from "@/lib/catalog";
+import { causeVisual } from "@/lib/causes";
 import type { Project } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const visuals = {
-  food: {
-    icon: Utensils,
-    color: "bg-[#f4edda] text-[#836323] dark:bg-[#423b26] dark:text-[#ead497]",
-  },
-  education: {
-    icon: GraduationCap,
-    color: "bg-[#e8ede7] text-[#52694d] dark:bg-[#31432f] dark:text-[#c1d3b9]",
-  },
-  health: {
-    icon: HeartPulse,
-    color: "bg-[#f3e7e3] text-[#975e4c] dark:bg-[#49332e] dark:text-[#e4b8aa]",
-  },
-  environment: {
-    icon: Leaf,
-    color: "bg-[#e2eee7] text-[#39765b] dark:bg-[#284936] dark:text-[#a8d1b5]",
-  },
-  animals: {
-    icon: PawPrint,
-    color: "bg-[#eee8f1] text-[#7c638b] dark:bg-[#42354c] dark:text-[#d5bce5]",
-  },
-};
 
 export function ProjectVisual({
   project,
@@ -48,11 +16,8 @@ export function ProjectVisual({
   className?: string;
 }) {
   const [broken, setBroken] = useState(false);
-  const visual = visuals[project.areas[0] as keyof typeof visuals] || {
-    icon: HeartHandshake,
-    color: "bg-secondary text-primary",
-  };
-  const Icon = visual.icon;
+  const cause = causeVisual(project.areas[0]);
+  const Icon = cause.icon;
   let logo: string | null = null;
   try {
     const url = new URL(project.logo_url || "");
@@ -61,11 +26,19 @@ export function ProjectVisual({
   return (
     <div
       className={cn(
-        "relative flex min-h-40 items-center justify-center overflow-hidden",
-        visual.color,
+        "relative flex min-h-44 items-center justify-center overflow-hidden",
+        cause.className,
         className,
       )}
     >
+      <div
+        aria-hidden="true"
+        className="dot-pattern absolute inset-0 opacity-[.13]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute -right-16 -bottom-24 size-60 rounded-full bg-current opacity-[.07]"
+      />
       {logo && !broken ? (
         <img
           src={logo}
@@ -74,55 +47,47 @@ export function ProjectVisual({
           loading="lazy"
           width={160}
           height={160}
-          className="m-8 max-h-36 max-w-[65%] object-contain"
+          className="relative m-8 max-h-32 max-w-[60%] rounded-xl bg-logo-surface object-contain p-3 shadow-sm"
         />
       ) : (
-        <>
-          <div
-            aria-hidden="true"
-            className="absolute -right-8 -top-12 size-44 rounded-full border border-current opacity-[.07]"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute -bottom-16 -left-10 size-48 rounded-full border border-current opacity-[.07]"
-          />
-          <Icon
-            aria-hidden="true"
-            className="size-14 opacity-70"
-            strokeWidth={1.15}
-          />
-          <span className="absolute bottom-4 left-5 text-[10px] font-semibold tracking-[.16em] uppercase">
-            {areaLabels[project.areas[0]] || "Iniciativa social"}
-          </span>
-        </>
+        <Icon
+          aria-hidden="true"
+          className="relative size-16"
+          strokeWidth={1.2}
+        />
       )}
+      <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-card/90 px-3 py-1 text-[11px] font-semibold tracking-[.1em] uppercase">
+        <cause.icon aria-hidden="true" className="size-3.5" />
+        {cause.label}
+      </span>
     </div>
   );
 }
 
 export function ProjectCard({ project }: { project: Project }) {
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-lg hover:shadow-primary/5">
+    <article className="group flex h-full flex-col overflow-hidden rounded-[1.4rem] border bg-card transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10">
       <div className="relative">
         <ProjectVisual project={project} />
         {project.is_demo && (
-          <Badge
-            variant="secondary"
-            className="absolute right-3 top-3 border border-border bg-background/95"
-          >
+          <Badge className="absolute top-3 right-3 gap-1.5 border border-border bg-card/95 text-foreground">
+            <span
+              aria-hidden="true"
+              className="size-1.5 rounded-full bg-energy"
+            />
             Demonstração
           </Badge>
         )}
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <MapPin className="size-3.5" aria-hidden="true" />
           {project.city}, {project.state}
         </p>
-        <h3 className="mt-3 font-display text-xl font-semibold leading-tight">
+        <h3 className="mt-2.5 text-[1.45rem] leading-tight font-medium">
           <Link
             href={`/projetos/${encodeURIComponent(project.slug)}`}
-            className="rounded-sm underline-offset-4 group-hover:text-primary hover:underline"
+            className="rounded-sm underline-offset-4 decoration-energy decoration-2 hover:underline"
           >
             {project.name}
           </Link>
@@ -130,32 +95,47 @@ export function ProjectCard({ project }: { project: Project }) {
         <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
           {project.short_description}
         </p>
-        <div className="mb-6 mt-4 flex flex-wrap gap-1.5">
-          {project.areas.slice(0, 2).map((area) => (
-            <Badge
-              key={area}
-              variant="outline"
-              className="text-[11px] font-normal"
-            >
-              {areaLabels[area] || area}
-            </Badge>
-          ))}
+        <ul className="mt-4 mb-6 flex flex-wrap gap-1.5" aria-label="Causas">
+          {project.areas.slice(0, 2).map((area) => {
+            const cause = causeVisual(area);
+            return (
+              <li key={area}>
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 bg-background text-[11px] font-medium"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "size-2 rounded-full border border-current",
+                      cause.className,
+                    )}
+                  />
+                  {cause.label}
+                </Badge>
+              </li>
+            );
+          })}
           {project.areas.length > 2 && (
-            <Badge variant="outline" className="text-[11px] font-normal">
-              +{project.areas.length - 2} causas
-            </Badge>
+            <li>
+              <Badge
+                variant="outline"
+                className="bg-background text-[11px] font-medium"
+              >
+                +{project.areas.length - 2} causas
+              </Badge>
+            </li>
           )}
-        </div>
+        </ul>
         <Link
           href={`/projetos/${encodeURIComponent(project.slug)}`}
           aria-label={`Conhecer ${project.name}`}
           className="mt-auto inline-flex items-center justify-between gap-3 border-t pt-4 text-sm font-semibold text-primary"
         >
-          Conhecer o projeto{" "}
-          <ArrowUpRight
-            className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
+          Conhecer o projeto
+          <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:translate-x-0.5">
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </span>
         </Link>
       </div>
     </article>
