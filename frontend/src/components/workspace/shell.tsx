@@ -17,8 +17,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { if (!loading && !error && !user) router.replace(`/entrar?proximo=${encodeURIComponent(pathname)}`); }, [loading, error, user, router, pathname]);
-  if (error) return <main className="page-container py-16"><WorkspaceError message={error} retry={() => void retrySession()} /></main>;
-  if (loading || !user) return <main className="page-container py-16"><WorkspaceLoading /></main>;
+  if (error) return <main id="conteudo" className="page-container py-16"><WorkspaceError message={error} retry={() => void retrySession()} /></main>;
+  if (loading || !user) return <main id="conteudo" className="page-container py-16"><WorkspaceLoading /></main>;
   const organizationLabel = user.account_type === "donor" ? "Minha empresa" : user.account_type === "person" ? "Meus vínculos" : "Meus projetos";
   const items = [
     { href: "/painel", label: "Visão geral", icon: LayoutDashboard },
@@ -40,11 +40,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     <div className="mt-auto pt-8"><div className="rounded-xl border bg-card p-4"><p className="text-sm font-semibold">Conexões que fazem a diferença.</p><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Um espaço para aproximar quem quer apoiar de quem transforma.</p></div><Button type="button" variant="ghost" onClick={signOut} className="mt-4 w-full justify-start gap-3 text-muted-foreground"><LogOut className="size-4" />Sair da conta</Button></div>
   </>;
   const accountLabel = user.role === "moderator" ? "Moderação" : user.account_type === "donor" ? "Empresa apoiadora" : user.account_type === "project" ? "Projeto social" : "Pessoa física";
-  return <div className="min-h-screen bg-background"><a className="skip-link" href="#conteudo-painel">Pular para o conteúdo</a>
+  return <div className="min-h-screen bg-background">
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto border-r bg-sidebar px-4 py-7 lg:flex">{navigation}</aside>
     <div className="lg:pl-64"><header className="flex min-h-20 items-center justify-between gap-4 border-b bg-card px-5 sm:px-8 lg:px-10">
       <div className="flex min-w-0 items-center gap-3"><Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetTrigger asChild><Button type="button" variant="outline" size="icon" className="shrink-0 lg:hidden" aria-label="Abrir menu do painel"><Menu className="size-5" /></Button></SheetTrigger><SheetContent side="left" className="flex w-[min(85vw,300px)] flex-col overflow-y-auto bg-sidebar p-5"><SheetHeader className="sr-only"><SheetTitle>Menu do painel</SheetTitle><SheetDescription>Acesse as áreas da sua conta SocialTrade.</SheetDescription></SheetHeader>{navigation}</SheetContent></Sheet><div><p className="text-xs text-muted-foreground">{accountLabel}</p><p className="max-w-44 truncate text-sm font-semibold sm:max-w-sm">{user.full_name}</p></div></div>
       <div className="flex items-center gap-2"><ThemeToggle /><Link href="/painel/perfil" className="ml-1 flex size-10 items-center justify-center rounded-full border bg-secondary text-sm font-semibold" aria-label="Abrir minha conta">{user.full_name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase()}</Link></div>
-    </header><main id="conteudo-painel" className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10">{children}</main><footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 pb-8 pt-3 text-xs text-muted-foreground sm:px-8 lg:px-10"><span>SocialTrade · Juntos, o impacto vai mais longe.</span><Link className="underline-offset-4 hover:underline" href="/painel/suporte">Precisa de ajuda?</Link></footer></div>
+    </header><main id="conteudo" className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10">{children}</main><footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 pb-8 pt-3 text-xs text-muted-foreground sm:px-8 lg:px-10"><span>SocialTrade · Juntos, o impacto vai mais longe.</span><Link className="underline-offset-4 hover:underline" href="/painel/suporte">Precisa de ajuda?</Link></footer></div>
   </div>;
 }
