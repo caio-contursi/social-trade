@@ -87,7 +87,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <Brand />
         </Link>
       </div>
-      <p className="mb-3 px-3 text-[11px] font-semibold tracking-[.16em] text-muted-foreground uppercase">
+      <p className="mb-3 px-3 text-[11px] font-semibold tracking-[.16em] text-sidebar-foreground/70 uppercase">
         Seu espaço
       </p>
       <nav aria-label="Navegação do painel" className="space-y-1">
@@ -102,7 +102,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               onClick={() => setMenuOpen(false)}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+              className={`flex min-h-11 items-center gap-3 rounded-full px-4 py-3 text-sm font-medium transition-colors ${active ? "bg-energy font-semibold text-energy-foreground shadow-sm" : "text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground"}`}
             >
               <item.icon className="size-[18px] shrink-0" />
               {item.label}
@@ -114,11 +114,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
       <div className="mt-auto pt-8">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-sm font-semibold">
+        <div className="rounded-2xl bg-white/[.06] p-4 ring-1 ring-white/10">
+          <p className="font-display text-base font-medium">
             Conexões que fazem a diferença.
           </p>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-2 text-xs leading-relaxed text-sidebar-foreground/75">
             Um espaço para aproximar quem quer apoiar de quem transforma.
           </p>
         </div>
@@ -126,7 +126,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           type="button"
           variant="ghost"
           onClick={signOut}
-          className="mt-4 w-full justify-start gap-3 text-muted-foreground"
+          className="mt-4 w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground"
         >
           <LogOut className="size-4" />
           Sair da conta
@@ -144,11 +144,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           : "Pessoa física";
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto border-r bg-sidebar px-4 py-7 lg:flex">
+      <aside className="on-ink fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto bg-sidebar px-4 py-7 text-sidebar-foreground lg:flex">
         {navigation}
       </aside>
       <div className="lg:pl-64">
-        <header className="flex min-h-20 items-center justify-between gap-4 border-b bg-card px-5 sm:px-8 lg:px-10">
+        <header className="sticky top-0 z-20 flex min-h-[4.5rem] items-center justify-between gap-4 border-b bg-background/90 px-5 backdrop-blur-md sm:px-8 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
@@ -164,7 +164,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="flex w-[min(85vw,300px)] flex-col overflow-y-auto bg-sidebar p-5"
+                className="on-ink flex w-[min(85vw,300px)] flex-col overflow-y-auto border-none bg-sidebar p-5 text-sidebar-foreground [&>button]:data-[state=open]:bg-white/10"
               >
                 <SheetHeader className="sr-only">
                   <SheetTitle>Menu do painel</SheetTitle>
@@ -177,7 +177,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             </Sheet>
             <div>
               <p className="text-xs text-muted-foreground">{accountLabel}</p>
-              <p className="max-w-44 truncate text-sm font-semibold sm:max-w-sm">
+              <p className="max-w-44 truncate font-display text-base font-medium sm:max-w-sm">
                 {user.full_name}
               </p>
             </div>
@@ -186,7 +186,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
             <Link
               href="/painel/perfil"
-              className="ml-1 flex size-10 items-center justify-center rounded-full border bg-secondary text-sm font-semibold"
+              className="ml-1 flex size-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
               aria-label="Abrir minha conta"
             >
               {user.full_name
