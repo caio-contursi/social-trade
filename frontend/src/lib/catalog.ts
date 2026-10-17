@@ -21,6 +21,17 @@ export const organizationLabels: Record<string, string> = {
   religious_group: "Grupo religioso",
   student_project: "Projeto universitário",
 };
+// Estados de `SERVICES` em app/catalog.py. Qualificam a funcionalidade, nunca a organização.
+export const serviceStatusLabels: Record<string, string> = {
+  available: "Disponível",
+  coming_soon: "Em breve",
+  future: "Planejado, sem previsão",
+};
+export function serviceStatusLabel(status: string): string {
+  return Object.hasOwn(serviceStatusLabels, status)
+    ? serviceStatusLabels[status]
+    : "Situação não informada";
+}
 export const brazilStates = [
   "AC",
   "AL",
