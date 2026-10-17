@@ -148,12 +148,17 @@ export function Dashboard() {
             className="group flex items-start justify-between gap-3 rounded-2xl border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md"
           >
             <div>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <stat.icon
+                  className="size-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                {stat.label}
+              </p>
               <p className="mt-3 font-display text-4xl font-medium tabular-nums">
                 {stat.value}
               </p>
             </div>
-            <stat.icon className="mt-1 size-5 text-primary" />
             <ArrowUpRight className="mt-auto size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Link>
         ))}
