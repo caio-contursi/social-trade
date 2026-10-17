@@ -1,21 +1,14 @@
-"""Integration tests: isolated SQLite only; no real settings or demo seeding.
+"""The original 11 organization regression scenarios, now run by pytest.
 
-Run with PYTHONDONTWRITEBYTECODE=1 and python -m unittest discover -s tests -v.
-HTTPX is a test dependency (FastAPI's TestClient); production needs no change.
+Database/environment isolation is shared with the wider suite in conftest.py.
 """
 
-import importlib
-import os
-from pathlib import Path
-import sys
-import tempfile
 import unittest
-from unittest.mock import patch
+import pytest
 
 from fastapi.testclient import TestClient
 
 
-sys.dont_write_bytecode = True
 PASSWORD = "LocalTestPassword123!"
 PUBLIC_FIELDS = {
     "id", "name", "slug", "organization_type", "city", "state", "founding_year",
@@ -25,27 +18,10 @@ PUBLIC_FIELDS = {
 }
 
 
-def setUpModule():
-    global api_module, test_directory, environment, password_hash
-    if any(name in sys.modules for name in ("app.config", "app.database", "app.main")):
-        raise RuntimeError("Run these isolated tests in a fresh Python process before importing app modules.")
-    test_directory = tempfile.TemporaryDirectory(prefix="socialtrade-api-tests-")
-    environment = patch.dict(os.environ, {
-        "SOCIALTRADE_DB": str(Path(test_directory.name) / "isolated.sqlite"),
-        "SOCIALTRADE_DEMO_USERS": "false",
-        "SOCIALTRADE_TOKEN_SECRET": "isolated-test-secret-does-not-access-real-settings",
-        "PYTHON_DOTENV_DISABLED": "1",
-        "PYTHONDONTWRITEBYTECODE": "1",
-    })
-    environment.start()
-    with patch("dotenv.load_dotenv", return_value=False):
-        api_module = importlib.import_module("app.main")
-    password_hash = api_module.hash_password(PASSWORD)
-
-
-def tearDownModule():
-    environment.stop()
-    test_directory.cleanup()
+@pytest.fixture(scope="module", autouse=True)
+def legacy_globals(api, password_hash):
+    globals()["api_module"] = api
+    globals()["password_hash"] = password_hash
 
 
 def organization_payload(kind="project", **overrides):
@@ -248,7 +224,7 @@ class OrganizationApiTests(unittest.TestCase):
 
     def test_registration_accepts_company_for_donors_and_rejects_it_for_projects(self):
         payload = {
-            "full_name": "Responsável da empresa", "document": "19000000000003",
+            "full_name": "Responsável da empresa", "document": "04252011000110",
             "email": "new-company@example.org", "password": PASSWORD, "password_confirmation": PASSWORD,
             "institution_kind": "donor", "organization": organization_payload("donor", organization_type="company"),
         }
@@ -259,7 +235,7 @@ class OrganizationApiTests(unittest.TestCase):
         self.assertEqual(company["organization_type"], "company")
         self.assertEqual(company["institution_kind"], "donor")
         self.assertFalse(company["is_demo"])
-        invalid = {**payload, "document": "19000000000004", "email": "invalid-project@example.org", "institution_kind": "project"}
+        invalid = {**payload, "document": "11444777000161", "email": "invalid-project@example.org", "institution_kind": "project"}
         invalid["organization"] = organization_payload("project", organization_type="company")
         self.assertEqual(self.client.post("/api/auth/register-institution", json=invalid).status_code, 422)
         self.assertEqual(self.client.post("/api/organizations", headers=self.owner_headers, json=payload["organization"]).status_code, 422)

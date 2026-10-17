@@ -14,3 +14,13 @@ frontend/*.tsbuildinfo
 frontend/next-env.d.ts
 frontend/playwright-report/
 frontend/test-results/
+
+# Relatórios e ambientes de teste
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+reports/
+frontend/coverage/
+frontend/.next-e2e/
+frontend/.e2e-run.lock
