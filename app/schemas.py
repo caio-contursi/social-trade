@@ -117,9 +117,11 @@ class RegisterInput(BaseModel):
             raise ValueError("Use de 3 a 30 caracteres: letras, números ou sublinhado.")
         return value
 
-    @field_validator("full_name", "responsible_title")
+    @field_validator("full_name", "responsible_title", mode="before")
     @classmethod
     def trim_account_text(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
         value = value.strip()
         if not value:
             raise ValueError("Este campo não pode ficar vazio.")
@@ -150,10 +152,12 @@ class InstitutionRegisterInput(BaseModel):
     @field_validator("document")
     @classmethod
     def normalize_document(cls, value: str) -> str:
-        digits = re.sub(r"\D", "", value)
-        if len(digits) != 14:
-            raise ValueError("Informe um CNPJ com 14 dígitos.")
-        return digits
+        return valid_cnpj(value)
+
+    @field_validator("full_name", mode="before")
+    @classmethod
+    def trim_full_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def password_matches_and_kind(self):
@@ -187,6 +191,11 @@ class ProfileUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     responsible_title: str | None = Field(default=None, max_length=80)
 
+    @field_validator("full_name", "responsible_title", mode="before")
+    @classmethod
+    def trim_profile_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
 
 class OrganizationCreate(OrganizationInput):
     model_config = ConfigDict(extra="forbid")
@@ -196,6 +205,11 @@ class TicketInput(BaseModel):
     subject: str = Field(min_length=4, max_length=140)
     message: str = Field(min_length=10, max_length=4000)
 
+    @field_validator("subject", "message", mode="before")
+    @classmethod
+    def trim_ticket_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
 
 class TicketStatusInput(BaseModel):
     status: Literal["open", "in_progress", "resolved"]
@@ -204,4 +218,9 @@ class TicketStatusInput(BaseModel):
 class AnnouncementInput(BaseModel):
     title: str = Field(min_length=4, max_length=160)
     body: str = Field(min_length=10, max_length=3000)
-    category: str = Field(default="plataforma", max_length=40)
+    category: str = Field(default="plataforma", min_length=1, max_length=40)
+
+    @field_validator("title", "body", "category", mode="before")
+    @classmethod
+    def trim_announcement_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
