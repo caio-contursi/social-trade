@@ -8,7 +8,7 @@ export interface User {
 }
 export interface CatalogItem { code: string; label: string; }
 export interface Service extends CatalogItem { status: "available" | "coming_soon" | "future"; interested?: boolean; }
-export interface Catalog { areas: CatalogItem[]; organization_types: CatalogItem[]; services: Service[]; roles: Record<string,string>; }
+export interface Catalog { areas: CatalogItem[]; organization_types: CatalogItem[]; services: Service[]; roles: Record<string,string>; demo_users_enabled: boolean; }
 export interface Project {
   id?: number; name: string; slug: string; organization_type: string; city: string; state: string;
   founding_year: number | null; short_description: string; objective: string | null;
