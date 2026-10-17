@@ -87,7 +87,7 @@ export default async function ProjectPage({
     <>
       <SiteHeader />
       <main id="conteudo">
-        <section className="border-b bg-secondary/30">
+        <section className="border-b bg-card">
           <div className="page-container pb-10 pt-7 sm:pb-12 sm:pt-9">
             <Link
               href="/projetos"
@@ -103,14 +103,16 @@ export default async function ProjectPage({
                       "Projeto social"}
                   </Badge>
                   {project.is_demo && (
-                    <Badge variant="outline" className="bg-background">
+                    <Badge variant="outline" className="gap-1.5 bg-background">
+                      <span
+                        aria-hidden="true"
+                        className="size-1.5 rounded-full bg-energy"
+                      />
                       Perfil de demonstração
                     </Badge>
                   )}
                 </div>
-                <h1 className="max-w-3xl text-4xl font-semibold sm:text-5xl">
-                  {project.name}
-                </h1>
+                <h1 className="display-2 max-w-3xl">{project.name}</h1>
                 <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
                   {project.short_description}
                 </p>
@@ -140,7 +142,7 @@ export default async function ProjectPage({
               </div>
               <ProjectVisual
                 project={project}
-                className="min-h-56 rounded-2xl border border-primary/5 lg:min-h-64"
+                className="min-h-56 rounded-[1.6rem] lg:min-h-72"
               />
             </div>
           </div>
@@ -148,8 +150,8 @@ export default async function ProjectPage({
         <div className="page-container grid items-start gap-8 py-10 sm:py-14 lg:grid-cols-[1fr_340px] lg:gap-12">
           <div className="space-y-8">
             {project.is_demo && (
-              <div className="flex gap-3 rounded-xl border bg-muted/60 p-4 text-sm">
-                <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="flex gap-3 rounded-2xl border border-energy/70 bg-energy/10 p-4 text-sm">
+                <Info className="mt-0.5 size-4 shrink-0 text-foreground" />
                 <p className="leading-relaxed text-muted-foreground">
                   Este é um perfil de demonstração, criado para apresentar a
                   plataforma. Seus dados são exemplos.
@@ -160,7 +162,7 @@ export default async function ProjectPage({
               <p className="eyebrow mb-3">Por trás da causa</p>
               <h2
                 id="about-title"
-                className="text-2xl font-semibold sm:text-3xl"
+                className="text-[1.75rem] leading-tight font-medium sm:text-[2.1rem]"
               >
                 Uma história para conhecer.
               </h2>
@@ -176,7 +178,7 @@ export default async function ProjectPage({
                 <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-primary">
                   <Goal className="size-5" strokeWidth={1.5} />
                 </div>
-                <h2 id="goal-title" className="text-xl font-semibold">
+                <h2 id="goal-title" className="text-xl font-medium">
                   O que queremos transformar
                 </h2>
               </div>
@@ -193,7 +195,7 @@ export default async function ProjectPage({
                 <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-primary">
                   <Sprout className="size-5" strokeWidth={1.5} />
                 </div>
-                <h2 id="results-title" className="text-xl font-semibold">
+                <h2 id="results-title" className="text-xl font-medium">
                   Ações e resultados apresentados
                 </h2>
               </div>
@@ -225,16 +227,19 @@ export default async function ProjectPage({
           </div>
           <aside className="space-y-5 lg:sticky lg:top-24">
             <section
-              className="rounded-2xl border bg-card p-6"
+              className="ink-panel rounded-[1.6rem] p-6 sm:p-7"
               aria-labelledby="contact-title"
             >
-              <div className="mb-5 flex size-11 items-center justify-center rounded-xl bg-secondary text-primary">
+              <div className="mb-5 flex size-11 items-center justify-center rounded-xl bg-white/[.07] text-energy ring-1 ring-white/10">
                 <HeartHandshake className="size-6" strokeWidth={1.5} />
               </div>
-              <h2 id="contact-title" className="text-xl font-semibold">
+              <h2
+                id="contact-title"
+                className="text-2xl leading-tight font-medium"
+              >
                 Uma conversa pode ser o começo.
               </h2>
-              <p className="mb-6 mt-3 text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-3 mb-6 text-sm leading-relaxed text-ink-foreground/80">
                 Conheça os canais informados pelo projeto e aproxime-se da
                 iniciativa.
               </p>
@@ -243,7 +248,7 @@ export default async function ProjectPage({
                   {website && (
                     <Button
                       asChild
-                      variant="outline"
+                      variant="energy"
                       className="h-11 w-full justify-between"
                     >
                       <a
@@ -262,7 +267,7 @@ export default async function ProjectPage({
                     <Button
                       asChild
                       variant="outline"
-                      className="h-11 w-full justify-between"
+                      className="h-11 w-full justify-between border-white/25 bg-transparent text-ink-foreground hover:bg-white/10 hover:text-ink-foreground"
                     >
                       <a
                         href={instagram}
@@ -276,16 +281,16 @@ export default async function ProjectPage({
                       </a>
                     </Button>
                   )}
-                  <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
+                  <p className="pt-1 text-xs leading-relaxed text-ink-foreground/75">
                     Os links abrem canais externos à SocialTrade.
                   </p>
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed bg-muted/40 p-4">
+                <div className="rounded-xl border border-dashed border-white/25 p-4">
                   <p className="text-sm font-medium">
                     Canais ainda não informados
                   </p>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  <p className="mt-2 text-xs leading-relaxed text-ink-foreground/75">
                     O projeto ainda não adicionou um site ou uma rede social
                     pública para contato.
                   </p>
@@ -293,11 +298,11 @@ export default async function ProjectPage({
               )}
             </section>
             <section
-              className="rounded-2xl border bg-card p-6"
+              className="rounded-[1.6rem] border bg-card p-6"
               aria-labelledby="profile-info-title"
             >
-              <h2 id="profile-info-title" className="text-sm font-semibold">
-                Sobre as informações deste perfil
+              <h2 id="profile-info-title" className="text-lg font-medium">
+                Sobre este perfil
               </h2>
               {completeness !== null && (
                 <div className="mt-5">
@@ -319,23 +324,27 @@ export default async function ProjectPage({
                 não representa uma certificação, uma verificação documental ou
                 uma comprovação de resultados.
               </p>
+              <div className="mt-5 border-t pt-5">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 rounded-full bg-energy"
+                  />
+                  Transparência em construção
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Doações na plataforma, registro em Solana e prestação de
+                  contas ainda estão em desenvolvimento. Não há pagamentos
+                  disponíveis nesta etapa.
+                </p>
+              </div>
             </section>
-            <div className="rounded-2xl bg-secondary/60 p-6">
-              <p className="text-sm font-semibold">
-                Transparência em construção
-              </p>
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                Doações na plataforma, registro em Solana e prestação de contas
-                ainda estão em desenvolvimento. Não há pagamentos disponíveis
-                nesta etapa.
-              </p>
-            </div>
           </aside>
         </div>
         <section className="page-container pb-16 sm:pb-20">
-          <div className="flex flex-col justify-between gap-5 rounded-2xl border bg-card p-6 sm:flex-row sm:items-center sm:p-8">
+          <div className="flex flex-col justify-between gap-5 rounded-[1.4rem] border bg-muted p-6 sm:flex-row sm:items-center sm:p-8">
             <div>
-              <h2 className="text-xl font-semibold">
+              <h2 className="text-2xl font-medium">
                 Outras histórias também esperam por você.
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">

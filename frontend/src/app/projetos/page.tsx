@@ -24,8 +24,9 @@ export default async function ProjectsPage() {
       >
         <div className="mb-9 max-w-2xl">
           <p className="eyebrow mb-3">Encontre seu propósito em comum</p>
-          <h1 className="text-4xl font-semibold sm:text-5xl">
-            Existe uma causa que conecta você.
+          <h1 className="display-2">
+            Existe uma causa que <span className="title-mark">conecta</span>{" "}
+            você.
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
             Conheça quem transforma realidades todos os dias. Explore as
@@ -34,7 +35,7 @@ export default async function ProjectsPage() {
         </div>
         {error ? (
           <div className="rounded-2xl border bg-card p-8">
-            <h2 className="text-2xl font-semibold">
+            <h2 className="text-2xl font-medium">
               Não foi possível carregar os projetos.
             </h2>
             <p className="mb-5 mt-3 text-sm text-muted-foreground">

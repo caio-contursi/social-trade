@@ -93,6 +93,8 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
     [projects, querySearch, cause, location, order],
   );
   const hasFilters = !!querySearch || cause !== "all" || location !== "all";
+  // Com 1 ou 2 resultados o convite entra na grade; com mais, vira faixa no fim.
+  const showInvite = filtered.length > 0 && filtered.length < 3;
 
   function reset() {
     setSearch("");
@@ -101,7 +103,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
 
   return (
     <div>
-      <div className="rounded-2xl border bg-card p-5 sm:p-6">
+      <div className="rounded-[1.6rem] border bg-card p-4 shadow-sm shadow-primary/5 sm:p-5">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -124,14 +126,14 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Busque por nome, cidade ou palavra..."
               maxLength={160}
-              className="h-12 pl-12"
+              className="h-12 rounded-full bg-background pl-12"
             />
           </div>
-          <Button type="submit" className="h-12 px-7">
+          <Button type="submit" size="lg">
             Buscar projetos
           </Button>
         </form>
-        <div className="mt-5 grid gap-4 border-t pt-5 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div>
             <Label
               htmlFor="cause-filter"
@@ -143,7 +145,10 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
               value={cause}
               onValueChange={(value) => updateQuery({ causa: value })}
             >
-              <SelectTrigger id="cause-filter" className="w-full">
+              <SelectTrigger
+                id="cause-filter"
+                className="w-full rounded-full bg-background"
+              >
                 <SelectValue placeholder="Todas as causas" />
               </SelectTrigger>
               <SelectContent>
@@ -167,7 +172,10 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
               value={location}
               onValueChange={(value) => updateQuery({ local: value })}
             >
-              <SelectTrigger id="location-filter" className="w-full">
+              <SelectTrigger
+                id="location-filter"
+                className="w-full rounded-full bg-background"
+              >
                 <SelectValue placeholder="Todas as localidades" />
               </SelectTrigger>
               <SelectContent>
@@ -191,7 +199,10 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
               value={order}
               onValueChange={(value) => updateQuery({ ordem: value })}
             >
-              <SelectTrigger id="sort-order" className="w-full">
+              <SelectTrigger
+                id="sort-order"
+                className="w-full rounded-full bg-background"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -230,18 +241,24 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
         )}
       </div>
       {filtered.length ? (
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((project) => (
-            <ProjectCard key={project.slug} project={project} />
-          ))}
-        </div>
+        <section aria-labelledby="results-title">
+          <h2 id="results-title" className="sr-only">
+            Projetos encontrados
+          </h2>
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((project) => (
+              <ProjectCard key={project.slug} project={project} />
+            ))}
+            {showInvite && <InviteTile />}
+          </div>
+        </section>
       ) : (
         <div className="rounded-2xl border border-dashed bg-card p-8 text-center sm:p-14">
           <SearchX
             className="mx-auto mb-5 size-9 text-primary"
             strokeWidth={1.4}
           />
-          <h2 className="text-2xl font-semibold">
+          <h2 className="text-2xl font-medium">
             {projects.length
               ? "Ainda não encontramos essa combinação."
               : "As próximas conexões começam aqui."}
@@ -267,21 +284,47 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
           </Button>
         </div>
       )}
-      <div className="mt-12 flex flex-col justify-between gap-5 rounded-2xl bg-secondary/70 p-6 sm:flex-row sm:items-center sm:p-8">
-        <div>
-          <h2 className="text-xl font-semibold">
-            Seu projeto também pode estar aqui.
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Compartilhe sua atuação e abra espaço para novas conexões.
-          </p>
+      {!showInvite && (
+        <div className="mt-12 flex flex-col justify-between gap-5 rounded-[1.4rem] border bg-muted p-6 sm:flex-row sm:items-center sm:p-8">
+          <div>
+            <h2 className="text-xl font-medium">
+              Seu projeto também pode estar aqui.
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Compartilhe sua atuação e abra espaço para novas conexões.
+            </p>
+          </div>
+          <Button asChild variant="outline" className="shrink-0">
+            <Link href="/cadastro?tipo=project">
+              Apresentar meu projeto <ArrowRight className="size-4" />
+            </Link>
+          </Button>
         </div>
-        <Button asChild variant="outline" className="shrink-0 bg-background">
-          <Link href="/cadastro?tipo=project">
-            Apresentar meu projeto <ArrowRight className="size-4" />
-          </Link>
-        </Button>
-      </div>
+      )}
+    </div>
+  );
+}
+
+/** Ocupa o espaço ao lado de poucos resultados com um convite, sem inventar projetos. */
+function InviteTile() {
+  return (
+    <div className="relative flex min-h-80 flex-col items-start justify-end overflow-hidden rounded-[1.4rem] border border-dashed border-primary/35 bg-muted p-7">
+      <div
+        aria-hidden="true"
+        className="dot-pattern absolute inset-0 text-primary opacity-[.07]"
+      />
+      <p className="eyebrow relative">Espaço para novas histórias</p>
+      <h3 className="relative mt-3 text-[1.6rem] leading-tight font-medium">
+        Seu projeto também pode estar aqui.
+      </h3>
+      <p className="relative mt-3 mb-7 text-sm leading-relaxed text-muted-foreground">
+        Compartilhe sua atuação e abra espaço para novas conexões.
+      </p>
+      <Button asChild className="relative">
+        <Link href="/cadastro?tipo=project">
+          Apresentar meu projeto <ArrowRight className="size-4" />
+        </Link>
+      </Button>
     </div>
   );
 }
