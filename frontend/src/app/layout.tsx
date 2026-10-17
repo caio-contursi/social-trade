@@ -7,7 +7,7 @@ import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "SocialTrade — conexões que transformam",
+    default: "SocialTrade",
     template: "%s | SocialTrade",
   },
   description:
