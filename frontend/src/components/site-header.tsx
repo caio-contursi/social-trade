@@ -25,14 +25,14 @@ export function SiteHeader() {
     { href: "/#transparencia", label: "Transparência" },
   ];
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-md">
-      <div className="page-container flex h-20 items-center justify-between gap-6">
+    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
+      <div className="page-container flex h-[4.5rem] items-center justify-between gap-6">
         <Link href="/" aria-label="SocialTrade, início">
           <Brand />
         </Link>
         <nav
           aria-label="Navegação principal"
-          className="hidden items-center gap-7 text-sm md:flex"
+          className="hidden items-center gap-8 text-sm md:flex"
         >
           {links.map((link) => (
             <Link
@@ -40,9 +40,9 @@ export function SiteHeader() {
               href={link.href}
               aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "transition-colors hover:text-primary",
+                "rounded-sm py-1 underline-offset-[6px] decoration-energy decoration-2 transition-colors hover:text-foreground hover:underline",
                 pathname === link.href
-                  ? "font-semibold text-primary"
+                  ? "font-semibold text-foreground underline"
                   : "text-muted-foreground",
               )}
             >
@@ -85,7 +85,7 @@ export function SiteHeader() {
                 {links.map((link) => (
                   <Link
                     key={link.href}
-                    className="rounded-lg px-3 py-4 text-base hover:bg-accent"
+                    className="rounded-xl px-3 py-4 font-display text-xl hover:bg-accent"
                     href={link.href}
                     onClick={() => setOpen(false)}
                   >

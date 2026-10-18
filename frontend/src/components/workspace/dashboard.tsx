@@ -105,32 +105,30 @@ export function Dashboard() {
             : "Seu espaço para cuidar das informações, acompanhar novidades e fortalecer conexões."
         }
       />
-      <section className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-primary-foreground sm:p-9">
+      <section className="ink-panel relative overflow-hidden rounded-[1.75rem] px-6 py-8 sm:p-10 dark:ring-1 dark:ring-white/10">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-16 -top-16 flex size-72 items-center justify-center rounded-full border-[45px] border-white/5"
+          className="dot-pattern pointer-events-none absolute -top-16 -right-16 flex size-72 items-center justify-center rounded-full opacity-90 [background-size:14px_14px] text-white/[.07]"
         >
-          <Leaf className="size-28 rotate-12 text-white/10" />
+          <Leaf className="size-28 rotate-12 text-energy/25" />
         </div>
         <div className="relative max-w-xl">
-          <p className="mb-4 text-xs font-medium tracking-[.18em] uppercase opacity-75">
-            Pequenos passos. Novas possibilidades.
-          </p>
-          <h2 className="text-2xl font-semibold leading-tight sm:text-3xl">
+          <p className="eyebrow mb-4">Pequenos passos. Novas possibilidades.</p>
+          <h2 className="text-[1.75rem] leading-tight font-medium sm:text-[2.1rem]">
             {isDonor
               ? "Encontre uma causa que se conecta com a sua empresa."
               : isPerson
                 ? "Você também faz parte da transformação."
                 : "Conte a sua história. Aproxime novos apoiadores."}
           </h2>
-          <p className="mt-4 max-w-lg text-sm leading-relaxed opacity-85">
+          <p className="mt-4 max-w-lg text-sm leading-relaxed text-ink-foreground/80">
             {isDonor
               ? "Conheça a atuação, os objetivos e os resultados compartilhados pelos projetos antes de dar o próximo passo."
               : isPerson
                 ? "Acompanhe os projetos aos quais você está vinculado e mantenha seus dados atualizados."
                 : "Um perfil claro ajuda as pessoas a entenderem o seu trabalho, suas necessidades e o impacto que você busca."}
           </p>
-          <Button asChild variant="secondary" className="mt-6">
+          <Button asChild variant="energy" className="mt-7">
             <Link href={isDonor ? "/projetos" : "/painel/organizacoes"}>
               {isDonor
                 ? "Explorar projetos"
@@ -147,15 +145,20 @@ export function Dashboard() {
           <Link
             key={stat.label}
             href={stat.href}
-            className="group flex items-start justify-between gap-3 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/45"
+            className="group flex items-start justify-between gap-3 rounded-2xl border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md"
           >
             <div>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="mt-3 text-3xl font-semibold tabular-nums">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <stat.icon
+                  className="size-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                {stat.label}
+              </p>
+              <p className="mt-3 font-display text-4xl font-medium tabular-nums">
                 {stat.value}
               </p>
             </div>
-            <stat.icon className="mt-1 size-5 text-primary" />
             <ArrowUpRight className="mt-auto size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Link>
         ))}
@@ -163,7 +166,7 @@ export function Dashboard() {
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
         <section className="surface">
           <div className="mb-6 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Seu próximo passo</h2>
+            <h2 className="text-xl font-medium">Seu próximo passo</h2>
             <span className="flex size-8 items-center justify-center rounded-full bg-secondary">
               <Compass className="size-4 text-primary" />
             </span>
@@ -254,7 +257,7 @@ export function Dashboard() {
         </section>
         <section className="surface">
           <div className="mb-6 flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold">Da comunidade</h2>
+            <h2 className="text-xl font-medium">Da comunidade</h2>
             <Link
               href="/painel/avisos"
               className="whitespace-nowrap text-sm font-medium text-primary underline-offset-4 hover:underline"

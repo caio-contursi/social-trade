@@ -17,41 +17,50 @@ export function AuthShell({
 }) {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[minmax(320px,.8fr)_1.2fr]">
-      <aside className="relative hidden flex-col overflow-hidden border-r bg-secondary/55 p-10 lg:flex xl:p-14">
-        <Link href="/" aria-label="SocialTrade, página inicial">
+      <aside className="ink-panel relative hidden flex-col overflow-hidden p-10 lg:flex xl:p-14">
+        <div
+          aria-hidden="true"
+          className="dot-pattern absolute inset-0 opacity-[.06]"
+        />
+        <Link
+          href="/"
+          aria-label="SocialTrade, página inicial"
+          className="relative w-fit rounded-sm"
+        >
           <Brand />
         </Link>
-        <div className="my-auto max-w-md py-16">
-          <div className="mb-8 flex size-14 items-center justify-center rounded-2xl border border-primary/15 bg-background/70 text-primary">
+        <div className="relative my-auto max-w-md py-16">
+          <div className="mb-8 flex size-14 items-center justify-center rounded-2xl bg-white/[.07] text-energy ring-1 ring-white/10">
             <HeartHandshake className="size-7" strokeWidth={1.5} />
           </div>
           <p className="eyebrow mb-5">Conexões que transformam</p>
-          <h2 className="text-4xl font-semibold leading-[1.17] xl:text-5xl">
-            O próximo passo de uma boa causa pode começar aqui.
+          <h2 className="text-4xl leading-[1.1] font-medium xl:text-5xl">
+            O próximo passo de uma boa causa pode{" "}
+            <span className="title-mark">começar aqui</span>.
           </h2>
-          <p className="mt-6 text-base leading-relaxed text-muted-foreground">
+          <p className="mt-6 text-base leading-relaxed text-ink-foreground/80">
             Aproxime a vontade de apoiar de quem faz a diferença. Conheça
             projetos, compartilhe sua história e construa novas conexões.
           </p>
-          <div className="mt-10 space-y-5 border-t border-primary/15 pt-7">
+          <div className="mt-10 space-y-5 border-t border-white/10 pt-7">
             <div className="flex gap-3">
-              <Sprout className="mt-0.5 size-5 shrink-0 text-primary" />
+              <Sprout className="mt-0.5 size-5 shrink-0 text-energy" />
               <div>
                 <p className="text-sm font-semibold">
                   Cada causa tem uma história
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-1 text-sm leading-relaxed text-ink-foreground/75">
                   Objetivos e resultados apresentados pelos próprios projetos.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <Leaf className="mt-0.5 size-5 shrink-0 text-primary" />
+              <Leaf className="mt-0.5 size-5 shrink-0 text-energy" />
               <div>
                 <p className="text-sm font-semibold">
                   Encontre seu jeito de participar
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-1 text-sm leading-relaxed text-ink-foreground/75">
                   Um espaço para empresas, projetos e pessoas.
                 </p>
               </div>
@@ -60,7 +69,7 @@ export function AuthShell({
         </div>
         <Link
           href="/projetos"
-          className="inline-flex w-fit items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+          className="relative inline-flex w-fit items-center gap-2 rounded-sm text-sm font-semibold text-energy underline-offset-4 hover:underline"
         >
           Conhecer os projetos <ArrowUpRight className="size-4" />
         </Link>

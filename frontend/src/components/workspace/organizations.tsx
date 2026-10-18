@@ -39,6 +39,7 @@ import {
   brazilStates,
   formatDate,
   organizationLabels,
+  serviceStatusLabel,
 } from "@/lib/catalog";
 import type { Catalog, Membership, Organization } from "@/lib/types";
 import {
@@ -339,7 +340,7 @@ function OrganizationSummary({
   );
 }
 
-function OrganizationEditor({
+export function OrganizationEditor({
   organization,
   catalog,
   open,
@@ -365,6 +366,10 @@ function OrganizationEditor({
     organization?.organization_type || "independent_project",
   );
   const [state, setState] = useState(organization?.state || "");
+  const [fieldErrors, setFieldErrors] = useState<{
+    state?: string;
+    areas?: string;
+  }>({});
   const submitLock = useRef(false);
   const isProject =
     !organization || organization.institution_kind === "project";
@@ -380,14 +385,28 @@ function OrganizationEditor({
     event.preventDefault();
     if (submitLock.current) return;
     setError(null);
+    // Estado (select) e áreas (checkboxes) não têm validação nativa: o erro fica
+    // no próprio campo e o foco vai até ele, além do aviso junto das ações.
+    const focusField = (id: string) => {
+      const field = document.getElementById(id);
+      field?.scrollIntoView?.({ block: "center" });
+      field?.focus();
+    };
     if (!state) {
-      setError("Selecione o estado da organização.");
+      const message = "Selecione o estado da organização.";
+      setFieldErrors({ state: message });
+      setError(message);
+      focusField("org-state");
       return;
     }
     if (isProject && !areas.length) {
-      setError("Selecione ao menos uma área de atuação para o projeto.");
+      const message = "Selecione ao menos uma área de atuação para o projeto.";
+      setFieldErrors({ areas: message });
+      setError(message);
+      focusField(`area-${catalog.areas[0]?.code}`);
       return;
     }
+    setFieldErrors({});
     const form = new FormData(event.currentTarget);
     const text = (name: string) => String(form.get(name) || "").trim();
     const optional = (name: string) => text(name) || null;
@@ -536,8 +555,29 @@ function OrganizationEditor({
               </div>
               <div>
                 <Label htmlFor="org-state">Estado *</Label>
-                <Select value={state} onValueChange={setState}>
-                  <SelectTrigger id="org-state" className="mt-2 w-full">
+                <Select
+                  value={state}
+                  onValueChange={(value) => {
+                    setState(value);
+                    if (fieldErrors.state) {
+                      setError((current) =>
+                        current === fieldErrors.state ? null : current,
+                      );
+                      setFieldErrors((current) => ({
+                        ...current,
+                        state: undefined,
+                      }));
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    id="org-state"
+                    className="mt-2 w-full"
+                    aria-invalid={fieldErrors.state ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.state ? "org-state-error" : undefined
+                    }
+                  >
                     <SelectValue placeholder="UF" />
                   </SelectTrigger>
                   <SelectContent>
@@ -548,6 +588,14 @@ function OrganizationEditor({
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldErrors.state && (
+                  <p
+                    id="org-state-error"
+                    className="mt-1.5 text-xs font-medium text-destructive"
+                  >
+                    {fieldErrors.state}
+                  </p>
+                )}
               </div>
             </div>
             <div>
@@ -619,10 +667,22 @@ function OrganizationEditor({
             )}
           </fieldset>
           {isProject && (
-            <fieldset>
+            <fieldset
+              aria-describedby={
+                fieldErrors.areas ? "org-areas-error" : undefined
+              }
+            >
               <legend className="mb-4 text-sm font-semibold text-primary">
                 2. Áreas de atuação *
               </legend>
+              {fieldErrors.areas && (
+                <p
+                  id="org-areas-error"
+                  className="-mt-2 mb-3 text-xs font-medium text-destructive"
+                >
+                  {fieldErrors.areas}
+                </p>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 {catalog.areas.map((area) => (
                   <div
@@ -632,11 +692,24 @@ function OrganizationEditor({
                     <Checkbox
                       id={`area-${area.code}`}
                       checked={areas.includes(area.code)}
-                      onCheckedChange={(checked) =>
-                        setAreas(
-                          updateSelection(areas, area.code, checked === true),
-                        )
-                      }
+                      aria-invalid={fieldErrors.areas ? true : undefined}
+                      onCheckedChange={(checked) => {
+                        const next = updateSelection(
+                          areas,
+                          area.code,
+                          checked === true,
+                        );
+                        setAreas(next);
+                        if (next.length && fieldErrors.areas) {
+                          setError((current) =>
+                            current === fieldErrors.areas ? null : current,
+                          );
+                          setFieldErrors((current) => ({
+                            ...current,
+                            areas: undefined,
+                          }));
+                        }
+                      }}
                     />
                     <Label
                       htmlFor={`area-${area.code}`}
@@ -737,8 +810,8 @@ function OrganizationEditor({
               </legend>
               <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
                 Marque o que seria útil para o projeto. Esta seleção apenas
-                registra interesse; recursos futuros ainda não estão
-                disponíveis.
+                registra interesse; recursos em breve ou planejados ainda não
+                estão disponíveis.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {catalog.services.map((service) => (
@@ -765,9 +838,7 @@ function OrganizationEditor({
                     >
                       {service.label}
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        {service.status === "available"
-                          ? "Disponível"
-                          : "Recurso futuro"}
+                        {serviceStatusLabel(service.status)}
                       </span>
                     </Label>
                   </div>
@@ -775,24 +846,26 @@ function OrganizationEditor({
               </div>
             </fieldset>
           )}
-          <FormError message={error} />
-          <div className="flex flex-wrap justify-end gap-3 border-t pt-5">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={pending}>
-              <Save className="size-4" />
-              {pending
-                ? "Salvando…"
-                : organization
-                  ? "Salvar alterações"
-                  : "Cadastrar projeto"}
-            </Button>
+          <div className="sticky -bottom-6 -mx-6 -mb-6 space-y-3 border-t bg-background px-6 py-4">
+            <FormError message={error} />
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => onOpenChange(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={pending}>
+                <Save className="size-4" />
+                {pending
+                  ? "Salvando…"
+                  : organization
+                    ? "Salvar alterações"
+                    : "Cadastrar projeto"}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
