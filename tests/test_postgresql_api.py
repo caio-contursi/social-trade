@@ -11,10 +11,24 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, insert, select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 PASSWORD = "LocalTestPassword123!"
 ALPHANUMERIC_CNPJ = "12ABC34501DE35"
+
+
+def test_database_errors_do_not_render_password_hash_parameters(api, user_factory, password_hash):
+    owner = user_factory()
+    with pytest.raises(IntegrityError) as caught:
+        with api.transaction() as db:
+            username = db.scalar(select(api.users.c.username).where(api.users.c.id == owner["id"]))
+            db.execute(insert(api.users).values(
+                full_name="Pessoa fictícia", username=username, email="different@example.org", password_hash=password_hash,
+                document="11144477735", account_type="person", registration_number="999999",
+            ))
+    assert "SQL parameters hidden" in str(caught.value)
+    assert password_hash not in str(caught.value)
 
 
 def test_importing_application_never_creates_schema_or_seeds(pytestconfig):
