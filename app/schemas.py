@@ -2,38 +2,12 @@ import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
-
-
-def valid_cnpj(value: str) -> str:
-    digits = re.sub(r"\D", "", value)
-    if len(digits) != 14 or digits == digits[0] * 14:
-        raise ValueError("Informe um CNPJ válido com 14 dígitos.")
-    for length, weights in ((12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]), (13, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])):
-        total = sum(int(digits[i]) * weights[i] for i in range(length))
-        remainder = total % 11
-        check = 0 if remainder < 2 else 11 - remainder
-        if check != int(digits[length]):
-            raise ValueError("O CNPJ informado não passou na validação dos dígitos.")
-    return digits
-
-
-def valid_cpf(value: str) -> str:
-    digits = re.sub(r"\D", "", value)
-    if len(digits) != 11 or digits == digits[0] * 11:
-        raise ValueError("Informe um CPF válido com 11 dígitos.")
-    for length in (9, 10):
-        total = sum(int(digits[index]) * (length + 1 - index) for index in range(length))
-        check = (total * 10) % 11
-        if check == 10:
-            check = 0
-        if check != int(digits[length]):
-            raise ValueError("O CPF informado não passou na validação dos dígitos.")
-    return digits
+from app.documents import normalize_document, valid_cnpj, valid_cpf
 
 
 class OrganizationInput(BaseModel):
     name: str = Field(min_length=2, max_length=160)
-    organization_type: Literal["company", "formal_ngo", "independent_project", "community_collective", "association", "religious_group", "student_project"]
+    organization_type: str = Field(min_length=1, max_length=80)
     institution_kind: Literal["donor", "project"] = "project"
     cnpj: str | None = Field(default=None, max_length=18)
     city: str = Field(min_length=2, max_length=100)
@@ -180,10 +154,8 @@ class LoginInput(BaseModel):
     @field_validator("document")
     @classmethod
     def normalize_document(cls, value: str) -> str:
-        digits = re.sub(r"\D", "", value)
-        if len(digits) not in (11, 14):
-            raise ValueError("Informe um CPF ou CNPJ válido.")
-        return digits
+        # Legacy demo CPFs still authenticate. Registration separately validates DV.
+        return normalize_document(value)
 
 
 class ProfileUpdate(BaseModel):

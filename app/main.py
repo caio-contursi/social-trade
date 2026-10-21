@@ -1,16 +1,23 @@
 import re
 import secrets
 import unicodedata
+from contextlib import contextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.auth import current_user, moderator
-from app.catalog import AREAS, ORGANIZATION_TYPES, ROLE_LABELS, SERVICES
+from app.catalog import ROLE_LABELS, get_catalog_codes, load_catalog
 from app.config import DEMO_USERS_ENABLED
-from app.database import connect, initialize, transaction
+from app.database import connect, transaction
+from app.models import (
+    announcements as announcement_table, organization_areas, organization_services,
+    organizations, project_memberships, support_tickets, users,
+)
 from app.schemas import AnnouncementInput, InstitutionRegisterInput, LoginInput, OrganizationCreate, ProfileUpdate, RegisterInput, TicketInput, TicketStatusInput
 from app.security import hash_password, issue_token, verify_password
 
@@ -30,6 +37,18 @@ EDITABLE_ORGANIZATION_FIELDS = (
 )
 
 
+@contextmanager
+def write_transaction():
+    """Uniqueness is enforced again by PostgreSQL for concurrent requests."""
+    try:
+        with transaction() as db:
+            yield db
+    except IntegrityError as error:
+        if getattr(error.orig, "sqlstate", None) == "23505":
+            raise HTTPException(status_code=409, detail="Os dados informados já estão cadastrados ou em uso.") from error
+        raise
+
+
 def slugify(value: str) -> str:
     value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
     return re.sub(r"[^a-z0-9]+", "-", value).strip("-") or "organizacao"
@@ -39,7 +58,7 @@ def unique_slug(db, name: str) -> str:
     base = slugify(name)[:140]
     candidate = base
     number = 2
-    while db.execute("SELECT id FROM organizations WHERE slug=?", (candidate,)).fetchone():
+    while db.execute(select(organizations.c.id).where(organizations.c.slug == candidate)).first():
         candidate = f"{base[:135]}-{number}"
         number += 1
     return candidate
@@ -48,44 +67,44 @@ def unique_slug(db, name: str) -> str:
 def generate_registration_number(db) -> str:
     while True:
         number = f"{secrets.randbelow(1_000_000):06d}"
-        if not db.execute("SELECT id FROM users WHERE registration_number=?", (number,)).fetchone():
+        if not db.execute(select(users.c.id).where(users.c.registration_number == number)).first():
             return number
 
 
-def validate_organization_catalog(data: dict) -> None:
-    area_codes = {item["code"] for item in AREAS}
-    service_codes = {item["code"] for item in SERVICES}
-    if unknown := set(data["areas"]) - area_codes:
+def validate_organization_catalog(db, data: dict) -> None:
+    codes = get_catalog_codes(db)
+    if data["organization_type"] not in codes["organization_types"]:
+        raise HTTPException(status_code=422, detail="Tipo de organização desconhecido.")
+    if unknown := set(data["areas"]) - codes["areas"]:
         raise HTTPException(status_code=422, detail=f"Áreas desconhecidas: {', '.join(sorted(unknown))}")
-    if unknown := set(data.get("interested_services", [])) - service_codes:
+    if unknown := set(data.get("interested_services", [])) - codes["services"]:
         raise HTTPException(status_code=422, detail=f"Serviços desconhecidos: {', '.join(sorted(unknown))}")
 
 
+def replace_organization_relationships(db, org_id: int, data: dict) -> None:
+    db.execute(delete(organization_areas).where(organization_areas.c.organization_id == org_id))
+    values = [{"organization_id": org_id, "area_code": code} for code in dict.fromkeys(data.get("areas", []))]
+    if values:
+        db.execute(insert(organization_areas), values)
+    db.execute(delete(organization_services).where(organization_services.c.organization_id == org_id))
+    values = [{"organization_id": org_id, "service_code": code} for code in dict.fromkeys(data.get("interested_services", []))]
+    if values:
+        db.execute(insert(organization_services), values)
+
+
 def create_org(db, owner_id: int, data: dict) -> int:
-    validate_organization_catalog(data)
-    cursor = db.execute(
-        """INSERT INTO organizations (owner_id,name,slug,organization_type,institution_kind,cnpj,city,state,founding_year,
-           short_description,objective,impact_summary,description,website_url,instagram_url,pix_key,logo_url)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (owner_id, data["name"].strip(), unique_slug(db, data["name"]), data["organization_type"], data.get("institution_kind", "project"), data.get("cnpj"),
-         data["city"].strip(), data["state"].upper(), data.get("founding_year"), data["short_description"].strip(),
-         data.get("objective"), data.get("impact_summary"), data.get("description"), data.get("website_url"), data.get("instagram_url"), data.get("pix_key"), data.get("logo_url")),
-    )
-    org_id = cursor.lastrowid
-    db.executemany("INSERT INTO organization_areas (organization_id,area_code) VALUES (?,?)", [(org_id, code) for code in dict.fromkeys(data.get("areas", []))])
-    db.executemany(
-        "INSERT INTO organization_services (organization_id,service_code,interested) VALUES (?,?,1)",
-        [(org_id, code) for code in dict.fromkeys(data.get("interested_services", []))],
-    )
+    validate_organization_catalog(db, data)
+    values = {field: data.get(field) for field in EDITABLE_ORGANIZATION_FIELDS}
+    values.update(owner_id=owner_id, name=data["name"].strip(), slug=unique_slug(db, data["name"]),
+                  institution_kind=data.get("institution_kind", "project"), city=data["city"].strip(),
+                  state=data["state"].upper(), short_description=data["short_description"].strip())
+    org_id = db.execute(insert(organizations).values(**values).returning(organizations.c.id)).scalar_one()
+    replace_organization_relationships(db, org_id, data)
     return org_id
 
 
 def organization_profile_metadata(data: dict, owner_email: str) -> dict:
-    """Measure presentation completeness, never identity or financial verification.
-
-    Count name, type, city, state, summary, description, logo and a website/social
-    link equally; projects also count objectives, impact and at least one cause.
-    """
+    """Measure presentation completeness, never identity or financial verification."""
     fields = ("name", "organization_type", "city", "state", "short_description", "description", "logo_url")
     checks = [bool(str(data.get(field) or "").strip()) for field in fields]
     checks.append(any(bool(str(data.get(field) or "").strip()) for field in ("website_url", "instagram_url")))
@@ -100,91 +119,40 @@ def organization_profile_metadata(data: dict, owner_email: str) -> dict:
 
 
 def organization_view(db, org_id: int) -> dict:
-    row = db.execute(
-        "SELECT o.*,u.email AS owner_email FROM organizations o JOIN users u ON u.id=o.owner_id WHERE o.id=?",
-        (org_id,),
-    ).fetchone()
+    row = db.execute(select(organizations, users.c.email.label("owner_email"))
+                     .join(users, users.c.id == organizations.c.owner_id)
+                     .where(organizations.c.id == org_id)).mappings().first()
     if row is None:
         raise HTTPException(status_code=404, detail="Organização não encontrada.")
     result = dict(row)
     owner_email = result.pop("owner_email")
-    result["areas"] = [r[0] for r in db.execute("SELECT area_code FROM organization_areas WHERE organization_id=? ORDER BY area_code", (org_id,))]
-    selected = {r[0] for r in db.execute("SELECT service_code FROM organization_services WHERE organization_id=?", (org_id,))}
-    result["services"] = [{**item, "interested": item["code"] in selected} for item in SERVICES]
+    result["areas"] = list(db.execute(select(organization_areas.c.area_code)
+        .where(organization_areas.c.organization_id == org_id).order_by(organization_areas.c.area_code)).scalars())
+    selected = set(db.execute(select(organization_services.c.service_code)
+        .where(organization_services.c.organization_id == org_id)).scalars())
+    result["services"] = [{**item, "interested": item["code"] in selected} for item in load_catalog(db)["services"]]
     result.update(organization_profile_metadata(result, owner_email))
     return result
 
 
 def public_organization_view(db, row) -> dict:
     result = {key: row[key] for key in PUBLIC_ORGANIZATION_FIELDS}
-    result["areas"] = [item[0] for item in db.execute(
-        "SELECT area_code FROM organization_areas WHERE organization_id=? ORDER BY area_code", (row["id"],),
-    )]
+    result["areas"] = list(db.execute(select(organization_areas.c.area_code)
+        .where(organization_areas.c.organization_id == row["id"]).order_by(organization_areas.c.area_code)).scalars())
     result.update(organization_profile_metadata({**result, "institution_kind": row["institution_kind"]}, row["owner_email"]))
     return result
 
 
+def public_project_query():
+    return select(*[organizations.c[field] for field in PUBLIC_ORGANIZATION_FIELDS],
+                  organizations.c.institution_kind, users.c.email.label("owner_email"))\
+        .join(users, users.c.id == organizations.c.owner_id)
+
+
 def public_project_list(db) -> list[dict]:
-    columns = ",".join(f"o.{field}" for field in PUBLIC_ORGANIZATION_FIELDS)
-    rows = db.execute(
-        f"SELECT {columns},o.institution_kind,u.email AS owner_email FROM organizations o "
-        "JOIN users u ON u.id=o.owner_id WHERE o.institution_kind='project' ORDER BY o.created_at DESC,o.id DESC",
-    ).fetchall()
+    rows = db.execute(public_project_query().where(organizations.c.institution_kind == "project")
+        .order_by(organizations.c.created_at.desc(), organizations.c.id.desc())).mappings()
     return [public_organization_view(db, row) for row in rows]
-
-
-def seed_demo_users() -> None:
-    if not DEMO_USERS_ENABLED:
-        return
-    users = [
-        ("Usuário Um", "user1@socialtrade.local", "user1", "member", "11111111111", "person"),
-        ("Usuário Dois", "user2@socialtrade.local", "user2", "member", "22222222222", "person"),
-        ("Moderador", "mod@socialtrade.local", "mod", "moderator", "33333333333", "person"),
-        ("Voluntário", "voluntario@socialtrade.local", "voluntario", "volunteer", "44444444444", "person"),
-        ("Empresa Doadora", "doador@socialtrade.local", "doador", "member", "12345678000195", "donor"),
-    ]
-    with transaction() as db:
-        for name, email, username, role, document, account_type in users:
-            legacy_email = email.replace("@socialtrade.local", "@impactledger.local")
-            exists = db.execute(
-                "SELECT id FROM users WHERE email IN (?,?) OR username=? ORDER BY CASE WHEN email=? THEN 0 WHEN email=? THEN 1 ELSE 2 END LIMIT 1",
-                (email, legacy_email, username, email, legacy_email),
-            ).fetchone()
-            if not exists:
-                db.execute("INSERT INTO users (full_name,username,email,password_hash,role,document,account_type) VALUES (?,?,?,?,?,?,?)",
-                (name, username, email, hash_password("SocialTrade123!"), role, document, account_type))
-            else:
-                db.execute("UPDATE users SET full_name=?,username=?,email=?,password_hash=?,role=?,document=COALESCE(document,?),account_type=? WHERE id=?",
-                    (name, username, email, hash_password("SocialTrade123!"), role, document, account_type, exists["id"]))
-        for row in db.execute("SELECT id FROM users WHERE account_type='person' AND registration_number IS NULL").fetchall():
-            db.execute("UPDATE users SET registration_number=? WHERE id=?", (generate_registration_number(db), row["id"]))
-        first_user = db.execute("SELECT id FROM users WHERE email='user1@socialtrade.local'").fetchone()
-        if first_user and not db.execute("SELECT id FROM organizations WHERE owner_id=?", (first_user["id"],)).fetchone():
-            create_org(db, first_user["id"], {
-                "name": "Instituto Mãos Unidas", "organization_type": "independent_project", "cnpj": None,
-                "institution_kind": "project", "objective": "Ampliar o acesso de famílias a alimentação e educação.",
-                "impact_summary": "Distribuição mensal de cestas e oficinas para crianças e adolescentes.",
-                "city": "São Paulo", "state": "SP", "founding_year": 2021,
-                "short_description": "Apoio comunitário e distribuição de alimentos para famílias da região.",
-                "description": "Uma iniciativa local que aproxima doações de quem mais precisa.",
-                "website_url": None, "instagram_url": None, "pix_key": None, "logo_url": None,
-                "areas": ["food", "education"], "interested_services": ["public_profile", "campaigns"],
-            })
-            db.execute("INSERT OR IGNORE INTO project_memberships (user_id,organization_id,member_role) SELECT ?,id,'staff' FROM organizations WHERE owner_id=? LIMIT 1", (first_user["id"], first_user["id"]))
-        donor = db.execute("SELECT id FROM users WHERE email='doador@socialtrade.local'").fetchone()
-        if donor and not db.execute("SELECT id FROM organizations WHERE owner_id=?", (donor["id"],)).fetchone():
-            create_org(db, donor["id"], {
-                "name": "Empresa Doadora Exemplo", "organization_type": "association", "institution_kind": "donor", "cnpj": "12345678000195",
-                "city": "São Paulo", "state": "SP", "founding_year": None,
-                "short_description": "Empresa que investe em projetos sociais com transparência.",
-                "objective": None, "impact_summary": None, "description": "Conta de demonstração de empresa apoiadora.",
-                "website_url": None, "instagram_url": None, "pix_key": None, "logo_url": None,
-                "areas": [], "interested_services": [],
-            })
-
-
-initialize()
-seed_demo_users()
 
 
 @app.get("/")
@@ -204,68 +172,68 @@ def health():
 
 @app.get("/api/catalog")
 def catalog():
-    return {"organization_types": ORGANIZATION_TYPES, "areas": AREAS, "services": SERVICES, "roles": ROLE_LABELS, "demo_users_enabled": DEMO_USERS_ENABLED}
+    with connect() as db:
+        return {**load_catalog(db), "roles": ROLE_LABELS, "demo_users_enabled": DEMO_USERS_ENABLED}
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterInput):
-    data = payload.model_dump()
-    with transaction() as db:
-        if db.execute("SELECT id FROM users WHERE email=? COLLATE NOCASE", (str(payload.email),)).fetchone():
+    with write_transaction() as db:
+        if db.execute(select(users.c.id).where(func.lower(users.c.email) == str(payload.email).lower())).first():
             raise HTTPException(status_code=409, detail="Este e-mail já está cadastrado.")
-        if db.execute("SELECT id FROM users WHERE username=? COLLATE NOCASE", (payload.username,)).fetchone():
+        if db.execute(select(users.c.id).where(func.lower(users.c.username) == payload.username.lower())).first():
             raise HTTPException(status_code=409, detail="Este usuário já está em uso.")
-        if db.execute("SELECT id FROM users WHERE document=?", (payload.document,)).fetchone():
+        if db.execute(select(users.c.id).where(users.c.document == payload.document)).first():
             raise HTTPException(status_code=409, detail="Este CPF já está cadastrado.")
         registration_number = generate_registration_number(db)
-        cursor = db.execute("INSERT INTO users (full_name,username,email,password_hash,phone,title,role,document,account_type,registration_number) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                            (payload.full_name.strip(), payload.username, str(payload.email).lower(), hash_password(payload.password), payload.phone, payload.responsible_title.strip(), payload.role, payload.document, "person", registration_number))
-        user_id = cursor.lastrowid
+        user_id = db.execute(insert(users).values(
+            full_name=payload.full_name.strip(), username=payload.username, email=str(payload.email).lower(),
+            password_hash=hash_password(payload.password), phone=payload.phone, title=payload.responsible_title.strip(),
+            role=payload.role, document=payload.document, account_type="person", registration_number=registration_number,
+        ).returning(users.c.id)).scalar_one()
         if payload.member_project_id:
-            project = db.execute("SELECT id FROM organizations WHERE id=? AND institution_kind='project'", (payload.member_project_id,)).fetchone()
+            project = db.execute(select(organizations.c.id).where(
+                organizations.c.id == payload.member_project_id, organizations.c.institution_kind == "project")).first()
             if not project or not payload.member_role:
                 raise HTTPException(status_code=422, detail="Selecione um projeto social e informe se será funcionário ou assistido.")
-            db.execute("INSERT INTO project_memberships (user_id,organization_id,member_role) VALUES (?,?,?)", (user_id, project["id"], payload.member_role))
+            db.execute(insert(project_memberships).values(user_id=user_id, organization_id=project.id, member_role=payload.member_role))
     return {"message": "Cadastro concluído. Sua matrícula foi gerada automaticamente.", "registration_number": registration_number}
 
 
 @app.post("/api/auth/register-institution", status_code=status.HTTP_201_CREATED)
 def register_institution(payload: InstitutionRegisterInput):
     data = payload.organization.model_dump()
-    data["institution_kind"] = payload.institution_kind
-    data["cnpj"] = payload.document
+    data.update(institution_kind=payload.institution_kind, cnpj=payload.document)
     if payload.institution_kind == "donor":
-        data["areas"] = []
-        data["interested_services"] = []
-    with transaction() as db:
-        if db.execute("SELECT id FROM users WHERE email=? COLLATE NOCASE", (str(payload.email),)).fetchone():
+        data.update(areas=[], interested_services=[])
+    with write_transaction() as db:
+        if db.execute(select(users.c.id).where(func.lower(users.c.email) == str(payload.email).lower())).first():
             raise HTTPException(status_code=409, detail="Este e-mail já está cadastrado.")
-        if db.execute("SELECT id FROM users WHERE document=?", (payload.document,)).fetchone():
+        if db.execute(select(users.c.id).where(users.c.document == payload.document)).first():
             raise HTTPException(status_code=409, detail="Este CNPJ já está cadastrado.")
-        username = payload.document
-        role = "member"
-        account_type = payload.institution_kind
-        cursor = db.execute("INSERT INTO users (full_name,username,email,password_hash,phone,role,document,account_type) VALUES (?,?,?,?,?,?,?,?)",
-                            (payload.full_name.strip(), username, str(payload.email).lower(), hash_password(payload.password), payload.phone, role, payload.document, account_type))
-        user_id = cursor.lastrowid
+        if db.execute(select(users.c.id).where(func.lower(users.c.username) == payload.document.lower())).first():
+            raise HTTPException(status_code=409, detail="Este usuário já está em uso.")
+        user_id = db.execute(insert(users).values(
+            full_name=payload.full_name.strip(), username=payload.document.lower(), email=str(payload.email).lower(),
+            password_hash=hash_password(payload.password), phone=payload.phone, role="member", document=payload.document,
+            account_type=payload.institution_kind,
+        ).returning(users.c.id)).scalar_one()
         create_org(db, user_id, data)
     return {"message": "Instituição cadastrada. Agora acesse com seu CNPJ e senha."}
 
 
 @app.post("/api/auth/login")
 def login(payload: LoginInput):
-    db = connect()
-    try:
-        row = db.execute("SELECT * FROM users WHERE document=?", (payload.document,)).fetchone()
-    finally:
-        db.close()
+    with connect() as db:
+        row = db.execute(select(users).where(users.c.document == payload.document)).mappings().first()
     if row is None or not verify_password(payload.password, row["password_hash"]):
         raise HTTPException(status_code=401, detail="CPF/CNPJ ou senha incorretos.")
     if payload.account_type == "donor" and row["account_type"] != "donor":
         raise HTTPException(status_code=403, detail="Esta conta não está cadastrada como empresa doadora.")
     if payload.account_type == "project" and row["account_type"] == "donor":
         raise HTTPException(status_code=403, detail="Acesse pela opção Empresa doadora.")
-    user = {"id": row["id"], "full_name": row["full_name"], "username": row["username"], "document": row["document"], "account_type": row["account_type"], "registration_number": row["registration_number"], "email": row["email"], "phone": row["phone"], "responsible_title": row["title"], "role": row["role"], "role_label": ROLE_LABELS[row["role"]]}
+    user = {key: row[key] for key in ("id", "full_name", "username", "document", "account_type", "registration_number", "email", "phone", "role")}
+    user.update(responsible_title=row["title"], role_label=ROLE_LABELS[row["role"]])
     return {"access_token": issue_token(user["id"]), "token_type": "bearer", "user": user}
 
 
@@ -282,79 +250,59 @@ def profile(user=Depends(current_user)):
 @app.patch("/api/profile")
 def update_profile(payload: ProfileUpdate, user=Depends(current_user)):
     with transaction() as db:
-        db.execute("UPDATE users SET full_name=?, phone=?, title=? WHERE id=?", (payload.full_name.strip(), payload.phone, payload.responsible_title, user["id"]))
+        db.execute(update(users).where(users.c.id == user["id"]).values(
+            full_name=payload.full_name.strip(), phone=payload.phone, title=payload.responsible_title))
     return {"message": "Perfil atualizado."}
 
 
 @app.get("/api/organizations/mine")
 def my_organizations(user=Depends(current_user)):
-    db = connect()
-    try:
-        ids = [row[0] for row in db.execute("SELECT id FROM organizations WHERE owner_id=? ORDER BY created_at DESC", (user["id"],))]
+    with connect() as db:
+        ids = db.execute(select(organizations.c.id).where(organizations.c.owner_id == user["id"])
+            .order_by(organizations.c.created_at.desc(), organizations.c.id.desc())).scalars().all()
         return [organization_view(db, org_id) for org_id in ids]
-    finally:
-        db.close()
 
 
 @app.get("/api/projects")
 def projects(user=Depends(current_user)):
     if user["account_type"] != "donor":
         raise HTTPException(status_code=403, detail="A consulta de projetos para investimento é exclusiva de empresas doadoras.")
-    db = connect()
-    try:
+    with connect() as db:
         return public_project_list(db)
-    finally:
-        db.close()
 
 
 @app.get("/api/public/projects")
 def public_projects():
-    db = connect()
-    try:
+    with connect() as db:
         return public_project_list(db)
-    finally:
-        db.close()
 
 
 @app.get("/api/projects/open")
 def open_projects():
-    db = connect()
-    try:
-        return [dict(row) for row in db.execute("SELECT id,name,city,state FROM organizations WHERE institution_kind='project' ORDER BY name")]
-    finally:
-        db.close()
+    with connect() as db:
+        return list(db.execute(select(organizations.c.id, organizations.c.name, organizations.c.city, organizations.c.state)
+            .where(organizations.c.institution_kind == "project").order_by(organizations.c.name, organizations.c.id)).mappings())
 
 
 @app.get("/api/memberships/mine")
 def my_memberships(user=Depends(current_user)):
-    db = connect()
-    try:
-        return [dict(row) for row in db.execute(
-            """SELECT o.id,o.name,o.city,o.state,m.member_role,m.created_at
-               FROM project_memberships m JOIN organizations o ON o.id=m.organization_id
-               WHERE m.user_id=? AND o.institution_kind='project' ORDER BY o.name""",
-            (user["id"],),
-        )]
-    finally:
-        db.close()
+    with connect() as db:
+        return list(db.execute(select(organizations.c.id, organizations.c.name, organizations.c.city, organizations.c.state,
+            project_memberships.c.member_role, project_memberships.c.created_at)
+            .join(project_memberships, organizations.c.id == project_memberships.c.organization_id)
+            .where(project_memberships.c.user_id == user["id"], organizations.c.institution_kind == "project")
+            .order_by(organizations.c.name, organizations.c.id)).mappings())
 
 
 @app.get("/api/public/organizations/{slug}")
 def public_organization(slug: str):
-    db = connect()
-    try:
-        columns = ",".join(f"o.{field}" for field in PUBLIC_ORGANIZATION_FIELDS)
-        row = db.execute(
-            f"SELECT {columns},o.institution_kind,u.email AS owner_email FROM organizations o "
-            "JOIN users u ON u.id=o.owner_id WHERE o.slug=?", (slug,),
-        ).fetchone()
+    with connect() as db:
+        row = db.execute(public_project_query().where(organizations.c.slug == slug)).mappings().first()
         if row is None:
             raise HTTPException(status_code=404, detail="Organização não encontrada.")
         result = public_organization_view(db, row)
-        result["services"] = [item for item in SERVICES if item["status"] == "available"]
+        result["services"] = [item for item in load_catalog(db)["services"] if item["status"] == "available"]
         return result
-    finally:
-        db.close()
 
 
 @app.post("/api/organizations", status_code=status.HTTP_201_CREATED)
@@ -363,85 +311,75 @@ def add_organization(payload: OrganizationCreate, user=Depends(current_user)):
         raise HTTPException(status_code=403, detail="Somente contas de projetos sociais podem cadastrar organizações.")
     if payload.institution_kind != "project":
         raise HTTPException(status_code=422, detail="Contas de projetos sociais só podem cadastrar perfis de projetos.")
-    with transaction() as db:
+    with write_transaction() as db:
         org_id = create_org(db, user["id"], payload.model_dump())
-    db = connect()
-    try:
         return organization_view(db, org_id)
-    finally:
-        db.close()
 
 
 @app.patch("/api/organizations/{org_id}")
 def update_organization(org_id: int, payload: OrganizationCreate, user=Depends(current_user)):
     data = payload.model_dump()
     with transaction() as db:
-        row = db.execute("SELECT owner_id,institution_kind FROM organizations WHERE id=?", (org_id,)).fetchone()
+        row = db.execute(select(organizations.c.owner_id, organizations.c.institution_kind, organizations.c.cnpj)
+            .where(organizations.c.id == org_id)).mappings().first()
         if row is None:
             raise HTTPException(status_code=404, detail="Organização não encontrada.")
         if row["owner_id"] != user["id"] or user["account_type"] not in {"project", "donor"} or user["account_type"] != row["institution_kind"]:
             raise HTTPException(status_code=403, detail="Somente o proprietário da instituição pode editar este perfil.")
         if data["institution_kind"] != row["institution_kind"]:
             raise HTTPException(status_code=422, detail="O tipo da instituição não pode ser alterado.")
-        validate_organization_catalog(data)
-        assignments = ",".join(f"{field}=?" for field in EDITABLE_ORGANIZATION_FIELDS)
-        db.execute(f"UPDATE organizations SET {assignments} WHERE id=?", (*[data[field] for field in EDITABLE_ORGANIZATION_FIELDS], org_id))
-        db.execute("DELETE FROM organization_areas WHERE organization_id=?", (org_id,))
-        db.executemany("INSERT INTO organization_areas (organization_id,area_code) VALUES (?,?)", [(org_id, code) for code in data["areas"]])
-        db.execute("DELETE FROM organization_services WHERE organization_id=?", (org_id,))
-        db.executemany(
-            "INSERT INTO organization_services (organization_id,service_code,interested) VALUES (?,?,1)",
-            [(org_id, code) for code in dict.fromkeys(data["interested_services"])],
-        )
+        if "cnpj" not in payload.model_fields_set:
+            data["cnpj"] = row["cnpj"]
+        if data["cnpj"] != row["cnpj"]:
+            raise HTTPException(status_code=422, detail="O CNPJ não pode ser alterado neste formulário.")
+        validate_organization_catalog(db, data)
+        db.execute(update(organizations).where(organizations.c.id == org_id)
+            .values(**{field: data[field] for field in EDITABLE_ORGANIZATION_FIELDS}))
+        replace_organization_relationships(db, org_id, data)
         return organization_view(db, org_id)
 
 
 @app.get("/api/announcements")
 def announcements(user=Depends(current_user)):
-    db = connect()
-    try:
-        return [dict(row) for row in db.execute("SELECT * FROM announcements ORDER BY published_at DESC, id DESC")]
-    finally:
-        db.close()
+    with connect() as db:
+        return list(db.execute(select(announcement_table)
+            .order_by(announcement_table.c.published_at.desc(), announcement_table.c.id.desc())).mappings())
 
 
 @app.post("/api/support", status_code=status.HTTP_201_CREATED)
 def create_ticket(payload: TicketInput, user=Depends(current_user)):
     with transaction() as db:
-        cursor = db.execute("INSERT INTO support_tickets (user_id,subject,message) VALUES (?,?,?)",
-                            (user["id"], payload.subject.strip(), payload.message.strip()))
-        ticket_id = cursor.lastrowid
+        ticket_id = db.execute(insert(support_tickets).values(user_id=user["id"], subject=payload.subject.strip(),
+            message=payload.message.strip()).returning(support_tickets.c.id)).scalar_one()
     return {"id": ticket_id, "message": "Sua solicitação foi enviada para o suporte."}
 
 
 @app.get("/api/support/mine")
 def my_tickets(user=Depends(current_user)):
-    db = connect()
-    try:
-        return [dict(row) for row in db.execute("SELECT id,subject,message,status,created_at FROM support_tickets WHERE user_id=? ORDER BY created_at DESC", (user["id"],))]
-    finally:
-        db.close()
+    with connect() as db:
+        return list(db.execute(select(*[support_tickets.c[field] for field in ("id", "subject", "message", "status", "created_at")])
+            .where(support_tickets.c.user_id == user["id"])
+            .order_by(support_tickets.c.created_at.desc(), support_tickets.c.id.desc())).mappings())
 
 
 @app.get("/api/moderation/overview")
 def moderation_overview(user=Depends(moderator)):
-    db = connect()
-    try:
+    with connect() as db:
         counts = {
-            "users": db.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-            "organizations": db.execute("SELECT COUNT(*) FROM organizations").fetchone()[0],
-            "open_tickets": db.execute("SELECT COUNT(*) FROM support_tickets WHERE status!='resolved'").fetchone()[0],
+            "users": db.scalar(select(func.count()).select_from(users)),
+            "organizations": db.scalar(select(func.count()).select_from(organizations)),
+            "open_tickets": db.scalar(select(func.count()).select_from(support_tickets).where(support_tickets.c.status != "resolved")),
         }
-        tickets = [dict(row) for row in db.execute("SELECT t.*,u.full_name,u.email FROM support_tickets t JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC")]
+        tickets = list(db.execute(select(support_tickets, users.c.full_name, users.c.email)
+            .join(users, users.c.id == support_tickets.c.user_id)
+            .order_by(support_tickets.c.created_at.desc(), support_tickets.c.id.desc())).mappings())
         return {"counts": counts, "tickets": tickets}
-    finally:
-        db.close()
 
 
 @app.patch("/api/moderation/tickets/{ticket_id}")
 def moderate_ticket(ticket_id: int, payload: TicketStatusInput, user=Depends(moderator)):
     with transaction() as db:
-        result = db.execute("UPDATE support_tickets SET status=? WHERE id=?", (payload.status, ticket_id))
+        result = db.execute(update(support_tickets).where(support_tickets.c.id == ticket_id).values(status=payload.status))
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Solicitação não encontrada.")
     return {"message": "Status da solicitação atualizado."}
@@ -450,6 +388,6 @@ def moderate_ticket(ticket_id: int, payload: TicketStatusInput, user=Depends(mod
 @app.post("/api/moderation/announcements", status_code=status.HTTP_201_CREATED)
 def publish_announcement(payload: AnnouncementInput, user=Depends(moderator)):
     with transaction() as db:
-        cursor = db.execute("INSERT INTO announcements (title,body,category) VALUES (?,?,?)",
-                            (payload.title.strip(), payload.body.strip(), payload.category.strip()))
-    return {"id": cursor.lastrowid, "message": "Aviso publicado."}
+        announcement_id = db.execute(insert(announcement_table).values(title=payload.title.strip(), body=payload.body.strip(),
+            category=payload.category.strip()).returning(announcement_table.c.id)).scalar_one()
+    return {"id": announcement_id, "message": "Aviso publicado."}
