@@ -297,6 +297,8 @@ def test_fingerprint_change_after_inserts_rolls_back(legacy_source, pg_engine, m
 
 
 def test_identity_restart_is_rolled_back_on_failure(legacy_source, pg_engine, monkeypatch):
+    source = legacy_source()
+    change(source, "UPDATE sqlite_sequence SET seq=1000 WHERE name='announcements'")
     with pg_engine.begin() as db:
         previous = db.execute(text("SELECT nextval(pg_get_serial_sequence('announcements','id'))")).scalar_one()
     real = migration._restart_identities
@@ -305,7 +307,7 @@ def test_identity_restart_is_rolled_back_on_failure(legacy_source, pg_engine, mo
         raise migration.MigrationError("forced_failure_after_restart")
     monkeypatch.setattr(migration, "_restart_identities", failure_after_restart)
     with pytest.raises(migration.MigrationError, match="forced_failure_after_restart"):
-        migration.migrate(legacy_source(), pg_engine, apply=True)
+        migration.migrate(source, pg_engine, apply=True)
     assert count(pg_engine) == 0
     with pg_engine.begin() as db:
         assert db.execute(text("SELECT nextval(pg_get_serial_sequence('announcements','id'))")).scalar_one() == previous + 1
@@ -320,3 +322,107 @@ def test_checksum_mismatch_rolls_back(legacy_source, pg_engine, monkeypatch):
     with pytest.raises(migration.MigrationError, match="destination_content_mismatch_organization_services"):
         migration.migrate(legacy_source(), pg_engine, apply=True)
     assert count(pg_engine) == 0
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_deleted_identity_high_water_is_preserved_for_every_identity_table(legacy_source, pg_engine, empty):
+    path = legacy_source(empty=empty)
+    with sqlite3.connect(path) as db:
+        # A row can have existed and been deleted, even when a table is now empty.
+        db.execute("DELETE FROM sqlite_sequence")
+        db.executemany("INSERT INTO sqlite_sequence(name,seq) VALUES (?,?)", [(name, 100 + index) for index, name in enumerate(migration.IDENTITY_TABLES)])
+    result = migration.migrate(path, pg_engine, apply=True)
+    assert result["status"] == "imported"
+    with pg_engine.begin() as db:
+        for index, name in enumerate(migration.IDENTITY_TABLES):
+            assert db.execute(text("SELECT nextval(pg_get_serial_sequence(:table_name,'id'))"), {"table_name": name}).scalar_one() == 101 + index
+
+
+def test_retained_id_is_used_when_higher_than_sqlite_sequence(legacy_source, pg_engine):
+    path = legacy_source()
+    change(path, "UPDATE sqlite_sequence SET seq=1 WHERE name='users'")
+    assert migration.migrate(path, pg_engine, apply=True)["status"] == "imported"
+    with pg_engine.begin() as db:
+        assert db.execute(text("SELECT nextval(pg_get_serial_sequence('users','id'))")).scalar_one() == 43
+
+
+@pytest.mark.parametrize(("statement", "value", "error"), [
+    ("UPDATE sqlite_sequence SET seq=? WHERE name='users'", -1, "source_identity_sequence_invalid"),
+    ("UPDATE sqlite_sequence SET seq=? WHERE name='users'", None, "source_identity_sequence_invalid"),
+    ("UPDATE sqlite_sequence SET seq=? WHERE name='users'", "invalid", "source_identity_sequence_invalid"),
+    ("UPDATE sqlite_sequence SET seq=? WHERE name='users'", 42.5, "source_identity_sequence_invalid"),
+    ("UPDATE sqlite_sequence SET seq=? WHERE name='users'", 2**63 - 1, "source_identity_sequence_exhausted"),
+    ("INSERT INTO sqlite_sequence(name,seq) VALUES ('users',?)", 100, "source_identity_sequence_invalid"),
+    ("INSERT INTO sqlite_sequence(name,seq) VALUES ('unknown_table',?)", 100, "source_identity_sequence_invalid"),
+])
+def test_invalid_or_exhausted_legacy_sequence_blocks_before_copy(legacy_source, pg_engine, statement, value, error):
+    path = legacy_source()
+    change(path, statement, (value,))
+    original = path.read_bytes()
+    with pytest.raises(migration.MigrationError, match=error):
+        migration.migrate(path, pg_engine, apply=True)
+    assert count(pg_engine) == 0
+    assert path.read_bytes() == original
+
+
+def test_retained_maximum_bigint_blocks_before_copy(legacy_source, pg_engine):
+    path = legacy_source()
+    change(path, "UPDATE announcements SET id=?", (2**63 - 1,))
+    # A lower legacy sequence cannot make an exhausted retained ID safe to resume.
+    change(path, "UPDATE sqlite_sequence SET seq=1 WHERE name='announcements'")
+    with pytest.raises(migration.MigrationError, match="source_identity_sequence_exhausted"):
+        migration.migrate(path, pg_engine, apply=True)
+    assert count(pg_engine) == 0
+
+
+@pytest.mark.parametrize("suffix", ["", "-wal", "-shm"])
+def test_cli_report_hardlink_cannot_overwrite_source_or_auxiliary_file(legacy_source, tmp_path, suffix):
+    source = legacy_source()
+    protected = Path(str(source) + suffix)
+    if suffix:
+        protected.write_bytes(b"synthetic-auxiliary-content")
+    original = protected.read_bytes()
+    report_path = tmp_path / "linked-report.json"
+    os.link(protected, report_path)
+    assert report_path.resolve() != protected.resolve()
+    with pytest.raises(SystemExit) as failure:
+        migration.main(["--source", str(source), "--report", str(report_path), "--apply"])
+    assert failure.value.code == 2
+    assert protected.read_bytes() == original
+
+
+def test_cli_report_failure_preserves_committed_import_status(legacy_source, tmp_path, pg_engine, monkeypatch, capsys):
+    source = legacy_source()
+    original = source.read_bytes()
+    report_path = tmp_path / "unwritable-report.json"
+    real_write = Path.write_text
+    def fail_report_write(path, *args, **kwargs):
+        if path == report_path:
+            raise PermissionError("synthetic report failure")
+        return real_write(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "write_text", fail_report_write)
+    code = migration.main(["--source", str(source), "--report", str(report_path), "--apply"])
+    result = json.loads(capsys.readouterr().out)
+    assert code == 3
+    assert result["status"] == "imported"
+    assert result["report_error"] == "report_write_failed"
+    assert result["verified"]["users"]["count"] == 1
+    assert count(pg_engine) == 1
+    assert source.read_bytes() == original
+    assert not report_path.exists()
+
+
+def test_source_without_autoincrement_sequence_table_is_rejected(tmp_path):
+    path = tmp_path / "without-autoincrement.sqlite"
+    ddl = (Path(__file__).parent / "fixtures/legacy_schema.sql").read_text(encoding="utf-8").replace("AUTOINCREMENT", "")
+    with sqlite3.connect(path) as db:
+        db.executescript(ddl)
+    with pytest.raises(migration.MigrationError, match="source_identity_sequence_missing"):
+        migration.read_snapshot(path)
+
+
+def test_unknown_table_with_sqlite_like_prefix_cannot_be_silently_ignored(legacy_source):
+    path = legacy_source()
+    change(path, "CREATE TABLE sqliteArchive (id INTEGER)")
+    with pytest.raises(migration.MigrationError, match="unsupported_source_tables"):
+        migration.read_snapshot(path)

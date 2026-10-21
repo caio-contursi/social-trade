@@ -62,6 +62,7 @@ class Snapshot:
     path: Path
     fingerprint: str
     rows: dict[str, list[dict[str, Any]]] = field(repr=False)
+    identity_high_water: dict[str, int] = field(default_factory=dict, repr=False)
     problems: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)
 
@@ -119,7 +120,7 @@ def read_snapshot(source: str | Path, *, allow_demo_documents: bool = False) -> 
             db.row_factory = sqlite3.Row
             db.execute("PRAGMA query_only=ON")
             db.execute("BEGIN")
-            existing = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+            existing = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT GLOB 'sqlite_*'")}
             if existing != set(TABLES):
                 raise MigrationError("unsupported_source_tables")
             if [row[0] for row in db.execute("PRAGMA integrity_check")] != ["ok"]:
@@ -133,12 +134,31 @@ def read_snapshot(source: str | Path, *, allow_demo_documents: bool = False) -> 
                 pk = [row[1] for row in sorted(db.execute(f'PRAGMA table_info("{name}")'), key=lambda row: row[5]) if row[5]]
                 order = ",".join(f'"{column}"' for column in pk)
                 snapshot.rows[name] = [dict(row) for row in db.execute(f'SELECT * FROM "{name}" ORDER BY {order}')]
+            _read_identity_high_water(db, snapshot)
     except sqlite3.Error as exc:
         raise MigrationError("source_read_error") from exc
     if fingerprint(path) != before:
         raise MigrationError("source_changed")
     _validate_source(snapshot, allow_demo_documents=allow_demo_documents)
     return snapshot
+
+
+def _read_identity_high_water(db: sqlite3.Connection, snapshot: Snapshot) -> None:
+    # AUTOINCREMENT remembers deleted IDs. Reusing one after the migration could
+    # make an unexpired session for a deleted account identify a new account.
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'").fetchone():
+        raise MigrationError("source_identity_sequence_missing")
+    sequences: dict[str, int] = {}
+    for name, value in db.execute("SELECT name, seq FROM sqlite_sequence"):
+        if name not in IDENTITY_TABLES or name in sequences or not isinstance(value, int) or value < 0:
+            raise MigrationError("source_identity_sequence_invalid")
+        sequences[name] = value
+    for name in IDENTITY_TABLES:
+        retained = [row["id"] for row in snapshot.rows[name] if isinstance(row["id"], int)]
+        high_water = max([0, sequences.get(name, 0)] + retained)
+        if high_water >= 2**63 - 1:
+            raise MigrationError("source_identity_sequence_exhausted")
+        snapshot.identity_high_water[name] = high_water
 
 
 def _validate_contracts(snapshot: Snapshot) -> None:
@@ -359,7 +379,7 @@ def _restart_identities(db: Connection, snapshot: Snapshot) -> None:
     quote = db.dialect.identifier_preparer.quote
     schema = quote(db.execute(text("SELECT current_schema()")).scalar_one())
     for name in IDENTITY_TABLES:
-        next_id = max([0] + [row["id"] for row in snapshot.rows[name]]) + 1
+        next_id = snapshot.identity_high_water[name] + 1
         # ALTER identity RESTART participates in the transaction; setval does not.
         db.exec_driver_sql(f"ALTER TABLE {schema}.{quote(name)} ALTER COLUMN id RESTART WITH {next_id}")
 
@@ -415,8 +435,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--apply", action="store_true", help="Executar a cópia; sem esta opção, somente conferir.")
     parser.add_argument("--allow-demo-documents", action="store_true", help="Aceitar somente os quatro CPFs fictícios conhecidos em contas dos domínios de demonstração.")
     args = parser.parse_args(argv)
-    if args.report and args.report.resolve() in {args.source.resolve(), Path(str(args.source.resolve()) + "-wal"), Path(str(args.source.resolve()) + "-shm")}:
-        parser.error("O relatório não pode substituir o banco de origem ou seus arquivos auxiliares.")
+    if args.report:
+        source = args.source.resolve()
+        protected = (source, Path(str(source) + "-wal"), Path(str(source) + "-shm"))
+        if args.report.resolve() in protected or (args.report.exists() and any(item.exists() and args.report.samefile(item) for item in protected)):
+            parser.error("O relatório não pode substituir o banco de origem ou seus arquivos auxiliares.")
     engine = None
     try:
         url = os.environ.get("SOCIALTRADE_DATABASE_URL")
@@ -434,8 +457,15 @@ def main(argv: list[str] | None = None) -> int:
             engine.dispose()
     payload = json.dumps(report, ensure_ascii=False, indent=2)
     if args.report:
-        args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(payload + "\n", encoding="utf-8")
+        try:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(payload + "\n", encoding="utf-8")
+        except OSError:
+            # The database transaction may already be committed. Keep its actual
+            # status visible so a reporting failure never suggests a safe retry.
+            report["report_error"] = "report_write_failed"
+            payload = json.dumps(report, ensure_ascii=False, indent=2)
+            code = 3
     print(payload)
     return code
 
