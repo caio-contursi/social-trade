@@ -7,12 +7,15 @@ import re
 import sys
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, pool
 from sqlalchemy.engine import make_url
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.models import metadata  # noqa: E402
 
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 config = context.config
 if config.config_file_name is not None:
