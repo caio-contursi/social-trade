@@ -102,7 +102,7 @@ def _valid_cnpj(value: str) -> bool:
 
 
 def _utc(value: Any) -> datetime:
-    if not isinstance(value, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})?", value):
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})?", value):
         raise ValueError("invalid_timestamp")
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
@@ -181,6 +181,8 @@ def _validate_contracts(snapshot: Snapshot) -> None:
                 elif not isinstance(value, str):
                     snapshot.problems.append(_issue(name, position, "invalid_text_type", column))
                 else:
+                    if "\x00" in value:
+                        snapshot.problems.append(_issue(name, position, "invalid_text_null_byte", column))
                     minimum, maximum = limits.get(name, {}).get(column, (0, None))
                     if len(value) < minimum or (maximum is not None and len(value) > maximum):
                         snapshot.problems.append(_issue(name, position, "invalid_text_length", column))
@@ -343,7 +345,7 @@ def _validate_destination(db: Connection, snapshot: Snapshot) -> None:
         seen: set[str] = set()
         for position, row in enumerate(snapshot.rows["users"], 1):
             value = row[field_name]
-            if not isinstance(value, str):
+            if not isinstance(value, str) or "\x00" in value:
                 continue
             lowered = db.execute(text("SELECT lower(:value)"), {"value": value}).scalar_one()
             if lowered in seen:

@@ -426,3 +426,42 @@ def test_unknown_table_with_sqlite_like_prefix_cannot_be_silently_ignored(legacy
     change(path, "CREATE TABLE sqliteArchive (id INTEGER)")
     with pytest.raises(migration.MigrationError, match="unsupported_source_tables"):
         migration.read_snapshot(path)
+
+
+@pytest.mark.parametrize(("table", "column"), [
+    ("users", "full_name"), ("users", "username"), ("users", "email"),
+    ("announcements", "title"), ("organizations", "name"),
+])
+def test_null_byte_in_legacy_text_is_reported_before_copy(legacy_source, pg_engine, table, column):
+    source = legacy_source()
+    value = "synthetic-sensitive-null\x00content@example.org"
+    change(source, f"UPDATE {table} SET {column}=?", (value,))
+    result = migration.migrate(source, pg_engine, apply=True)
+    assert result["status"] == "blocked"
+    assert {"table": table, "row": 1, "code": "invalid_text_null_byte", "column": column} in result["problems"]
+    assert value not in json.dumps(result)
+    assert "synthetic-sensitive-null" not in json.dumps(result)
+    assert count(pg_engine) == 0
+
+
+def test_timestamp_with_more_than_microsecond_precision_is_not_silently_truncated(legacy_source, pg_engine):
+    source = legacy_source()
+    change(source, "UPDATE users SET created_at='2026-10-17 06:00:00.1234567'")
+    result = migration.migrate(source, pg_engine, apply=True)
+    assert result["status"] == "blocked"
+    assert {"table": "users", "row": 1, "code": "invalid_timestamp", "column": "created_at"} in result["problems"]
+    assert count(pg_engine) == 0
+
+
+@pytest.mark.parametrize(("value", "expected"), [
+    ("2026-10-17T06:00:00.123456Z", "2026-10-17T06:00:00.123456+00:00"),
+    ("2026-10-17T08:30:00.123456+02:30", "2026-10-17T06:00:00.123456+00:00"),
+])
+def test_timestamp_microseconds_and_timezone_offset_are_preserved(legacy_source, pg_engine, value, expected):
+    source = legacy_source()
+    change(source, "UPDATE users SET created_at=?", (value,))
+    result = migration.migrate(source, pg_engine, apply=True)
+    assert result["status"] == "imported"
+    with pg_engine.connect() as db:
+        actual = db.execute(select(models.users.c.created_at)).scalar_one()
+    assert actual.isoformat() == expected
