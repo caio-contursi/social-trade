@@ -134,3 +134,5 @@ Os limites mínimos nos módulos monitorados do frontend são 95% de linhas e st
 ## Migração e integridade
 
 Os testes usam PostgreSQL real para conferir PKs, FKs, índices únicos sem distinção de caixa, CHECKs, identidades, TIMESTAMPTZ, catálogos e política de exclusão. O importador é exercitado com SQLite sintético: simulação sem escrita, exceção restrita dos CPFs demo, preservação de IDs e hashes, conferência integral por checksum, conflitos, schema/revisão incorretos, origem alterada e rollback inclusive das identidades. A simulação e a cópia são testadas separadamente; a origem real do desenvolvedor nunca é usada pela suíte.
+
+As regressões da revisão da migração cobrem concorrência de cadastros distintos com o mesmo slug/matrícula gerados, preservação de IDs excluídos via `sqlite_sequence`, tabelas extras cujo nome começa por `sqlite` sem sublinhado, relatório apontando para hardlink da origem, falha de escrita do relatório após commit, demonstrações do domínio antigo, caracteres não ASCII em documentos, NUL em textos e precisão excessiva de timestamps.
