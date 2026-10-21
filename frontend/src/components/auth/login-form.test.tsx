@@ -104,7 +104,7 @@ describe("formulário de entrada", () => {
     await waitFor(() => expect(auth.login).toHaveBeenCalled());
   });
 
-  it.each(["12ABC34501DE3A", "12ABC34501DÉ35", "1234567890A", "12ABC34501DE35!"])(
+  it.each(["12ABC34501DE3A", "12ABC34501DÉ35", "1234567890A", "12ABC34501DE35!", "12 ABC34501DE35", "12/ABC/345/01DE/35"])(
     "não transforma documento malformado em outro documento válido: %s", async (document) => {
       const user = userEvent.setup();
       render(<LoginForm />);

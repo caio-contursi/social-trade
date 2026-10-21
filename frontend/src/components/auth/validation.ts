@@ -2,9 +2,12 @@ export function digits(value: string) {
   return value.replace(/\D/g, "");
 }
 
-/** Remove somente a máscara permitida, preservando letras e zeros à esquerda. */
+/** Aceita o documento puro ou sua máscara padrão, preservando letras e zeros. */
 export function normalizeDocument(value: string) {
-  return value.replace(/[.\-/\s]/g, "").toUpperCase();
+  const document = value.trim().toUpperCase();
+  const standardCpf = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(document);
+  const standardCnpj = /^[A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z0-9]{3}\/[A-Z0-9]{4}-\d{2}$/.test(document);
+  return standardCpf || standardCnpj ? document.replace(/[.\-/]/g, "") : document;
 }
 
 export function validCpf(value: string): boolean {
