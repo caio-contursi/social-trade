@@ -439,7 +439,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.report:
         source = args.source.resolve()
-        protected = (source, Path(str(source) + "-wal"), Path(str(source) + "-shm"))
+        protected = (source, Path(str(source) + "-wal"), Path(str(source) + "-shm"), Path(str(source) + "-journal"))
         if args.report.resolve() in protected or (args.report.exists() and any(item.exists() and args.report.samefile(item) for item in protected)):
             parser.error("O relatório não pode substituir o banco de origem ou seus arquivos auxiliares.")
     engine = None

@@ -375,7 +375,7 @@ def test_retained_maximum_bigint_blocks_before_copy(legacy_source, pg_engine):
     assert count(pg_engine) == 0
 
 
-@pytest.mark.parametrize("suffix", ["", "-wal", "-shm"])
+@pytest.mark.parametrize("suffix", ["", "-wal", "-shm", "-journal"])
 def test_cli_report_hardlink_cannot_overwrite_source_or_auxiliary_file(legacy_source, tmp_path, suffix):
     source = legacy_source()
     protected = Path(str(source) + suffix)
@@ -465,3 +465,16 @@ def test_timestamp_microseconds_and_timezone_offset_are_preserved(legacy_source,
     with pg_engine.connect() as db:
         actual = db.execute(select(models.users.c.created_at)).scalar_one()
     assert actual.isoformat() == expected
+
+
+def test_cli_report_cannot_overwrite_rollback_journal_path(legacy_source):
+    source = legacy_source()
+    original_source = source.read_bytes()
+    journal = Path(str(source) + "-journal")
+    original_journal = b"synthetic-rollback-journal"
+    journal.write_bytes(original_journal)
+    with pytest.raises(SystemExit) as failure:
+        migration.main(["--source", str(source), "--report", str(journal), "--apply"])
+    assert failure.value.code == 2
+    assert source.read_bytes() == original_source
+    assert journal.read_bytes() == original_journal
