@@ -125,7 +125,7 @@ describe("documentos na interface legada", () => {
     },
   );
 
-  it.each([[" 12.abc.345/01de-35 ", "12ABC34501DE35"], ["000001", "000001"]])(
+  it.each([[" 12.abc.345/01de-35 ", "12ABC34501DE35"], ["01234567890", "01234567890"]])(
     "envia o documento de login sem perder caracteres: %s", async (raw, expected) => {
       loadScript();
       execute("bindGlobalEvents()");
@@ -135,7 +135,7 @@ describe("documentos na interface legada", () => {
       fireEvent.submit(document.querySelector("#login-form")!);
       await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
       expect(JSON.parse(fetchMock.mock.calls[0][1].body).document).toBe(expected);
-      expect(document.querySelector("#login-document")).toHaveAttribute("minlength", "6");
+      expect(document.querySelector("#login-document")).toHaveAttribute("minlength", "11");
       expect(document.querySelector("#login-document")).toHaveAttribute("inputmode", "text");
       await waitFor(() => expect(document.querySelector("#toast")).toHaveTextContent("Resposta de teste"));
     },
