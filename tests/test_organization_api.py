@@ -7,6 +7,7 @@ import unittest
 import pytest
 
 from fastapi.testclient import TestClient
+from sqlalchemy import insert
 
 
 PASSWORD = "LocalTestPassword123!"
@@ -42,8 +43,6 @@ def organization_payload(kind="project", **overrides):
 
 class OrganizationApiTests(unittest.TestCase):
     def setUp(self):
-        with api_module.transaction() as db:
-            db.execute("DELETE FROM users")
         self.client = TestClient(api_module.app)
         self.owner = self.create_user("owner@example.org", "project", "11222333000181")
         self.other = self.create_user("other@example.org", "project", "11444777000161")
@@ -60,10 +59,10 @@ class OrganizationApiTests(unittest.TestCase):
 
     def create_user(self, email, kind, document):
         with api_module.transaction() as db:
-            return db.execute(
-                "INSERT INTO users (full_name,username,email,password_hash,document,account_type) VALUES (?,?,?,?,?,?)",
-                ("Pessoa de teste", document, email, password_hash, document, kind),
-            ).lastrowid
+            return db.execute(insert(api_module.users).values(
+                full_name="Pessoa de teste", username=document, email=email, password_hash=password_hash,
+                document=document, account_type=kind, registration_number="000001" if kind == "person" else None,
+            ).returning(api_module.users.c.id)).scalar_one()
 
     def login(self, document, kind):
         response = self.client.post("/api/auth/login", json={"document": document, "password": PASSWORD, "account_type": kind})

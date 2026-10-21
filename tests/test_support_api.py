@@ -1,5 +1,6 @@
 """Support, moderation, announcements, and public/private boundaries."""
 import pytest
+from sqlalchemy import select, func
 
 
 def test_anonymous_health_and_catalog_expose_no_accounts(client):
@@ -14,7 +15,7 @@ def test_anonymous_health_and_catalog_expose_no_accounts(client):
 
 def test_demo_users_disabled_before_first_import(client, api):
     with api.transaction() as db:
-        assert db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+        assert db.scalar(select(func.count()).select_from(api.users)) == 0
     assert client.post("/api/auth/login", json={
         "document": "11111111111", "password": "SocialTrade123!", "account_type": "project",
     }).status_code == 401

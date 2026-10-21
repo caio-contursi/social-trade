@@ -2,13 +2,14 @@
 import importlib
 
 import pytest
+from sqlalchemy import select
 
 
 def test_registration_stores_salted_password_hash(client, person_data, api):
     payload = person_data()
     assert client.post("/api/auth/register", json=payload).status_code == 201
     with api.transaction() as db:
-        stored = db.execute("SELECT password_hash FROM users").fetchone()[0]
+        stored = db.scalar(select(api.users.c.password_hash))
     assert stored != payload["password"]
     assert payload["password"] not in stored
     assert api.verify_password(payload["password"], stored)

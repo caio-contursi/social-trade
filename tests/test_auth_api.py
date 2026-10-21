@@ -3,13 +3,15 @@ import importlib
 import re
 
 import pytest
+from sqlalchemy import delete, select, func
 
 PASSWORD = "LocalTestPassword123!"
 
 
 def count_rows(api, table):
+    model = importlib.import_module("app.models").metadata.tables[table]
     with api.transaction() as db:
-        return db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        return db.scalar(select(func.count()).select_from(model))
 
 
 def test_register_person_then_login_with_formatted_cpf(client, person_data):
@@ -199,7 +201,7 @@ def test_token_for_deleted_account_cannot_be_reused(client, user_factory, login,
     user = user_factory()
     headers = login(user)
     with api.transaction() as db:
-        db.execute("DELETE FROM users WHERE id=?", (user["id"],))
+        db.execute(delete(importlib.import_module("app.models").users).where(api.users.c.id == user["id"]))
     assert client.get("/api/auth/me", headers=headers).status_code == 401
 
 
