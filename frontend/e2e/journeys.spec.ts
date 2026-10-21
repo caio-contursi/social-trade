@@ -103,6 +103,43 @@ test("cadastro em etapas cria pessoa e permite entrar", async ({ page }, testInf
   await login(page, document, "person");
 });
 
+test("CNPJ alfanumérico permanece no cadastro, no login e no perfil institucional", async ({ page }, testInfo) => {
+  // Documentos fictícios exclusivos por projeto/tentativa, com DV calculado
+  // para os caracteres do formato alfanumérico definido pela Receita Federal.
+  let document = `E2E${900000000 + (testInfo.project.name.startsWith("mobile") ? 100 : 0) + testInfo.retry}`;
+  for (const weights of [[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]]) {
+    const remainder = weights.reduce((sum, weight, index) => sum + (document.charCodeAt(index) - 48) * weight, 0) % 11;
+    document += String(remainder < 2 ? 0 : 11 - remainder);
+  }
+  const masked = `${document.slice(0, 2)}.${document.slice(2, 5)}.${document.slice(5, 8)}/${document.slice(8, 12)}-${document.slice(12)}`.toLowerCase();
+  await page.goto("/cadastro?tipo=donor");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByLabel("Nome completo do responsável", { exact: true }).fill("Responsável fictício");
+  await page.getByLabel("CNPJ da instituição", { exact: true }).fill(masked);
+  await page.getByLabel("E-mail", { exact: true }).fill(`${document.toLowerCase()}@example.org`);
+  await page.getByLabel("Crie uma senha", { exact: true }).fill(password);
+  await page.getByLabel("Confirme a senha", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByLabel("Nome da empresa", { exact: true }).fill("Instituição alfanumérica de teste");
+  await page.getByLabel("Cidade", { exact: true }).fill("Niterói");
+  await page.getByRole("combobox", { name: "Estado", exact: true }).click();
+  await page.getByRole("option", { name: "RJ", exact: true }).click();
+  await page.getByLabel("Apresentação breve", { exact: true }).fill("Empresa fictícia que apoia iniciativas comunitárias.");
+  await page.getByRole("button", { name: "Criar minha conta", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /conta está pronta|cadastro.*concluído|faz parte|bem-vindo/i })).toBeVisible();
+  await login(page, masked);
+  await page.reload();
+  const profile = await page.request.get("/api/organizations/mine", {
+    headers: { Authorization: `Bearer ${await page.evaluate(() => sessionStorage.getItem("socialtrade_token"))}` },
+  });
+  expect(profile.ok()).toBeTruthy();
+  expect((await profile.json())[0].cnpj).toBe(document);
+  await page.goto("/painel/organizacoes");
+  await page.getByRole("button", { name: /Editar/ }).first().click();
+  await expect(page.getByLabel(/CNPJ/)).toHaveValue(document);
+  await expect(page.getByLabel(/CNPJ/)).toHaveAttribute("readonly", "");
+});
+
 test("navegação móvel funciona por teclado e página não transborda", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Fluxo específico do menu móvel.");
   await page.goto("/");

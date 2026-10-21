@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { AccountIntent, Catalog, LoginResponse } from "@/lib/types";
-import { digits, safeNextPath } from "./validation";
+import { normalizeDocument, safeNextPath } from "./validation";
 
 const accountOptions = [
   { value: "donor" as const, label: "Empresa", icon: Building2 },
@@ -61,20 +61,24 @@ export function LoginForm() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
-    const number = digits(document);
+    const number = normalizeDocument(document);
+    // O login confere o formato; o DV é validado no cadastro. Isso também
+    // preserva o acesso explícito da conta fictícia do seed de demonstração.
+    const isCpf = /^\d{11}$/.test(number);
+    const isCnpj = /^[A-Z0-9]{12}\d{2}$/.test(number);
     if (
       intent === "donor"
-        ? number.length !== 14
+        ? !isCnpj
         : intent === "person"
-          ? number.length !== 11
-          : ![11, 14].includes(number.length)
+          ? !isCpf
+          : !isCpf && !isCnpj
     )
       nextErrors.document =
         intent === "donor"
-          ? "Informe o CNPJ com 14 dígitos."
+          ? "Informe o CNPJ com 14 caracteres (letras ou números e 2 dígitos finais)."
           : intent === "person"
             ? "Informe o CPF com 11 dígitos."
-            : "Informe seu CPF (11 dígitos) ou CNPJ (14 dígitos).";
+            : "Informe seu CPF (11 dígitos) ou CNPJ (14 caracteres).";
     if (!password) nextErrors.password = "Informe sua senha.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
@@ -174,7 +178,9 @@ export function LoginForm() {
             id="document"
             name="document"
             type="text"
-            inputMode="numeric"
+            inputMode={intent === "person" ? "numeric" : "text"}
+            autoCapitalize="characters"
+            spellCheck={false}
             autoComplete="username"
             placeholder={
               intent === "donor"
