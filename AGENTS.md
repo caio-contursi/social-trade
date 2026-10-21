@@ -22,11 +22,13 @@ Este arquivo contém regras do repositório para qualquer agente que trabalhe no
 | Componentes, formulários, sessão, cliente HTTP ou lógica do frontend | Vitest + Testing Library em `frontend/src/**/*.test.ts` ou `frontend/src/**/*.test.tsx`. |
 | Nova jornada de usuário ou mudança de integração entre frontend e API | Cenários Playwright em `frontend/e2e/**/*.spec.ts`, além dos testes das camadas alteradas. |
 
-Use a estrutura existente antes de introduzir outra ferramenta. Se criar um novo serviço com outro executor de testes, configure os testes desse serviço e inclua-os na validação automatizada do projeto. A cobertura atual do Vitest acompanha quatro módulos críticos; não a apresente como cobertura de toda a interface. Ao acrescentar módulos, mantenha o escopo de cobertura coerente com a lógica testada.
+Use a estrutura existente antes de introduzir outra ferramenta. Se criar um novo serviço com outro executor de testes, configure os testes desse serviço e inclua-os na validação automatizada do projeto. A cobertura atual do Vitest acompanha módulos críticos selecionados; não a apresente como cobertura de toda a interface. Ao acrescentar módulos, mantenha o escopo de cobertura coerente com a lógica testada.
 
 ## Ambiente e comandos
 
-A aplicação atual usa FastAPI + SQLite em `app/` e Next.js + TypeScript + Tailwind CSS + shadcn/ui em `frontend/`. Use Python 3.12 e Node.js 24 para reproduzir a CI. Leia [README.md](README.md) e [docs/testes.md](docs/testes.md) para preparar o ambiente, instalar dependências e selecionar outro Python ou portas de teste.
+A aplicação atual usa FastAPI + PostgreSQL, SQLAlchemy 2 e Alembic em `app/` e Next.js + TypeScript + Tailwind CSS + shadcn/ui em `frontend/`. Use Python 3.12 e Node.js 24 para reproduzir a CI. Leia [README.md](README.md) e [docs/testes.md](docs/testes.md) para preparar o ambiente, instalar dependências e selecionar outro Python ou portas de teste.
+
+Configure `SOCIALTRADE_TEST_DATABASE_URL` com uma URL `postgresql+psycopg://` de PostgreSQL exclusivo de testes. Pytest e E2E criam schemas próprios e nunca usam a URL normal da aplicação como alternativa. A CI usa PostgreSQL 17. Não valide persistência em SQLite fingindo ser PostgreSQL.
 
 Com o ambiente virtual Python ativado, na raiz:
 
@@ -53,7 +55,7 @@ No Linux, a instalação do navegador pode exigir `npx playwright install --with
 
 Execute os testes pertinentes durante o desenvolvimento e a validação completa antes de entregar uma alteração de comportamento. O runner completo procura o Python em `.venv` na raiz, aceita `SOCIALTRADE_TEST_PYTHON` e usa `python` do PATH como alternativa.
 
-O E2E deve ser iniciado pelo comando `npm run test:e2e` ou pelo runner completo. Não execute `npx playwright test` diretamente: o wrapper cria o banco temporário, configura a API, separa o build e gerencia os servidores de teste.
+O E2E deve ser iniciado pelo comando `npm run test:e2e` ou pelo runner completo. Não execute `npx playwright test` diretamente: o wrapper cria um schema PostgreSQL exclusivo, configura a API, separa o build e gerencia os servidores de teste.
 
 Mudanças exclusivamente em documentação não exigem criar testes de aplicação nem executar a suíte completa; confira o conteúdo, os links e os comandos afetados.
 

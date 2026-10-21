@@ -1,5 +1,7 @@
 # Validação da reconstrução do front-end
 
+> Registro histórico da validação da interface anterior à migração PostgreSQL. Para a configuração e os critérios atuais, consulte [testes.md](testes.md).
+
 Revisão local realizada em 17 de outubro de 2026.
 
 ## Verificações automatizadas

@@ -194,7 +194,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 }
 
 try {
-  if (!/^postgres(?:ql)?(?:\+psycopg)?:\/\//.test(env.SOCIALTRADE_DATABASE_URL)) {
+  if (!/^postgresql\+psycopg:\/\//.test(env.SOCIALTRADE_DATABASE_URL)) {
     throw new Error("Defina SOCIALTRADE_TEST_DATABASE_URL para um PostgreSQL real e exclusivo de testes antes do E2E.");
   }
   if (![apiPort, frontendPort].every((port) => Number.isInteger(port) && port >= 1024 && port <= 65535) || apiPort === frontendPort) {
