@@ -346,3 +346,26 @@ def test_legacy_and_current_demo_domains_are_flagged_in_private_and_public_profi
     public = client.get("/api/public/organizations/" + own["slug"]).json()
     assert public["is_demo"] is is_demo
     assert client.get("/api/public/projects").json()[0]["is_demo"] is is_demo
+
+
+@pytest.mark.parametrize("document", [
+    "12AſC34501DE20", "12.AſC.345/01DE-20",
+    "12Aß4501DE313", "12.Aß.450/1DE3-13",
+])
+def test_unicode_document_letters_are_rejected_before_ascii_uppercase(
+    client, institution_data, api, document,
+):
+    from app.documents import normalize_document, valid_cnpj
+    # Both uppercase ASCII counterparts have valid check digits. Rejecting the
+    # Unicode originals must therefore happen before upper() changes their text.
+    assert valid_cnpj("12ASC34501DE20") == "12ASC34501DE20"
+    assert valid_cnpj("12ASS4501DE313") == "12ASS4501DE313"
+    with pytest.raises(ValueError):
+        normalize_document(document)
+    assert client.post("/api/auth/register-institution", json=institution_data(document=document)).status_code == 422
+    nested = institution_data()
+    nested["organization"]["cnpj"] = document
+    assert client.post("/api/auth/register-institution", json=nested).status_code == 422
+    assert client.post("/api/auth/login", json={"document": document, "password": PASSWORD}).status_code == 422
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 0

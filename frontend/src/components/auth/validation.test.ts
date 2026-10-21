@@ -11,6 +11,13 @@ describe("documentos do cadastro", () => {
     expect(normalizeDocument("12 ABC34501DE35")).toBe("12 ABC34501DE35");
   });
 
+  it.each(["12AſC34501DE20", "12.AſC.345/01DE-20", "12Aß4501DE313", "12.Aß.450/1DE3-13"])(
+    "preserva a entrada Unicode para rejeitar confusáveis antes de converter caixa: %s", (document) => {
+      expect(normalizeDocument(` ${document} `)).toBe(document);
+      expect(validCnpj(document)).toBe(false);
+    },
+  );
+
   it.each(["52998224725", "529.982.247-25", "111.444.777-35", "012.345.678-90"])(
     "aceita CPF com dígitos verificadores válidos: %s", (document) => {
       expect(validCpf(document)).toBe(true);
@@ -23,7 +30,7 @@ describe("documentos do cadastro", () => {
     },
   );
 
-  it.each(["04252011000110", "04.252.011/0001-10", "11.222.333/0001-81", "12ABC34501DE35", "12.abc.345/01de-35"])(
+  it.each(["04252011000110", "04.252.011/0001-10", "11.222.333/0001-81", "12ABC34501DE35", "12.abc.345/01de-35", "12ASC34501DE20", "12ASS4501DE313"])(
     "aceita CNPJ com dígitos verificadores válidos: %s", (document) => {
       expect(validCnpj(document)).toBe(true);
     },

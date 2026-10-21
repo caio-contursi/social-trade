@@ -53,8 +53,8 @@ describe("cadastro institucional com CNPJ alfanumérico", () => {
     expect(payload.organization.cnpj).toBe("12ABC34501DE35");
   });
 
-  it("não avança nem envia cadastro quando o DV do CNPJ alfanumérico está errado", async () => {
-    await fillAccess("12ABC34501DE34");
+  it.each(["12ABC34501DE34", "12AſC34501DE20", "12.AſC.345/01DE-20", "12Aß4501DE313", "12.Aß.450/1DE3-13"])("não avança nem envia cadastro com CNPJ inválido: %s", async (document) => {
+    await fillAccess(document);
     expect(screen.getByLabelText("CNPJ da instituição")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("Informe um CNPJ válido.")).toBeInTheDocument();
     expect(fetchMock.mock.calls.every(([path]) => path === "/api/projects/open")).toBe(true);

@@ -92,7 +92,7 @@ describe("documentos na interface legada", () => {
     await waitFor(() => expect(document.querySelector("#toast")).toHaveTextContent("Cadastro concluído"));
   });
 
-  it.each(["12ABC34501DE34", "12ABC34501DE35!", "12/ABC/345/01DE/35", "04 252011000110", "00000000000000"])(
+  it.each(["12ABC34501DE34", "12ABC34501DE35!", "12/ABC/345/01DE/35", "04 252011000110", "00000000000000", "12AſC34501DE20", "12.AſC.345/01DE-20", "12Aß4501DE313", "12.Aß.450/1DE3-13"])(
     "bloqueia CNPJ inválido mesmo sem sair do campo: %s", (raw) => {
       const form = institutionForm(raw);
       fireEvent.submit(form);
@@ -138,6 +138,18 @@ describe("documentos na interface legada", () => {
       expect(document.querySelector("#login-document")).toHaveAttribute("minlength", "11");
       expect(document.querySelector("#login-document")).toHaveAttribute("inputmode", "text");
       await waitFor(() => expect(document.querySelector("#toast")).toHaveTextContent("Resposta de teste"));
+    },
+  );
+
+  it.each(["12AſC34501DE20", "12.AſC.345/01DE-20", "12Aß4501DE313", "12.Aß.450/1DE3-13"])(
+    "não envia login com letras fora do ASCII: %s", async (raw) => {
+      loadScript();
+      execute("bindGlobalEvents()");
+      input("document", raw, document.querySelector("#login-form")!);
+      input("password", "senha-exclusiva-teste", document.querySelector("#login-form")!);
+      fireEvent.submit(document.querySelector("#login-form")!);
+      await waitFor(() => expect(document.querySelector("#toast")).toHaveTextContent("Informe um CPF ou CNPJ válido."));
+      expect(fetchMock).not.toHaveBeenCalled();
     },
   );
 

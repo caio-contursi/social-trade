@@ -7,7 +7,10 @@ CNPJ_SHAPE = re.compile(r"(?:[A-Z0-9]{12}[0-9]{2}|[A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z
 
 
 def normalize_document(value: str, *, kind: str | None = None) -> str:
-    value = value.strip().upper()
+    value = value.strip()
+    if not value.isascii():
+        raise ValueError("Use apenas letras ASCII e números no CPF ou CNPJ.")
+    value = value.upper()
     shapes = {"cpf": CPF_SHAPE, "cnpj": CNPJ_SHAPE}
     allowed = [shapes[kind]] if kind else list(shapes.values())
     if not any(shape.fullmatch(value) for shape in allowed):

@@ -88,7 +88,9 @@ function syncInstitutionKind() {
 }
 
 function normalizeDocument(raw) {
-  const value = raw.trim().toUpperCase();
+  const trimmed = raw.trim();
+  if (/[^\x00-\x7F]/.test(trimmed)) return trimmed;
+  const value = trimmed.toUpperCase();
   const cpfMask = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(value);
   const cnpjMask = /^[A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z0-9]{3}\/[A-Z0-9]{4}-\d{2}$/.test(value);
   return cpfMask || cnpjMask ? value.replace(/[.\-/]/g, '') : value;
@@ -211,7 +213,9 @@ function setupRegistrationForm() {
 }
 
 async function login(document, password, accountType) {
-  const result = await api('/api/auth/login', {method:'POST', body:JSON.stringify({document:normalizeDocument(document),password,account_type:accountType})});
+  const number = normalizeDocument(document);
+  if (!/^(?:[0-9]{11}|[A-Z0-9]{12}[0-9]{2})$/.test(number)) throw new Error('Informe um CPF ou CNPJ válido.');
+  const result = await api('/api/auth/login', {method:'POST', body:JSON.stringify({document:number,password,account_type:accountType})});
   state.token = result.access_token; state.user = result.user;
   localStorage.setItem('socialtrade_token', state.token);
   localStorage.setItem('socialtrade_user', JSON.stringify(state.user));

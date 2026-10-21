@@ -4,7 +4,9 @@ export function digits(value: string) {
 
 /** Aceita o documento puro ou sua máscara padrão, preservando letras e zeros. */
 export function normalizeDocument(value: string) {
-  const document = value.trim().toUpperCase();
+  const trimmed = value.trim();
+  if (/[^\x00-\x7F]/.test(trimmed)) return trimmed;
+  const document = trimmed.toUpperCase();
   const standardCpf = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(document);
   const standardCnpj = /^[A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z0-9]{3}\/[A-Z0-9]{4}-\d{2}$/.test(document);
   return standardCpf || standardCnpj ? document.replace(/[.\-/]/g, "") : document;
