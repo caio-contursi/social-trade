@@ -369,3 +369,97 @@ def test_unicode_document_letters_are_rejected_before_ascii_uppercase(
     assert client.post("/api/auth/login", json={"document": document, "password": PASSWORD}).status_code == 422
     with api.connect() as db:
         assert db.scalar(select(func.count()).select_from(api.users)) == 0
+
+
+@pytest.mark.parametrize("field", ["full_name", "phone", "responsible_title"])
+def test_person_registration_rejects_nul_without_writing(api, person_data, field):
+    from fastapi.testclient import TestClient
+    with TestClient(api.app, raise_server_exceptions=False) as client:
+        response = client.post("/api/auth/register", json=person_data(**{field: "Texto\x00 inválido"}))
+    assert response.status_code == 422
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 0
+
+
+@pytest.mark.parametrize("field", ["full_name", "phone"])
+def test_institution_registration_rejects_nul_without_partial_account(api, institution_data, field):
+    from fastapi.testclient import TestClient
+    with TestClient(api.app, raise_server_exceptions=False) as client:
+        response = client.post("/api/auth/register-institution", json=institution_data(**{field: "Texto\x00 inválido"}))
+    assert response.status_code == 422
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 0
+        assert db.scalar(select(func.count()).select_from(api.organizations)) == 0
+
+
+@pytest.mark.parametrize("field", [
+    "name", "city", "short_description", "objective", "impact_summary", "description",
+    "website_url", "instagram_url", "pix_key", "logo_url",
+])
+def test_organization_writes_reject_nul_and_preserve_existing_profile(
+    api, client, user_factory, organization_factory, organization_data, institution_data, login, field,
+):
+    from fastapi.testclient import TestClient
+    owner = user_factory(kind="project")
+    organization = organization_factory(owner)
+    headers = login(owner)
+    before = client.get("/api/organizations/mine", headers=headers).json()
+    invalid = ("https://example.org/" if field.endswith("_url") else "Texto válido") + "\x00inválido"
+    payload = organization_data(**{field: invalid})
+    nested = institution_data()
+    nested["organization"][field] = invalid
+    with TestClient(api.app, raise_server_exceptions=False) as checked_client:
+        assert checked_client.post("/api/auth/register-institution", json=nested).status_code == 422
+        assert checked_client.post("/api/organizations", headers=headers, json=payload).status_code == 422
+        assert checked_client.patch(f"/api/organizations/{organization['id']}", headers=headers, json=payload).status_code == 422
+    assert client.get("/api/organizations/mine", headers=headers).json() == before
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 1
+        assert db.scalar(select(func.count()).select_from(api.organizations)) == 1
+
+
+@pytest.mark.parametrize("field", ["full_name", "phone", "responsible_title"])
+def test_profile_patch_rejects_nul_without_mutating_account(api, client, user_factory, login, field):
+    from fastapi.testclient import TestClient
+    headers = login(user_factory())
+    before = client.get("/api/profile", headers=headers).json()
+    payload = {"full_name": "Pessoa fictícia", field: "Texto\x00 inválido"}
+    with TestClient(api.app, raise_server_exceptions=False) as checked_client:
+        assert checked_client.patch("/api/profile", headers=headers, json=payload).status_code == 422
+    assert client.get("/api/profile", headers=headers).json() == before
+
+
+@pytest.mark.parametrize("endpoint,field,values,table", [
+    ("/api/support", "subject", {"subject": "Assunto válido", "message": "Mensagem de exemplo válida"}, "support_tickets"),
+    ("/api/support", "message", {"subject": "Assunto válido", "message": "Mensagem de exemplo válida"}, "support_tickets"),
+    ("/api/moderation/announcements", "title", {"title": "Aviso válido", "body": "Conteúdo de exemplo válido", "category": "teste"}, "announcements"),
+    ("/api/moderation/announcements", "body", {"title": "Aviso válido", "body": "Conteúdo de exemplo válido", "category": "teste"}, "announcements"),
+    ("/api/moderation/announcements", "category", {"title": "Aviso válido", "body": "Conteúdo de exemplo válido", "category": "teste"}, "announcements"),
+])
+def test_support_and_announcement_reject_nul_without_writing(api, user_factory, login, endpoint, field, values, table):
+    from fastapi.testclient import TestClient
+    headers = login(user_factory(role="moderator"))
+    with TestClient(api.app, raise_server_exceptions=False) as client:
+        response = client.post(endpoint, headers=headers, json={**values, field: values[field] + "\x00"})
+    assert response.status_code == 422
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(getattr(api, "announcement_table" if table == "announcements" else table))) == 0
+
+
+def test_public_slug_rejects_nul_before_query(api):
+    from fastapi.testclient import TestClient
+    with TestClient(api.app, raise_server_exceptions=False) as client:
+        assert client.get("/api/public/organizations/a%00b").status_code == 422
+
+
+def test_non_nul_text_and_nul_password_still_register_and_authenticate(client, person_data, api):
+    password = PASSWORD + "\x00"
+    payload = person_data(full_name="Nome\t fictício\ncom acento", phone="telefone\x01fictício",
+        responsible_title="Função\x02fictícia", password=password, password_confirmation=password)
+    assert client.post("/api/auth/register", json=payload).status_code == 201
+    response = client.post("/api/auth/login", json={"document": payload["document"], "password": password})
+    assert response.status_code == 200
+    assert response.json()["user"]["full_name"] == payload["full_name"]
+    assert response.json()["user"]["phone"] == payload["phone"]
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 1

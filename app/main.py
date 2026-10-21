@@ -314,6 +314,8 @@ def my_memberships(user=Depends(current_user)):
 
 @app.get("/api/public/organizations/{slug}")
 def public_organization(slug: str):
+    if "\x00" in slug:
+        raise HTTPException(status_code=422, detail="O caractere NUL não é permitido no slug.")
     with connect() as db:
         row = db.execute(public_project_query().where(organizations.c.slug == slug)).mappings().first()
         if row is None:

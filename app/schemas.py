@@ -1,11 +1,21 @@
 import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationInfo, field_validator, model_validator
 from app.documents import normalize_document, valid_cnpj, valid_cpf
 
 
-class OrganizationInput(BaseModel):
+class PostgresInput(BaseModel):
+    @field_validator("*")
+    @classmethod
+    def reject_nul_text(cls, value, info: ValidationInfo):
+        # Passwords are hashed; their raw value is never sent to PostgreSQL.
+        if info.field_name not in {"password", "password_confirmation"} and isinstance(value, str) and "\x00" in value:
+            raise ValueError("O caractere NUL não é permitido neste campo.")
+        return value
+
+
+class OrganizationInput(PostgresInput):
     name: str = Field(min_length=2, max_length=160)
     organization_type: str = Field(min_length=1, max_length=80)
     institution_kind: Literal["donor", "project"] = "project"
@@ -69,7 +79,7 @@ class OrganizationInput(BaseModel):
         return self
 
 
-class RegisterInput(BaseModel):
+class RegisterInput(PostgresInput):
     full_name: str = Field(min_length=2, max_length=120)
     username: str = Field(min_length=3, max_length=30)
     email: EmailStr
@@ -113,7 +123,7 @@ class RegisterInput(BaseModel):
         return valid_cpf(value)
 
 
-class InstitutionRegisterInput(BaseModel):
+class InstitutionRegisterInput(PostgresInput):
     full_name: str = Field(min_length=2, max_length=120)
     document: str = Field(min_length=14, max_length=18)
     email: EmailStr
@@ -146,7 +156,7 @@ class InstitutionRegisterInput(BaseModel):
         return self
 
 
-class LoginInput(BaseModel):
+class LoginInput(PostgresInput):
     document: str = Field(min_length=11, max_length=18)
     password: str
     account_type: Literal["donor", "project"] = "project"
@@ -158,7 +168,7 @@ class LoginInput(BaseModel):
         return normalize_document(value)
 
 
-class ProfileUpdate(BaseModel):
+class ProfileUpdate(PostgresInput):
     full_name: str = Field(min_length=2, max_length=120)
     phone: str | None = Field(default=None, max_length=30)
     responsible_title: str | None = Field(default=None, max_length=80)
@@ -173,7 +183,7 @@ class OrganizationCreate(OrganizationInput):
     model_config = ConfigDict(extra="forbid")
 
 
-class TicketInput(BaseModel):
+class TicketInput(PostgresInput):
     subject: str = Field(min_length=4, max_length=140)
     message: str = Field(min_length=10, max_length=4000)
 
@@ -183,11 +193,11 @@ class TicketInput(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
-class TicketStatusInput(BaseModel):
+class TicketStatusInput(PostgresInput):
     status: Literal["open", "in_progress", "resolved"]
 
 
-class AnnouncementInput(BaseModel):
+class AnnouncementInput(PostgresInput):
     title: str = Field(min_length=4, max_length=160)
     body: str = Field(min_length=10, max_length=3000)
     category: str = Field(default="plataforma", min_length=1, max_length=40)
