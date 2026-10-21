@@ -49,6 +49,22 @@ def write_transaction():
         raise
 
 
+def insert_with_generated_value(db, table, values: dict, field: str, generate, constraint: str):
+    """Retry only a generated value's collision, keeping the outer write atomic."""
+    for _ in range(10):
+        generated = generate()
+        try:
+            with db.begin_nested():
+                identifier = db.execute(insert(table).values(**values, **{field: generated})
+                    .returning(table.c.id)).scalar_one()
+            return identifier, generated
+        except IntegrityError as error:
+            if (getattr(error.orig, "sqlstate", None) != "23505"
+                    or getattr(getattr(error.orig, "diag", None), "constraint_name", None) != constraint):
+                raise
+    raise HTTPException(status_code=503, detail="Não foi possível concluir o cadastro. Tente novamente.")
+
+
 def slugify(value: str) -> str:
     value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
     return re.sub(r"[^a-z0-9]+", "-", value).strip("-") or "organizacao"
@@ -95,10 +111,11 @@ def replace_organization_relationships(db, org_id: int, data: dict) -> None:
 def create_org(db, owner_id: int, data: dict) -> int:
     validate_organization_catalog(db, data)
     values = {field: data.get(field) for field in EDITABLE_ORGANIZATION_FIELDS}
-    values.update(owner_id=owner_id, name=data["name"].strip(), slug=unique_slug(db, data["name"]),
+    values.update(owner_id=owner_id, name=data["name"].strip(),
                   institution_kind=data.get("institution_kind", "project"), city=data["city"].strip(),
                   state=data["state"].upper(), short_description=data["short_description"].strip())
-    org_id = db.execute(insert(organizations).values(**values).returning(organizations.c.id)).scalar_one()
+    org_id, _ = insert_with_generated_value(db, organizations, values, "slug",
+        lambda: unique_slug(db, data["name"]), "uq_organizations_slug")
     replace_organization_relationships(db, org_id, data)
     return org_id
 
@@ -114,7 +131,7 @@ def organization_profile_metadata(data: dict, owner_email: str) -> dict:
     return {
         "verification_status": "self_declared",
         "profile_completeness": round(100 * sum(checks) / len(checks)),
-        "is_demo": owner_email.strip().lower().endswith("@socialtrade.local"),
+        "is_demo": owner_email.strip().lower().endswith(("@socialtrade.local", "@impactledger.local")),
     }
 
 
@@ -185,12 +202,13 @@ def register(payload: RegisterInput):
             raise HTTPException(status_code=409, detail="Este usuário já está em uso.")
         if db.execute(select(users.c.id).where(users.c.document == payload.document)).first():
             raise HTTPException(status_code=409, detail="Este CPF já está cadastrado.")
-        registration_number = generate_registration_number(db)
-        user_id = db.execute(insert(users).values(
+        values = dict(
             full_name=payload.full_name.strip(), username=payload.username, email=str(payload.email).lower(),
             password_hash=hash_password(payload.password), phone=payload.phone, title=payload.responsible_title.strip(),
-            role=payload.role, document=payload.document, account_type="person", registration_number=registration_number,
-        ).returning(users.c.id)).scalar_one()
+            role=payload.role, document=payload.document, account_type="person",
+        )
+        user_id, registration_number = insert_with_generated_value(db, users, values, "registration_number",
+            lambda: generate_registration_number(db), "uq_users_registration_number")
         if payload.member_project_id:
             project = db.execute(select(organizations.c.id).where(
                 organizations.c.id == payload.member_project_id, organizations.c.institution_kind == "project")).first()

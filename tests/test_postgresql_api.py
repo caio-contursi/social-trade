@@ -108,6 +108,95 @@ def test_concurrent_institution_registration_is_atomic_and_returns_conflict(
         assert db.scalar(select(func.count()).select_from(api.organization_areas)) == 2
 
 
+def test_concurrent_distinct_institutions_with_same_name_both_register(
+    client, institution_data, api, monkeypatch, password_hash,
+):
+    barrier = Barrier(2)
+    calls = iter(range(100))
+    original = api.unique_slug
+    def choose_before_either_insert(db, name):
+        synchronize = next(calls) < 2
+        slug = original(db, name)
+        if synchronize:
+            barrier.wait(timeout=15)
+        return slug
+    monkeypatch.setattr(api, "unique_slug", choose_before_either_insert)
+    monkeypatch.setattr(api, "hash_password", lambda _: password_hash)
+    payloads = [institution_data(document=document, email=f"race{index}@example.org")
+        for index, document in enumerate(("11222333000181", "11444777000161"))]
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = list(executor.map(lambda payload: client.post("/api/auth/register-institution", json=payload), payloads))
+    assert [response.status_code for response in responses] == [201, 201]
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 2
+        assert set(db.execute(select(api.organizations.c.slug)).scalars()) == {"projeto-de-teste", "projeto-de-teste-2"}
+        assert db.scalar(select(func.count()).select_from(api.organization_areas)) == 4
+
+
+def test_concurrent_distinct_people_retry_colliding_generated_matricula(
+    client, person_data, api, monkeypatch, password_hash,
+):
+    barrier = Barrier(2)
+    calls = iter(range(100))
+    numbers = iter((123456, 123456, 123457))
+    original = api.generate_registration_number
+    def choose_before_either_insert(db):
+        synchronize = next(calls) < 2
+        number = original(db)
+        if synchronize:
+            barrier.wait(timeout=15)
+        return number
+    monkeypatch.setattr(api, "generate_registration_number", choose_before_either_insert)
+    monkeypatch.setattr(api.secrets, "randbelow", lambda _: next(numbers))
+    monkeypatch.setattr(api, "hash_password", lambda _: password_hash)
+    payloads = [person_data(document=document, username=f"race_{index}", email=f"race{index}@example.org")
+        for index, document in enumerate(("52998224725", "11144477735"))]
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = list(executor.map(lambda payload: client.post("/api/auth/register", json=payload), payloads))
+    assert [response.status_code for response in responses] == [201, 201]
+    assert {response.json()["registration_number"] for response in responses} == {"123456", "123457"}
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 2
+        assert set(db.execute(select(api.users.c.document)).scalars()) == {"52998224725", "11144477735"}
+
+
+def test_concurrent_person_identity_conflict_still_returns_409(
+    client, person_data, api, monkeypatch, password_hash,
+):
+    barrier = Barrier(2)
+    def hash_after_both_prechecks(password):
+        barrier.wait(timeout=15)
+        return password_hash
+    monkeypatch.setattr(api, "hash_password", hash_after_both_prechecks)
+    payload = person_data()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = list(executor.map(lambda _: client.post("/api/auth/register", json=payload), range(2)))
+    assert sorted(response.status_code for response in responses) == [201, 409]
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 1
+
+
+@pytest.mark.parametrize("generated_field", ["slug", "registration_number"])
+def test_generated_value_retry_is_bounded_and_rolls_back_incomplete_registration(
+    client, api, user_factory, organization_factory, institution_data, person_data, monkeypatch, generated_field,
+):
+    if generated_field == "slug":
+        owner = user_factory(kind="project")
+        organization_factory(owner, name="Nome ocupado")
+        monkeypatch.setattr(api, "unique_slug", lambda *args: "nome-ocupado")
+        endpoint, payload = "/api/auth/register-institution", institution_data()
+    else:
+        user_factory()
+        monkeypatch.setattr(api, "generate_registration_number", lambda *args: "000001")
+        endpoint, payload = "/api/auth/register", person_data()
+    response = client.post(endpoint, json=payload)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Não foi possível concluir o cadastro. Tente novamente."}
+    with api.connect() as db:
+        assert db.scalar(select(func.count()).select_from(api.users)) == 1
+        assert db.scalar(select(func.count()).select_from(api.organizations)) == (generated_field == "slug")
+
+
 @pytest.mark.parametrize("existing,new", [
     ("11222333000181", "11444777000161"), ("11222333000181", None), (None, "11444777000161"),
 ])
@@ -241,3 +330,19 @@ def test_seed_requires_explicit_supported_environment(api, monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["seed", "--environment", "test"])
     seed.main()
     assert "Seed explícito concluído" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("domain,is_demo", [
+    ("socialtrade.local", True), ("impactledger.local", True),
+    ("socialtrade.local.example.org", False), ("impactledger.local.example.org", False),
+])
+def test_legacy_and_current_demo_domains_are_flagged_in_private_and_public_profiles(
+    client, user_factory, organization_factory, login, domain, is_demo,
+):
+    owner = user_factory(kind="project", email="demo@" + domain)
+    organization_factory(owner)
+    own = client.get("/api/organizations/mine", headers=login(owner)).json()[0]
+    assert own["is_demo"] is is_demo
+    public = client.get("/api/public/organizations/" + own["slug"]).json()
+    assert public["is_demo"] is is_demo
+    assert client.get("/api/public/projects").json()[0]["is_demo"] is is_demo
