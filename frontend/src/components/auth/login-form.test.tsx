@@ -37,14 +37,14 @@ describe("formulário de entrada", () => {
 
     const document = screen.getByLabelText("CPF ou CNPJ");
     expect(document).toHaveAttribute("aria-invalid", "true");
-    expect(document).toHaveAccessibleDescription("Informe seu CPF (11 dígitos) ou CNPJ (14 dígitos).");
+    expect(document).toHaveAccessibleDescription("Informe seu CPF (11 dígitos) ou CNPJ (14 caracteres).");
     expect(screen.getByLabelText("Senha")).toHaveAccessibleDescription("Informe sua senha.");
     await waitFor(() => expect(document).toHaveFocus());
     expect(loginRequest).not.toHaveBeenCalled();
   });
 
   it.each([
-    ["Empresa", "CNPJ da empresa", "52998224725", "Informe o CNPJ com 14 dígitos."],
+    ["Empresa", "CNPJ da empresa", "52998224725", "Informe o CNPJ com 14 caracteres (letras ou números e 2 dígitos finais)."],
     ["Pessoa", "Seu CPF", "04252011000110", "Informe o CPF com 11 dígitos."],
   ])("valida o documento da opção %s", async (option, label, document, message) => {
     const user = userEvent.setup();
@@ -76,6 +76,45 @@ describe("formulário de entrada", () => {
     });
     expect(navigation.replace).toHaveBeenCalledWith("/painel/organizacoes");
   });
+
+  it.each(["donor", "project"])("envia CNPJ alfanumérico sem perder letras no acesso %s", async (kind) => {
+    navigation.params = new URLSearchParams(`tipo=${kind}`);
+    loginRequest.mockResolvedValueOnce(jsonResponse(makeSession("novo")));
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    const field = screen.getByLabelText(kind === "donor" ? "CNPJ da empresa" : "CPF ou CNPJ");
+    expect(field).toHaveAttribute("inputmode", "text");
+    await user.type(field, "12.abc.345/01de-35");
+    await user.type(screen.getByLabelText("Senha"), "SenhaDeTeste123!");
+    await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
+    await waitFor(() => expect(auth.login).toHaveBeenCalled());
+    const request = fetchMock.mock.calls.find(([path]) => path === "/api/auth/login");
+    expect(JSON.parse(request?.[1]?.body as string).document).toBe("12ABC34501DE35");
+  });
+
+  it("preserva o login do CPF fictício da demonstração", async () => {
+    navigation.params = new URLSearchParams("tipo=person");
+    loginRequest.mockResolvedValueOnce(jsonResponse(makeSession("demo")));
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    expect(screen.getByLabelText("Seu CPF")).toHaveAttribute("inputmode", "numeric");
+    await user.type(screen.getByLabelText("Seu CPF"), "11111111111");
+    await user.type(screen.getByLabelText("Senha"), "SocialTrade123!");
+    await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
+    await waitFor(() => expect(auth.login).toHaveBeenCalled());
+  });
+
+  it.each(["12ABC34501DE3A", "12ABC34501DÉ35", "1234567890A", "12ABC34501DE35!", "12 ABC34501DE35", "12/ABC/345/01DE/35", "12AſC34501DE20", "12.AſC.345/01DE-20", "12Aß4501DE313", "12.Aß.450/1DE3-13"])(
+    "não transforma documento malformado em outro documento válido: %s", async (document) => {
+      const user = userEvent.setup();
+      render(<LoginForm />);
+      await user.type(screen.getByLabelText("CPF ou CNPJ"), document);
+      await user.type(screen.getByLabelText("Senha"), "SenhaDeTeste123!");
+      await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
+      expect(loginRequest).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("CPF ou CNPJ")).toHaveAttribute("aria-invalid", "true");
+    },
+  );
 
   it("mantém o formulário bloqueado durante envio e bloqueia redirecionamento externo", async () => {
     navigation.params = new URLSearchParams("tipo=person&proximo=https://example.test/painel");

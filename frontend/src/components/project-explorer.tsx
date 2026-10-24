@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { areaLabels } from "@/lib/catalog";
+import { areaLabels, compareRecentProjects } from "@/lib/catalog";
 import type { Project } from "@/lib/types";
 
 function normalize(value: string) {
@@ -88,7 +88,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
         .sort((a, b) =>
           order === "nome"
             ? a.name.localeCompare(b.name, "pt-BR")
-            : Date.parse(b.created_at) - Date.parse(a.created_at),
+            : compareRecentProjects(a, b),
         ),
     [projects, querySearch, cause, location, order],
   );

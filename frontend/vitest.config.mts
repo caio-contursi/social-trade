@@ -19,6 +19,7 @@ export default defineConfig({
         "src/components/auth/validation.ts",
         "src/components/auth/login-form.tsx",
         "src/lib/api.ts",
+        "src/lib/catalog.ts",
       ],
     },
   },

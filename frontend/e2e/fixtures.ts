@@ -1,7 +1,7 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export const password = "TesteLocalSeguro123!";
-export const donorDocument = "12345678000195";
+export const donorDocument = "04252011000110";
 export const projectName = "Projeto Educação Aberta";
 export const projectObjective = "Ampliar o acesso à educação no bairro.";
 

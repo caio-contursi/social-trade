@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Catalog, Organization } from "@/lib/types";
 import { OrganizationEditor } from "./organizations";
+import { jsonResponse } from "@/test/helpers";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
@@ -130,5 +131,38 @@ describe("editor de organização", () => {
     expect(screen.getByText("Disponível")).toBeInTheDocument();
     expect(screen.getByText("Em breve")).toBeInTheDocument();
     expect(screen.getByText("Planejado, sem previsão")).toBeInTheDocument();
+  });
+
+  it("preserva o CNPJ alfanumérico salvo e o normaliza no envio da edição", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(organization()));
+    const user = userEvent.setup();
+    renderEditor(organization({ cnpj: "12.abc.345/01de-35" }));
+    const cnpj = screen.getByLabelText(/CNPJ/);
+    expect(cnpj).toHaveAttribute("inputmode", "text");
+    expect(cnpj).toHaveAttribute("readonly");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string).cnpj).toBe("12ABC34501DE35");
+  });
+
+  it("rejeita CNPJ alfanumérico com DV incorreto e foca o campo", async () => {
+    const user = userEvent.setup();
+    renderEditor(organization({ cnpj: "12ABC34501DE34" }));
+    const cnpj = screen.getByLabelText(/CNPJ/);
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(cnpj).toHaveFocus());
+    expect(cnpj).toHaveAccessibleDescription("Informe um CNPJ válido, numérico ou alfanumérico.");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("mantém CNPJ institucional já salvo somente para leitura", () => {
+    renderEditor(organization({ cnpj: "12ABC34501DE35" }));
+    expect(screen.getByLabelText(/CNPJ/)).toHaveAttribute("readonly");
+  });
+
+  it("não altera a identidade de perfil legado sem CNPJ", () => {
+    renderEditor(organization({ cnpj: null }));
+    expect(screen.getByLabelText(/CNPJ/)).toHaveAttribute("readonly");
+    expect(screen.getByLabelText(/CNPJ/)).toHaveValue("");
   });
 });

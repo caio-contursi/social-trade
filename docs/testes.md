@@ -1,6 +1,6 @@
 # Testes automatizados
 
-A suíte acompanha a aplicação que existe hoje, antes das próximas mudanças da stack V2. Ela combina testes da API com pytest, testes de componentes e contratos com Vitest/Testing Library e fluxos reais no Chromium com Playwright.
+A suíte verifica a aplicação com PostgreSQL, SQLAlchemy 2 e Alembic, incluindo o importador do SQLite legado. Ela combina testes da API com pytest, testes de componentes e contratos com Vitest/Testing Library e fluxos reais no Chromium com Playwright.
 
 ## Preparar o ambiente
 
@@ -36,9 +36,10 @@ O Playwright baixa uma versão própria do Chromium; ele não precisa usar seu C
 
 ## API
 
-A partir da raiz do repositório:
+Crie um banco PostgreSQL 17 exclusivo de testes, configure a autenticação localmente e defina `SOCIALTRADE_TEST_DATABASE_URL`. Exemplo sem credenciais embutidas, a partir da raiz:
 
 ```powershell
+$env:SOCIALTRADE_TEST_DATABASE_URL = 'postgresql+psycopg://postgres@127.0.0.1:5432/socialtrade_test'
 .\.venv\Scripts\python.exe -m pytest
 ```
 
@@ -52,7 +53,7 @@ Com o ambiente virtual ativado, o executável pode ser substituído por `python`
 
 A suíte verifica cadastro e login, assinatura e expiração de sessão, armazenamento de senhas, validação de documentos e textos, conflitos de cadastro, rollback, vínculo com projetos, edição por proprietário, separação entre contas, suporte, moderação e privacidade das respostas públicas. Os 11 cenários anteriores de organizações foram preservados.
 
-O `conftest.py` substitui a configuração antes de importar a aplicação: bloqueia a leitura de `.env`, desativa demonstrações e usa um banco SQLite em uma pasta temporária. Os dados são limpos entre testes; não é necessário iniciar a API manualmente.
+O `conftest.py` substitui a configuração antes de importar a aplicação: bloqueia a leitura de `.env`, desativa demonstrações e exige a URL exclusiva de teste. Cria um schema aleatório, aplica Alembic e o remove ao terminar. Os dados são limpos entre testes; não é necessário iniciar a API manualmente.
 
 ## Frontend
 
@@ -70,11 +71,11 @@ Execute os comandos abaixo dentro de `frontend/`:
 
 O comando `test:unit` também está disponível como sinônimo de `npm test`. Os testes do frontend cobrem os contratos HTTP, os formulários de acesso e validação e o ciclo da sessão, incluindo respostas atrasadas, expiração e troca de conta.
 
-A cobertura do Vitest está delimitada a quatro módulos críticos: `src/lib/api.ts`, `src/components/auth-provider.tsx`, `src/components/auth/validation.ts` e `src/components/auth/login-form.tsx`. Ela não representa a cobertura de todas as páginas e componentes da interface.
+A cobertura do Vitest está delimitada a módulos críticos selecionados, incluindo documentos e datas, além de `src/lib/api.ts`, `src/components/auth-provider.tsx`, `src/components/auth/validation.ts` e `src/components/auth/login-form.tsx`. Ela não representa a cobertura de todas as páginas e componentes da interface.
 
 ## Fluxos no navegador e isolamento
 
-Use `npm run test:e2e` para iniciar o Playwright pelo wrapper de isolamento. Ele cria um banco temporário, desativa a leitura do `.env` da API e a criação de contas de demonstração e prepara os dados dos cenários. O build usa `.next-e2e`, separado do build de desenvolvimento.
+Use `npm run test:e2e` para iniciar o Playwright pelo wrapper de isolamento. Ele cria um schema exclusivo no banco definido por `SOCIALTRADE_TEST_DATABASE_URL`, desativa a leitura do `.env` da API e a apresentação de demonstrações, aplica Alembic e executa o seed explicitamente para os cenários. O build usa `.next-e2e`, separado do build de desenvolvimento.
 
 O runner inicia os servidores de teste: API em `127.0.0.1:8765` e frontend em `127.0.0.1:3100`. A configuração recusa reutilizar servidores já abertos nessas portas. Não é necessário parar a aplicação local das portas 8000 e 3000.
 
@@ -109,11 +110,11 @@ O piso automático da API é 90%. A cobertura do frontend explicita seu escopo e
 
 O workflow `.github/workflows/testes.yml` roda em pushes e pull requests:
 
-- API com Python 3.12 no Ubuntu e no Windows.
+- API com Python 3.12 e um serviço PostgreSQL 17 no Ubuntu.
 - TypeScript e Vitest com Node.js 24 no Ubuntu.
-- Build e Playwright com Chromium no Ubuntu.
+- Build e Playwright com Chromium e PostgreSQL 17 no Ubuntu.
 
-Execuções anteriores da mesma referência são canceladas quando uma nova começa. A integração contínua possui permissão de leitura do repositório e preserva relatórios por 14 dias, inclusive quando um teste falha. Não são necessárias credenciais de banco, de pagamentos ou de Solana.
+Execuções anteriores da mesma referência são canceladas quando uma nova começa. A integração contínua possui permissão de leitura do repositório e preserva relatórios por 14 dias, inclusive quando um teste falha. O banco efêmero da CI não usa credenciais de produção. Pagamentos e Solana não são acessados.
 
 ## Limites atuais
 
@@ -127,4 +128,11 @@ Com o runtime empacotado Node.js 24.19.0 no Windows, o Vitest emitiu um aviso de
 
 O TestClient instalado também emite um aviso de depreciação upstream sobre httpx. Isso não altera as asserções nem o resultado dos testes.
 
-Os limites mínimos nos quatro módulos monitorados do frontend são 95% de linhas e statements e 90% de branches e funções. Esses números não representam cobertura global de todas as telas.
+Os limites mínimos nos módulos monitorados do frontend são 95% de linhas e statements e 90% de branches e funções. Esses números não representam cobertura global de todas as telas.
+
+
+## Migração e integridade
+
+Os testes usam PostgreSQL real para conferir PKs, FKs, índices únicos sem distinção de caixa, CHECKs, identidades, TIMESTAMPTZ, catálogos e política de exclusão. O importador é exercitado com SQLite sintético: simulação sem escrita, exceção restrita dos CPFs demo, preservação de IDs e hashes, conferência integral por checksum, conflitos, schema/revisão incorretos, origem alterada e rollback inclusive das identidades. A simulação e a cópia são testadas separadamente; a origem real do desenvolvedor nunca é usada pela suíte.
+
+As regressões da revisão da migração cobrem concorrência de cadastros distintos com o mesmo slug/matrícula gerados, preservação de IDs excluídos via `sqlite_sequence`, tabelas extras cujo nome começa por `sqlite` sem sublinhado, relatório apontando para hardlink da origem, falha de escrita do relatório após commit, demonstrações do domínio antigo, caracteres não ASCII em documentos, NUL em textos e precisão excessiva de timestamps.

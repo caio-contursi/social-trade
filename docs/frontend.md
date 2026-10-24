@@ -2,14 +2,14 @@
 
 ## Arquitetura
 
-O diretório `frontend/` contém a interface Next.js com App Router, React e TypeScript. Tailwind CSS organiza os estilos e componentes oficiais do shadcn/ui, apoiados em primitivas Radix, formam a base de controles, formulários e sobreposições. A API continua em FastAPI, com dados persistidos em SQLite.
+O diretório `frontend/` contém a interface Next.js com App Router, React e TypeScript. Tailwind CSS organiza os estilos e componentes oficiais do shadcn/ui, apoiados em primitivas Radix, formam a base de controles, formulários e sobreposições. A API continua em FastAPI, com dados persistidos em PostgreSQL por SQLAlchemy 2; Alembic versiona o esquema.
 
 ```text
 Navegador :3000
   └─ Next.js: páginas, componentes e /api/*
        └─ rewrite para SOCIALTRADE_API_URL
             └─ FastAPI :8000
-                 └─ SQLite
+                 └─ PostgreSQL
 ```
 
 As chamadas do navegador usam caminhos `/api/...` na mesma origem. `frontend/next.config.ts` encaminha esses caminhos para `SOCIALTRADE_API_URL`, com padrão `http://127.0.0.1:8000`. Essa arquitetura local dispensa configuração de CORS. A URL deve ser acessível pelo processo do Next.js; o segredo de assinatura de sessão pertence exclusivamente ao backend.
@@ -47,7 +47,7 @@ Essas rotas são servidas na porta 3000. Na porta 8000, o FastAPI mantém `/` e 
 
 ## Execução no Windows
 
-Requer Python 3.11 ou superior e Node.js 20.9 ou superior. Abra dois terminais PowerShell na raiz do repositório.
+Requer Python 3.12, Node.js 24 e PostgreSQL 17. Crie um banco local e configure a URL PostgreSQL e o segredo de sessão em `.env`, conforme o [README](../README.md). Abra dois terminais PowerShell na raiz do repositório.
 
 API:
 
@@ -55,6 +55,7 @@ API:
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 if (-not (Test-Path -LiteralPath '.env')) { Copy-Item -LiteralPath '.env.example' -Destination '.env' }
+.\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -95,7 +96,7 @@ $env:PYTHONDONTWRITEBYTECODE = '1'
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-O comando equivalente com ambiente virtual ativado é `python -m pytest`. Os testes criam um SQLite temporário, impedem a leitura de `.env` e desativam o seed de demonstrações. Eles não modificam `socialtrade.db` ou contas existentes.
+O comando equivalente com ambiente virtual ativado é `python -m pytest`. Os testes exigem `SOCIALTRADE_TEST_DATABASE_URL`, criam um schema PostgreSQL isolado, impedem a leitura de `.env` e desativam demonstrações. Eles não modificam `socialtrade.db` ou contas existentes.
 
 ## Direção visual e acessibilidade
 
@@ -140,10 +141,17 @@ Não há carteira, pagamento de doação, transação Solana, comprovante financ
 
 ## Preservação de dados e configuração
 
-A migração do front-end mantém o SQLite e as contas existentes. Não recria, limpa ou substitui o banco. Os novos metadados de apresentação são calculados na leitura; a introdução da interface não converte projetos demonstrativos em dados reais.
+A persistência atual usa PostgreSQL. O importador explícito preserva o SQLite legado e suas contas; veja [migração PostgreSQL](migracao-postgresql.md). Os novos metadados de apresentação são calculados na leitura; a introdução da interface não converte projetos demonstrativos em dados reais.
 
-Na operação normal, a configuração preexistente `SOCIALTRADE_DEMO_USERS=true` mantém o comportamento do seed da API ao iniciar. A migração não muda esse seed. `false` desativa sua execução, mas não apaga contas já gravadas; produção deve usar configuração e dados próprios.
+`SOCIALTRADE_DEMO_USERS` controla a apresentação das demonstrações na interface. O seed só é executado por comando explícito em desenvolvimento/teste, nunca no startup; produção deve usar configuração e dados próprios.
 
 Mantenha `.env`, `frontend/.env.local`, segredos e arquivos SQLite fora do versionamento. Exemplos versionados devem conter somente valores demonstrativos. Tokens e a chave `SOCIALTRADE_TOKEN_SECRET` não pertencem ao bundle do navegador nem a variáveis `NEXT_PUBLIC_*`. Revise HTTPS, autenticação, limites, migrações e backups antes de publicar.
 
 A suíte completa, incluindo componentes e jornadas de navegador, está documentada em [testes.md](testes.md).
+
+
+## Documentos e datas na migração PostgreSQL
+
+CNPJ pode ser numérico ou alfanumérico: 12 posições alfanuméricas e dois dígitos verificadores. Cadastro valida DV; login preserva documentos legados de demonstração. Formas aceitas: documento puro ou máscara padrão, com maiúsculas canônicas e zeros preservados. Perfil institucional mantém o CNPJ salvo somente para leitura, inclusive quando nulo; a API aplica a mesma regra.
+
+A API serializa datas ISO 8601 com fuso explícito. `formatDate` e a ordenação por data tratam também os valores legados como UTC; empates são resolvidos pelo ID. O E2E exige `SOCIALTRADE_TEST_DATABASE_URL`, prepara um schema randômico exclusivo, aplica Alembic e seed de teste explícito e remove apenas esse schema ao terminar.

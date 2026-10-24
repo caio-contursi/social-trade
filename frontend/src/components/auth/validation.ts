@@ -2,9 +2,19 @@ export function digits(value: string) {
   return value.replace(/\D/g, "");
 }
 
+/** Aceita o documento puro ou sua máscara padrão, preservando letras e zeros. */
+export function normalizeDocument(value: string) {
+  const trimmed = value.trim();
+  if (/[^\x00-\x7F]/.test(trimmed)) return trimmed;
+  const document = trimmed.toUpperCase();
+  const standardCpf = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(document);
+  const standardCnpj = /^[A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z0-9]{3}\/[A-Z0-9]{4}-\d{2}$/.test(document);
+  return standardCpf || standardCnpj ? document.replace(/[.\-/]/g, "") : document;
+}
+
 export function validCpf(value: string): boolean {
-  const number = digits(value);
-  if (number.length !== 11 || /^(\d)\1+$/.test(number)) return false;
+  const number = normalizeDocument(value);
+  if (!/^\d{11}$/.test(number) || /^(\d)\1+$/.test(number)) return false;
   for (const length of [9, 10]) {
     const total = number
       .slice(0, length)
@@ -21,14 +31,15 @@ export function validCpf(value: string): boolean {
 }
 
 export function validCnpj(value: string): boolean {
-  const number = digits(value);
-  if (number.length !== 14 || /^(\d)\1+$/.test(number)) return false;
+  const number = normalizeDocument(value);
+  if (!/^[A-Z0-9]{12}[0-9]{2}$/.test(number) || /^(\d)\1+$/.test(number))
+    return false;
   for (const weights of [
     [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
     [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
   ]) {
     const total = weights.reduce(
-      (sum, weight, index) => sum + Number(number[index]) * weight,
+      (sum, weight, index) => sum + (number.charCodeAt(index) - 48) * weight,
       0,
     );
     const remainder = total % 11;

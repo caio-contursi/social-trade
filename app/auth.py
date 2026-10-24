@@ -1,7 +1,9 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 
 from app.database import connect
+from app.models import users
 from app.security import read_token
 
 
@@ -14,14 +16,15 @@ def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bear
     user_id = read_token(credentials.credentials)
     if user_id is None:
         raise HTTPException(status_code=401, detail="Sua sessão expirou. Entre novamente.")
-    db = connect()
-    try:
-        row = db.execute("SELECT id, full_name, username, email, phone, title AS responsible_title, role, document, account_type, registration_number, created_at FROM users WHERE id=?", (user_id,)).fetchone()
+    with connect() as db:
+        row = db.execute(select(
+            users.c.id, users.c.full_name, users.c.username, users.c.email, users.c.phone,
+            users.c.title.label("responsible_title"), users.c.role, users.c.document,
+            users.c.account_type, users.c.registration_number, users.c.created_at,
+        ).where(users.c.id == user_id)).mappings().first()
         if row is None:
             raise HTTPException(status_code=401, detail="Conta não encontrada.")
         return dict(row)
-    finally:
-        db.close()
 
 
 def moderator(user=Depends(current_user)):

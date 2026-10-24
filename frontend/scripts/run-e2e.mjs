@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { createConnection } from "node:net";
+import { randomUUID } from "node:crypto";
 
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(frontend, "..");
@@ -16,11 +17,16 @@ const servers = [];
 let activeCommand;
 let interrupted = false;
 let lockOwned = false;
+let schemaCreated = false;
+const databaseSchema = `st_e2e_${randomUUID().replaceAll("-", "")}`;
 const lockPath = join(frontend, ".e2e-run.lock");
 const env = {
   ...process.env,
   SOCIALTRADE_E2E: "1",
-  SOCIALTRADE_DB: join(directory, "database.sqlite"),
+  // Apenas a URL de teste explícita é aceita. A configuração normal da aplicação
+  // nunca é usada como alternativa para preparar ou limpar os dados do E2E.
+  SOCIALTRADE_DATABASE_URL: process.env.SOCIALTRADE_TEST_DATABASE_URL || "",
+  SOCIALTRADE_DATABASE_SCHEMA: databaseSchema,
   SOCIALTRADE_DEMO_USERS: "false",
   SOCIALTRADE_TOKEN_SECRET: "isolated-e2e-secret-not-for-production",
   PYTHON_DOTENV_DISABLED: "1",
@@ -34,6 +40,38 @@ env.SOCIALTRADE_API_URL = `http://127.0.0.1:${apiPort}`;
 env.SOCIALTRADE_E2E_FRONTEND_PORT = String(frontendPort);
 const virtualPython = join(repo, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
 const python = process.env.SOCIALTRADE_TEST_PYTHON || (existsSync(virtualPython) ? virtualPython : "python");
+delete env.SOCIALTRADE_DB;
+
+async function runPython(args) {
+  const entry = start(python, args, repo, "Preparação PostgreSQL");
+  activeCommand = entry;
+  const code = await entry.exited;
+  activeCommand = undefined;
+  if (entry.error) throw entry.error;
+  if (code !== 0) throw new Error(`Preparação PostgreSQL terminou com código ${code}.`);
+}
+
+async function changeTestSchema(action) {
+  if (!/^st_e2e_[a-f0-9]{32}$/.test(databaseSchema)) {
+    throw new Error("Nome de schema E2E inválido; nenhuma limpeza será executada.");
+  }
+  // O nome vem exclusivamente do UUID desta execução, jamais de um env externo.
+  await runPython(["-c", `
+import os, re
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
+schema = os.environ["SOCIALTRADE_DATABASE_SCHEMA"]
+assert re.fullmatch(r"st_e2e_[a-f0-9]{32}", schema), "Schema E2E inválido"
+url = make_url(os.environ["SOCIALTRADE_DATABASE_URL"])
+assert url.get_backend_name() == "postgresql", "E2E exige PostgreSQL real"
+engine = create_engine(url.set(drivername="postgresql+psycopg"))
+try:
+    with engine.begin() as connection:
+        connection.execute(text('${action === "create" ? "CREATE SCHEMA" : "DROP SCHEMA IF EXISTS"} "' + schema + '"${action === "create" ? "" : " CASCADE"}'))
+finally:
+    engine.dispose()
+`]);
+}
 
 function start(command, args, cwd, label, quiet = false) {
   const child = spawn(command, args, {
@@ -156,12 +194,19 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 }
 
 try {
+  if (!/^postgresql\+psycopg:\/\//.test(env.SOCIALTRADE_DATABASE_URL)) {
+    throw new Error("Defina SOCIALTRADE_TEST_DATABASE_URL para um PostgreSQL real e exclusivo de testes antes do E2E.");
+  }
   if (![apiPort, frontendPort].every((port) => Number.isInteger(port) && port >= 1024 && port <= 65535) || apiPort === frontendPort) {
     throw new Error("Configure duas portas de teste diferentes entre 1024 e 65535.");
   }
   await acquireLock();
   await writeFile(join(directory, ".socialtrade-test"), "isolated-e2e\n");
   await Promise.all([assertFree(apiPort), assertFree(frontendPort)]);
+  await changeTestSchema("create");
+  schemaCreated = true;
+  await runPython(["-m", "alembic", "upgrade", "head"]);
+  await runPython(["-m", "app.seed", "--environment", "test"]);
   await run("node_modules/next/dist/bin/next", ["build"]);
   if (interrupted) throw new Error("Execução interrompida.");
   servers.push(start(python, ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(apiPort)], repo, "API isolada", true));
@@ -177,6 +222,10 @@ try {
 } finally {
   for (const entry of servers.reverse()) {
     try { await stop(entry); } catch (error) { console.error(error.message); process.exitCode = 1; }
+  }
+  if (schemaCreated) {
+    try { await changeTestSchema("drop"); }
+    catch (error) { console.error(`Não foi possível limpar o schema de testes: ${error.message}`); process.exitCode = 1; }
   }
   if (lockOwned) await unlink(lockPath).catch((error) => { console.error(error.message); process.exitCode = 1; });
   try { await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); }

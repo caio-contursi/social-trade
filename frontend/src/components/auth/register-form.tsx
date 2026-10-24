@@ -34,7 +34,7 @@ import { api } from "@/lib/api";
 import { areaLabels, brazilStates, organizationLabels } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 import type { AccountIntent, MessageResponse } from "@/lib/types";
-import { digits, validCnpj, validCpf } from "./validation";
+import { normalizeDocument, validCnpj, validCpf } from "./validation";
 
 const initialValues = {
   full_name: "",
@@ -214,7 +214,7 @@ export function RegisterForm() {
     setPending(true);
     const access = {
       full_name: values.full_name.trim(),
-      document: digits(values.document),
+      document: normalizeDocument(values.document),
       email: values.email.trim(),
       phone: values.phone.trim() || null,
       password: values.password,
@@ -240,7 +240,7 @@ export function RegisterForm() {
               organization_type:
                 intent === "donor" ? "company" : values.organization_type,
               institution_kind: intent,
-              cnpj: digits(values.document),
+              cnpj: normalizeDocument(values.document),
               city: values.city.trim(),
               state: values.state,
               short_description: values.short_description.trim(),
@@ -615,7 +615,9 @@ export function RegisterForm() {
               "document",
               intent === "person" ? "CPF" : "CNPJ da instituição",
               {
-                inputMode: "numeric",
+                inputMode: intent === "person" ? "numeric" : "text",
+                autoCapitalize: "characters",
+                spellCheck: false,
                 autoComplete: "off",
                 maxLength: 18,
                 placeholder:
@@ -623,7 +625,7 @@ export function RegisterForm() {
                 help:
                   intent === "person"
                     ? "Você usará seu CPF para entrar na plataforma."
-                    : "O CNPJ será o documento de acesso da instituição.",
+                    : "O CNPJ será seu acesso. Aceita números ou letras, com 2 dígitos finais.",
               },
             )}
             <div className="grid gap-6 sm:grid-cols-2">

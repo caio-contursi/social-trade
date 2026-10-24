@@ -62,7 +62,7 @@
           <button class="access-choice" type="button" data-account-type="donor"><span class="access-choice-icon">↗</span><strong>Empresa doadora</strong><small>Descubra projetos para apoiar</small></button>
           <button class="access-choice active" type="button" data-account-type="project"><span class="access-choice-icon">♡</span><strong>Projeto social</strong><small>Apresente sua causa e impacto</small></button>
         </div>
-        <label>CPF ou CNPJ<input id="login-document" name="document" type="text" inputmode="numeric" autocomplete="username" minlength="11" maxlength="18" placeholder="000.000.000-00 ou CNPJ" required></label>
+        <label>CPF ou CNPJ<input id="login-document" name="document" type="text" inputmode="text" autocomplete="username" minlength="11" maxlength="18" placeholder="000.000.000-00 ou CNPJ" required></label>
         <label>Senha<input name="password" type="password" autocomplete="current-password" placeholder="Sua senha" required></label>
         <button class="button button-primary button-wide" type="submit">Entrar na plataforma <span>→</span></button>
         <p class="form-footnote">Ainda não tem cadastro? <button class="text-button" type="button" data-show-register>Crie sua conta</button></p>
@@ -105,7 +105,7 @@
           <div class="form-grid">
             <label class="span-2">Nome da instituição<input name="institution_name" minlength="2" maxlength="160" placeholder="Razão social ou nome do projeto"></label>
             <label>Tipo de instituição<select name="institution_kind"><option value="project">Projeto social que receberá doações</option><option value="donor">Empresa doadora</option></select></label>
-            <label>CNPJ<input name="institution_document" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00"></label>
+            <label>CNPJ<input name="institution_document" inputmode="text" maxlength="18" placeholder="00.000.000/0000-00"></label>
             <label>E-mail de acesso<input name="institution_email" type="email" autocomplete="email"></label>
             <label>Nome do responsável<input name="institution_contact" minlength="2" maxlength="120"></label>
             <label>Telefone / WhatsApp <small>opcional</small><input name="institution_phone" type="tel" maxlength="30"></label>

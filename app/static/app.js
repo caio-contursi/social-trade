@@ -87,23 +87,34 @@ function syncInstitutionKind() {
   });
 }
 
+function normalizeDocument(raw) {
+  const trimmed = raw.trim();
+  if (/[^\x00-\x7F]/.test(trimmed)) return trimmed;
+  const value = trimmed.toUpperCase();
+  const cpfMask = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(value);
+  const cnpjMask = /^[A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z0-9]{3}\/[A-Z0-9]{4}-\d{2}$/.test(value);
+  return cpfMask || cnpjMask ? value.replace(/[.\-/]/g, '') : value;
+}
+
+function apiDate(raw) {
+  return new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) ? raw : raw + 'Z');
+}
+
 function validateCnpj(raw) {
-  const digits = raw.replace(/\D/g,'');
-  if (!digits) return true;
-  if (digits.length !== 14 || /^([0-9])\1+$/.test(digits)) return false;
-  const digit = (base, weights) => {
-    const sum = [...base].reduce((total, char, index) => total + Number(char) * weights[index], 0);
-    const remainder = sum % 11;
-    return remainder < 2 ? 0 : 11 - remainder;
-  };
-  const first = digit(digits.slice(0,12), [5,4,3,2,9,8,7,6,5,4,3,2]);
-  const second = digit(digits.slice(0,13), [6,5,4,3,2,9,8,7,6,5,4,3,2]);
-  return first === Number(digits[12]) && second === Number(digits[13]);
+  const document = normalizeDocument(raw);
+  if (!document) return true;
+  if (!/^[A-Z0-9]{12}\d{2}$/.test(document) || /^(\d)\1+$/.test(document)) return false;
+  for (const weights of [[5,4,3,2,9,8,7,6,5,4,3,2], [6,5,4,3,2,9,8,7,6,5,4,3,2]]) {
+    const total = weights.reduce((sum, weight, index) => sum + (document.charCodeAt(index) - 48) * weight, 0);
+    const remainder = total % 11;
+    if ((remainder < 2 ? 0 : 11 - remainder) !== Number(document[weights.length])) return false;
+  }
+  return true;
 }
 
 function validateCpf(raw) {
-  const digits = raw.replace(/\D/g,'');
-  if (digits.length !== 11 || /^([0-9])\1+$/.test(digits)) return false;
+  const digits = normalizeDocument(raw);
+  if (!/^\d{11}$/.test(digits) || /^([0-9])\1+$/.test(digits)) return false;
   for (const length of [9,10]) {
     const total = [...digits.slice(0,length)].reduce((sum,char,index)=>sum+Number(char)*(length+1-index),0);
     let check = (total*10)%11;
@@ -129,7 +140,7 @@ function setupRegistrationForm() {
   const institutionDocument = $('[name="institution_document"]');
   institutionDocument.addEventListener('blur', () => {
     const valid = validateCnpj(institutionDocument.value);
-    institutionDocument.setCustomValidity(valid ? '' : 'CNPJ inválido. Confira os 14 dígitos.');
+    institutionDocument.setCustomValidity(valid ? '' : 'CNPJ inválido. Confira os 14 caracteres.');
     if (!valid) institutionDocument.reportValidity();
   });
   const personDocument = $('[name="person_document"]');
@@ -148,10 +159,13 @@ function setupRegistrationForm() {
     const areas = $$('#area-options input:checked').map(input => input.value);
     $('#areas-error').textContent = mode === 'institution' && kind === 'project' && !areas.length ? 'Selecione ao menos uma área de atuação.' : '';
     if (mode === 'institution' && kind === 'project' && !areas.length) return;
+    const documentInput = mode === 'person' ? personDocument : institutionDocument;
+    const validDocument = mode === 'person' ? validateCpf(documentInput.value) : validateCnpj(documentInput.value);
+    documentInput.setCustomValidity(validDocument ? '' : (mode === 'person' ? 'CPF inválido.' : 'CNPJ inválido.'));
     if (!form.reportValidity()) return;
     let endpoint, body;
     if (mode === 'person') {
-      const document = values.person_document.replace(/\D/g,'');
+      const document = normalizeDocument(values.person_document);
       endpoint = '/api/auth/register';
       body = {
         full_name: values.person_full_name.trim(), username: document, email: values.person_email.trim(), document,
@@ -162,7 +176,7 @@ function setupRegistrationForm() {
       };
       if (body.member_project_id && !body.member_role) { toast('Selecione se o usuário será funcionário ou assistido.', true); return; }
     } else {
-      const document = values.institution_document.replace(/\D/g,'');
+      const document = normalizeDocument(values.institution_document);
       const isProject = kind === 'project';
       endpoint = '/api/auth/register-institution';
       body = {
@@ -199,7 +213,9 @@ function setupRegistrationForm() {
 }
 
 async function login(document, password, accountType) {
-  const result = await api('/api/auth/login', {method:'POST', body:JSON.stringify({document,password,account_type:accountType})});
+  const number = normalizeDocument(document);
+  if (!/^(?:[0-9]{11}|[A-Z0-9]{12}[0-9]{2})$/.test(number)) throw new Error('Informe um CPF ou CNPJ válido.');
+  const result = await api('/api/auth/login', {method:'POST', body:JSON.stringify({document:number,password,account_type:accountType})});
   state.token = result.access_token; state.user = result.user;
   localStorage.setItem('socialtrade_token', state.token);
   localStorage.setItem('socialtrade_user', JSON.stringify(state.user));
@@ -333,7 +349,7 @@ function renderOrganizations() {
       $('#show-org-form').addEventListener('click', event => { event.currentTarget.classList.add('hidden'); $('#org-form-slot').innerHTML=orgFormMarkup(); bindOrgForm(); });
       return;
     }
-    target.innerHTML = `<div class="content-grid">${orgs.map(org=>`<article class="org-card"><div class="org-card-head"><span class="org-logo">${escapeHtml(org.name.slice(0,1).toUpperCase())}</span><div><h3>${escapeHtml(org.name)}</h3><div class="org-sub">${escapeHtml(org.city)} · ${escapeHtml(org.state)} · ${escapeHtml(org.organization_type.replaceAll('_',' '))}</div></div><span class="status-pill">Perfil completo</span></div><p>${escapeHtml(org.short_description)}</p><div class="tag-list">${org.areas.map(code=>`<span class="tag">${escapeHtml(areaLabel(code))}</span>`).join('')}</div><div class="org-meta"><span>Entrou em ${new Date(org.created_at+'Z').toLocaleDateString('pt-BR')}</span><span>${org.services.filter(item=>item.interested).length} serviços de interesse</span></div><a class="button button-soft org-public-link" target="_blank" rel="noopener" href="/public?slug=${encodeURIComponent(org.slug)}">Abrir página pública ↗</a></article>`).join('')}</div><div class="section-card panel-card" style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;gap:15px"><div><h3>Tem mais de uma iniciativa?</h3><span class="service-note">Adicione outro perfil organizacional à sua conta.</span></div><button class="button button-soft" id="show-org-form">Adicionar organização</button></div><div id="org-form-slot"></div>`;
+    target.innerHTML = `<div class="content-grid">${orgs.map(org=>`<article class="org-card"><div class="org-card-head"><span class="org-logo">${escapeHtml(org.name.slice(0,1).toUpperCase())}</span><div><h3>${escapeHtml(org.name)}</h3><div class="org-sub">${escapeHtml(org.city)} · ${escapeHtml(org.state)} · ${escapeHtml(org.organization_type.replaceAll('_',' '))}</div></div><span class="status-pill">Perfil completo</span></div><p>${escapeHtml(org.short_description)}</p><div class="tag-list">${org.areas.map(code=>`<span class="tag">${escapeHtml(areaLabel(code))}</span>`).join('')}</div><div class="org-meta"><span>Entrou em ${apiDate(org.created_at).toLocaleDateString('pt-BR')}</span><span>${org.services.filter(item=>item.interested).length} serviços de interesse</span></div><a class="button button-soft org-public-link" target="_blank" rel="noopener" href="/public?slug=${encodeURIComponent(org.slug)}">Abrir página pública ↗</a></article>`).join('')}</div><div class="section-card panel-card" style="margin-top:15px;display:flex;justify-content:space-between;align-items:center;gap:15px"><div><h3>Tem mais de uma iniciativa?</h3><span class="service-note">Adicione outro perfil organizacional à sua conta.</span></div><button class="button button-soft" id="show-org-form">Adicionar organização</button></div><div id="org-form-slot"></div>`;
     $('#show-org-form').addEventListener('click', event=>{event.currentTarget.classList.add('hidden');$('#org-form-slot').innerHTML=orgFormMarkup();bindOrgForm();});
   }).catch(error => { $('#organization-list').textContent=error.message; });
 }
@@ -344,35 +360,36 @@ function bindOrgForm() {
   cnpj.addEventListener('blur',()=>{const valid=validateCnpj(cnpj.value);cnpj.setCustomValidity(valid?'':'CNPJ inválido.');if(!valid)cnpj.reportValidity();});
   form.addEventListener('submit',async event=>{
     event.preventDefault();const areas=$$('input[name="areas"]:checked',form).map(input=>input.value);$('#org-areas-error').textContent=areas.length?'':'Selecione ao menos uma área.';
+    cnpj.setCustomValidity(validateCnpj(cnpj.value)?'':'CNPJ inválido.');
     if(!areas.length||!form.reportValidity())return;
     const values=Object.fromEntries(new FormData(form).entries());
-    const body={name:values.name.trim(),organization_type:values.organization_type,cnpj:values.cnpj||null,city:values.city.trim(),state:values.state,founding_year:values.founding_year?Number(values.founding_year):null,short_description:values.short_description.trim(),description:values.description||null,website_url:values.website_url||null,instagram_url:values.instagram_url||null,pix_key:values.pix_key||null,logo_url:values.logo_url||null,areas,interested_services:$$('input[name="interested_services"]:checked',form).map(input=>input.value)};
+    const body={name:values.name.trim(),organization_type:values.organization_type,cnpj:normalizeDocument(values.cnpj)||null,city:values.city.trim(),state:values.state,founding_year:values.founding_year?Number(values.founding_year):null,short_description:values.short_description.trim(),description:values.description||null,website_url:values.website_url||null,instagram_url:values.instagram_url||null,pix_key:values.pix_key||null,logo_url:values.logo_url||null,areas,interested_services:$$('input[name="interested_services"]:checked',form).map(input=>input.value)};
     try{await api('/api/organizations',{method:'POST',body:JSON.stringify(body)});toast('Organização adicionada.');renderOrganizations();}catch(error){toast(error.message,true);}
   });
 }
 
 function renderAnnouncements() {
   const page=$('#page-content');page.innerHTML=`${heading('COMUNIDADE','Avisos','Novidades e orientações para acompanhar sua jornada.')}<div id="announcements-list" class="announcement-list"><div class="loading">Carregando avisos…</div></div>`;
-  api('/api/announcements').then(items=>{$('#announcements-list').innerHTML=items.map(item=>`<article class="announcement-card"><span class="announcement-symbol">✳</span><div><span class="announcement-category">${escapeHtml(item.category)}</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.body)}</p></div><time class="announcement-date">${new Date(item.published_at+'Z').toLocaleDateString('pt-BR')}</time></article>`).join('')||'<section class="empty-state">Nenhum aviso publicado ainda.</section>';$('#notice-count').textContent=items.length;}).catch(error=>toast(error.message,true));
+  api('/api/announcements').then(items=>{$('#announcements-list').innerHTML=items.map(item=>`<article class="announcement-card"><span class="announcement-symbol">✳</span><div><span class="announcement-category">${escapeHtml(item.category)}</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.body)}</p></div><time class="announcement-date">${apiDate(item.published_at).toLocaleDateString('pt-BR')}</time></article>`).join('')||'<section class="empty-state">Nenhum aviso publicado ainda.</section>';$('#notice-count').textContent=items.length;}).catch(error=>toast(error.message,true));
 }
 
 function renderProfile() {
   setTimeout(()=>{const label=$('#profile-form [name="username"]')?.closest('label');if(label)label.childNodes[0].textContent='Matrícula / CPF ou CNPJ';},0);
   const page=$('#page-content');page.innerHTML=`${heading('SUA CONTA','Meu perfil','Confira e atualize as informações da sua conta.')}<div class="profile-layout"><form id="profile-form" class="profile-form"><h2>Informações pessoais</h2><label>Usuário<input name="username" disabled></label><label>Nome completo<input name="full_name" required minlength="2" maxlength="120"></label><label>E-mail<input name="email" type="email" disabled></label><label>Telefone<input name="phone" type="tel" maxlength="30"></label><label class="span-2">Cargo / função<input name="responsible_title" maxlength="80"></label><button class="button button-primary" type="submit">Salvar alterações <span>→</span></button></form><aside class="profile-aside"><span class="profile-avatar-large" id="profile-avatar">U</span><h3 id="profile-name">Usuário</h3><p id="profile-email"></p><span class="profile-role" id="profile-role"></span><div style="margin-top:20px"><div class="profile-detail"><span>Conta criada</span><strong id="profile-created">—</strong></div><div class="profile-detail"><span>Tipo de acesso</span><strong id="profile-access">—</strong></div></div><p class="status-note">A função define quais áreas da plataforma ficam disponíveis para esta conta.</p></aside></div>`;
-  api('/api/profile').then(user=>{const form=$('#profile-form');form.elements.username.value=user.registration_number||user.document||user.username;form.elements.full_name.value=user.full_name;form.elements.email.value=user.email;form.elements.phone.value=user.phone||'';form.elements.responsible_title.value=user.responsible_title||'';$('#profile-name').textContent=user.full_name;$('#profile-email').textContent=user.email;$('#profile-role').textContent=user.role_label;$('#profile-avatar').textContent=user.full_name.trim()[0].toUpperCase();$('#profile-created').textContent=new Date(user.created_at+'Z').toLocaleDateString('pt-BR');$('#profile-access').textContent=user.account_type==='donor'?'Empresa doadora':user.account_type==='project'?'Projeto social':user.role_label;form.addEventListener('submit',async event=>{event.preventDefault();try{const result=await api('/api/profile',{method:'PATCH',body:JSON.stringify({full_name:form.elements.full_name.value,phone:form.elements.phone.value||null,responsible_title:form.elements.responsible_title.value||null})});state.user.full_name=form.elements.full_name.value;localStorage.setItem('socialtrade_user',JSON.stringify(state.user));$('#header-name').textContent=state.user.full_name;$('#header-avatar').textContent=state.user.full_name.trim()[0].toUpperCase();$('#profile-name').textContent=state.user.full_name;toast(result.message);}catch(error){toast(error.message,true);}});}).catch(error=>toast(error.message,true));
+  api('/api/profile').then(user=>{const form=$('#profile-form');form.elements.username.value=user.registration_number||user.document||user.username;form.elements.full_name.value=user.full_name;form.elements.email.value=user.email;form.elements.phone.value=user.phone||'';form.elements.responsible_title.value=user.responsible_title||'';$('#profile-name').textContent=user.full_name;$('#profile-email').textContent=user.email;$('#profile-role').textContent=user.role_label;$('#profile-avatar').textContent=user.full_name.trim()[0].toUpperCase();$('#profile-created').textContent=apiDate(user.created_at).toLocaleDateString('pt-BR');$('#profile-access').textContent=user.account_type==='donor'?'Empresa doadora':user.account_type==='project'?'Projeto social':user.role_label;form.addEventListener('submit',async event=>{event.preventDefault();try{const result=await api('/api/profile',{method:'PATCH',body:JSON.stringify({full_name:form.elements.full_name.value,phone:form.elements.phone.value||null,responsible_title:form.elements.responsible_title.value||null})});state.user.full_name=form.elements.full_name.value;localStorage.setItem('socialtrade_user',JSON.stringify(state.user));$('#header-name').textContent=state.user.full_name;$('#header-avatar').textContent=state.user.full_name.trim()[0].toUpperCase();$('#profile-name').textContent=state.user.full_name;toast(result.message);}catch(error){toast(error.message,true);}});}).catch(error=>toast(error.message,true));
 }
 
 function ticketStatus(status){return {open:'Em aberto',in_progress:'Em andamento',resolved:'Resolvido'}[status]||status;}
 function renderSupport() {
   $('#page-content').innerHTML=`${heading('ESTAMOS POR AQUI','Suporte','Conte o que aconteceu. Nossa equipe vai ajudar você.')}<div class="support-layout"><form id="support-form" class="support-form"><h2>Enviar uma solicitação</h2><label>Assunto<input name="subject" minlength="4" maxlength="140" placeholder="Ex.: Preciso atualizar meu cadastro" required></label><label>Como podemos ajudar?<textarea name="message" minlength="10" maxlength="4000" rows="6" placeholder="Descreva sua dúvida ou o que aconteceu…" required></textarea></label><button class="button button-primary" type="submit">Enviar para o suporte <span>→</span></button></form><section class="ticket-list"><h2>Minhas solicitações</h2><div id="my-tickets" class="loading">Carregando…</div></section></div>`;
   $('#support-form').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;const body=Object.fromEntries(new FormData(form).entries());try{const result=await api('/api/support',{method:'POST',body:JSON.stringify(body)});form.reset();toast(result.message);renderSupport();}catch(error){toast(error.message,true);}});
-  api('/api/support/mine').then(tickets=>$('#my-tickets').innerHTML=tickets.map(ticket=>`<article class="ticket-card"><div class="ticket-head"><h3>${escapeHtml(ticket.subject)}</h3><span class="ticket-status ${ticket.status}">${ticketStatus(ticket.status)}</span></div><p>${escapeHtml(ticket.message)}</p><span class="ticket-date">Enviada em ${new Date(ticket.created_at+'Z').toLocaleDateString('pt-BR')}</span></article>`).join('')||'<span class="service-note">Você ainda não abriu solicitações.</span>').catch(error=>toast(error.message,true));
+  api('/api/support/mine').then(tickets=>$('#my-tickets').innerHTML=tickets.map(ticket=>`<article class="ticket-card"><div class="ticket-head"><h3>${escapeHtml(ticket.subject)}</h3><span class="ticket-status ${ticket.status}">${ticketStatus(ticket.status)}</span></div><p>${escapeHtml(ticket.message)}</p><span class="ticket-date">Enviada em ${apiDate(ticket.created_at).toLocaleDateString('pt-BR')}</span></article>`).join('')||'<span class="service-note">Você ainda não abriu solicitações.</span>').catch(error=>toast(error.message,true));
 }
 
 function renderModeration() {
   $('#page-content').innerHTML=`${heading('GESTÃO DA COMUNIDADE','Painel de moderação','Acompanhe solicitações e publique comunicados para a plataforma.')}<div class="loading" id="moderation-loading">Carregando painel…</div>`;
   api('/api/moderation/overview').then(data=>{
-    $('#moderation-loading').outerHTML=`<div class="mod-stats"><article class="mod-stat"><span>Contas cadastradas</span><strong>${data.counts.users}</strong></article><article class="mod-stat"><span>Organizações</span><strong>${data.counts.organizations}</strong></article><article class="mod-stat"><span>Solicitações abertas</span><strong>${data.counts.open_tickets}</strong></article></div><div class="moderation-grid"><section class="moderation-panel"><h2>Solicitações de suporte</h2><div>${data.tickets.map(ticket=>`<article class="mod-ticket" data-ticket="${ticket.id}"><div class="mod-ticket-head"><strong>${escapeHtml(ticket.subject)}</strong><select aria-label="Status da solicitação"><option value="open" ${ticket.status==='open'?'selected':''}>Em aberto</option><option value="in_progress" ${ticket.status==='in_progress'?'selected':''}>Em andamento</option><option value="resolved" ${ticket.status==='resolved'?'selected':''}>Resolvido</option></select></div><p>${escapeHtml(ticket.message)}</p><small>${escapeHtml(ticket.full_name)} · ${escapeHtml(ticket.email)} · ${new Date(ticket.created_at+'Z').toLocaleDateString('pt-BR')}</small></article>`).join('')||'<p class="service-note">Nenhuma solicitação recebida.</p>'}</div></section><section class="moderation-panel"><h2>Comunicados</h2><form id="announcement-form" class="mod-form"><label>Título<input name="title" minlength="4" maxlength="160" required></label><label>Categoria<input name="category" maxlength="40" value="plataforma"></label><label>Mensagem<textarea name="body" minlength="10" maxlength="3000" rows="5" required></textarea></label><button class="button button-primary" type="submit">Publicar aviso <span>→</span></button></form></section></div>`;
+    $('#moderation-loading').outerHTML=`<div class="mod-stats"><article class="mod-stat"><span>Contas cadastradas</span><strong>${data.counts.users}</strong></article><article class="mod-stat"><span>Organizações</span><strong>${data.counts.organizations}</strong></article><article class="mod-stat"><span>Solicitações abertas</span><strong>${data.counts.open_tickets}</strong></article></div><div class="moderation-grid"><section class="moderation-panel"><h2>Solicitações de suporte</h2><div>${data.tickets.map(ticket=>`<article class="mod-ticket" data-ticket="${ticket.id}"><div class="mod-ticket-head"><strong>${escapeHtml(ticket.subject)}</strong><select aria-label="Status da solicitação"><option value="open" ${ticket.status==='open'?'selected':''}>Em aberto</option><option value="in_progress" ${ticket.status==='in_progress'?'selected':''}>Em andamento</option><option value="resolved" ${ticket.status==='resolved'?'selected':''}>Resolvido</option></select></div><p>${escapeHtml(ticket.message)}</p><small>${escapeHtml(ticket.full_name)} · ${escapeHtml(ticket.email)} · ${apiDate(ticket.created_at).toLocaleDateString('pt-BR')}</small></article>`).join('')||'<p class="service-note">Nenhuma solicitação recebida.</p>'}</div></section><section class="moderation-panel"><h2>Comunicados</h2><form id="announcement-form" class="mod-form"><label>Título<input name="title" minlength="4" maxlength="160" required></label><label>Categoria<input name="category" maxlength="40" value="plataforma"></label><label>Mensagem<textarea name="body" minlength="10" maxlength="3000" rows="5" required></textarea></label><button class="button button-primary" type="submit">Publicar aviso <span>→</span></button></form></section></div>`;
     $$('.mod-ticket select').forEach(select=>select.addEventListener('change',async event=>{const card=event.currentTarget.closest('[data-ticket]');try{await api(`/api/moderation/tickets/${card.dataset.ticket}`,{method:'PATCH',body:JSON.stringify({status:event.currentTarget.value})});toast('Status atualizado.');}catch(error){toast(error.message,true);}}));
     $('#announcement-form').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;try{const result=await api('/api/moderation/announcements',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form).entries()))});form.reset();toast(result.message);}catch(error){toast(error.message,true);}});
   }).catch(error=>{$('#moderation-loading').textContent=error.message;});

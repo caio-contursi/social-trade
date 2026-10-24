@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import { normalizeDocument, validCnpj } from "@/components/auth/validation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -369,6 +370,7 @@ export function OrganizationEditor({
   const [fieldErrors, setFieldErrors] = useState<{
     state?: string;
     areas?: string;
+    cnpj?: string;
   }>({});
   const submitLock = useRef(false);
   const isProject =
@@ -410,11 +412,19 @@ export function OrganizationEditor({
     const form = new FormData(event.currentTarget);
     const text = (name: string) => String(form.get(name) || "").trim();
     const optional = (name: string) => text(name) || null;
+    const cnpj = normalizeDocument(text("cnpj")) || null;
+    if (cnpj && !validCnpj(cnpj)) {
+      const message = "Informe um CNPJ válido, numérico ou alfanumérico.";
+      setFieldErrors({ cnpj: message });
+      setError(message);
+      focusField("org-cnpj");
+      return;
+    }
     const payload = {
       name: text("name"),
       organization_type: organizationType,
       institution_kind: organization?.institution_kind || "project",
-      cnpj: optional("cnpj"),
+      cnpj,
       city: text("city"),
       state,
       founding_year: text("founding_year")
@@ -778,12 +788,22 @@ export function OrganizationEditor({
               <Input
                 id="org-cnpj"
                 name="cnpj"
-                inputMode="numeric"
+                inputMode="text"
+                autoCapitalize="characters"
+                spellCheck={false}
                 defaultValue={organization?.cnpj || ""}
-                readOnly={Boolean(organization?.cnpj)}
+                readOnly={Boolean(organization)}
+                placeholder={organization ? "CNPJ não informado" : "Opcional"}
                 maxLength={18}
+                aria-invalid={fieldErrors.cnpj ? true : undefined}
+                aria-describedby={fieldErrors.cnpj ? "org-cnpj-error" : undefined}
                 className="mt-2 read-only:bg-muted"
               />
+              {fieldErrors.cnpj && (
+                <p id="org-cnpj-error" className="mt-1.5 text-xs font-medium text-destructive">
+                  {fieldErrors.cnpj}
+                </p>
+              )}
             </div>
             {isProject && (
               <div>

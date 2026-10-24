@@ -21,7 +21,7 @@ export const organizationLabels: Record<string, string> = {
   religious_group: "Grupo religioso",
   student_project: "Projeto universitário",
 };
-// Estados de `SERVICES` em app/catalog.py. Qualificam a funcionalidade, nunca a organização.
+// Estados públicos de disponibilidade vindos do catálogo da API.
 export const serviceStatusLabels: Record<string, string> = {
   available: "Disponível",
   coming_soon: "Em breve",
@@ -65,15 +65,28 @@ export function formatDate(
   value: string,
   options?: Intl.DateTimeFormatOptions,
 ) {
-  const date = new Date(
-    value.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(value)
-      ? value
-      : `${value.replace(" ", "T")}Z`,
-  );
+  const date = parseApiDate(value);
   return Number.isNaN(date.getTime())
     ? "Data não informada"
     : date.toLocaleDateString(
         "pt-BR",
         options || { day: "2-digit", month: "short", year: "numeric" },
       );
+}
+
+/** Timestamps legados sem offset são UTC, como os novos TIMESTAMPTZ da API. */
+export function parseApiDate(value: string): Date {
+  return new Date(
+    value.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(value)
+      ? value
+      : `${value.replace(" ", "T")}Z`,
+  );
+}
+
+export function compareRecentProjects(
+  a: { id?: number; created_at: string },
+  b: { id?: number; created_at: string },
+): number {
+  return parseApiDate(b.created_at).getTime() - parseApiDate(a.created_at).getTime()
+    || (b.id ?? 0) - (a.id ?? 0);
 }
