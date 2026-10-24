@@ -206,3 +206,26 @@ class AnnouncementInput(PostgresInput):
     @classmethod
     def trim_announcement_text(cls, value):
         return value.strip() if isinstance(value, str) else value
+
+
+class DonationCreateInput(PostgresInput):
+    project_id: int = Field(ge=1)
+    amount_cents: int = Field(gt=0, le=9_000_000_000_000)
+
+
+class DonationPaymentReportInput(PostgresInput):
+    end_to_end_id: str = Field(min_length=8, max_length=100)
+
+    @field_validator("end_to_end_id", mode="before")
+    @classmethod
+    def normalize_end_to_end_id(cls, value):
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        if not re.fullmatch(r"[A-Za-z0-9._-]{8,100}", value):
+            raise ValueError("Informe o identificador E2E informado no comprovante do Pix.")
+        return value
+
+
+class PixVerificationInput(PostgresInput):
+    verified: bool

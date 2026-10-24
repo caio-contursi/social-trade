@@ -1,6 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { donorDocument, login, openWorkspaceMenu, password, projectName, projectObjective } from "./fixtures";
 
+test("frontend encaminha o health check ao FastAPI e confirma PostgreSQL", async ({ request }) => {
+  const response = await request.get("/api/health");
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({
+    status: "ok",
+    database: "ok",
+    blockchain: "disabled",
+  });
+});
+
 test("descoberta pública, busca sem acentos e limpeza de filtros", async ({ page }) => {
   await page.goto("/projetos");
   await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible();
@@ -31,10 +41,66 @@ test("perfil público vem no HTML e preserva dados privados", async ({ page, req
   expect(text).not.toContain("11222333000181@example.org");
   await page.goto(`/projetos/${project.slug}`);
   await expect(page.getByRole("heading", { level: 1, name: projectName })).toBeVisible();
-  await expect(page.getByText(projectObjective, { exact: true })).toBeVisible();
-  await expect(page.getByText(/Informações declaradas pelo próprio projeto/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "O que queremos transformar" })
+      .getByText(projectObjective, { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("main").getByText(/Informações declaradas pelo próprio projeto/)).toBeVisible();
   await page.goto("/projetos/perfil-que-nao-existe");
   await expect(page.getByRole("heading", { name: "Vamos encontrar outro caminho?" })).toBeVisible();
+});
+
+test("doação Pix direta passa por pagamento informado, confirmação do projeto e recibo", async ({ page, request }) => {
+  const api = process.env.SOCIALTRADE_API_URL!;
+  const projectLogin = await request.post(`${api}/api/auth/login`, { data: {
+    document: "90000001000129", password: "SocialTrade123!", account_type: "project",
+  } });
+  expect(projectLogin.ok(), await projectLogin.text()).toBeTruthy();
+  const projectToken = (await projectLogin.json()).access_token as string;
+  const auth = { Authorization: `Bearer ${projectToken}` };
+  const mine = await request.get(`${api}/api/organizations/mine`, { headers: auth });
+  expect(mine.ok()).toBeTruthy();
+  const project = (await mine.json())[0];
+  const updated = await request.patch(`${api}/api/organizations/${project.id}`, {
+    headers: auth,
+    data: {
+      name: project.name, organization_type: project.organization_type, institution_kind: "project",
+      cnpj: project.cnpj, city: project.city, state: project.state,
+      short_description: project.short_description, objective: project.objective,
+      impact_summary: project.impact_summary, description: project.description,
+      founding_year: project.founding_year, website_url: project.website_url,
+      instagram_url: project.instagram_url, areas: project.areas,
+      interested_services: project.interested_services, pix_key: "pix-e2e@example.org",
+    },
+  });
+  expect(updated.ok(), await updated.text()).toBeTruthy();
+  const moderatorLogin = await request.post(`${api}/api/auth/login`, { data: {
+    document: "33333333333", password: "SocialTrade123!", account_type: "project",
+  } });
+  expect(moderatorLogin.ok(), await moderatorLogin.text()).toBeTruthy();
+  const moderatorToken = (await moderatorLogin.json()).access_token as string;
+  const approval = await request.patch(`${api}/api/moderation/projects/${project.id}/pix-verification`, {
+    headers: { Authorization: `Bearer ${moderatorToken}` }, data: { verified: true },
+  });
+  expect(approval.ok(), await approval.text()).toBeTruthy();
+
+  await login(page, "12345678000195", "donor", "SocialTrade123!");
+  await page.goto("/painel/doacoes");
+  await page.getByLabel("Projeto social").selectOption(String(project.id));
+  await page.getByLabel("Valor em reais").fill("0,01");
+  await page.getByRole("button", { name: "Continuar para o Pix" }).click();
+  await expect(page.getByText("pix-e2e@example.org", { exact: true })).toBeVisible();
+  const e2e = `E${Date.now()}1234567890`;
+  await page.getByLabel("Identificador E2E do comprovante Pix").fill(e2e);
+  await page.getByRole("button", { name: "Informar pagamento" }).click();
+  await expect(page.getByText("Aguardando confirmação do projeto")).toBeVisible();
+
+  await login(page, "90000001000129", "project", "SocialTrade123!");
+  await page.goto("/painel/doacoes");
+  const donation = page.locator("article").filter({ hasText: e2e });
+  await expect(donation.getByRole("button", { name: "Confirmar que recebi" })).toBeVisible();
+  await donation.getByRole("button", { name: "Confirmar que recebi" }).click();
+  await expect(donation.getByRole("button", { name: "Baixar recibo" })).toBeVisible();
 });
 
 test("painel exige sessão e login inválido apresenta erro sem autenticar", async ({ page }) => {

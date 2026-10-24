@@ -31,7 +31,7 @@ Abra a nova interface em [http://127.0.0.1:3000](http://127.0.0.1:3000). A docum
 
 O arquivo `frontend/.env.example` documenta `SOCIALTRADE_API_URL=http://127.0.0.1:8000`. O servidor Next.js encaminha `/api/*` à API: o navegador continua na origem do front-end e essa configuração local não exige CORS. Reinicie o servidor de desenvolvimento após mudar essa variável; para produção, gere um novo build.
 
-As páginas antigas do FastAPI em `/` e `/public` continuam disponíveis na porta **8000** por compatibilidade. A nova interface está na porta **3000**. Detalhes de arquitetura, rotas e decisões visuais estão em [docs/frontend.md](docs/frontend.md).
+O FastAPI na porta **8000** é somente o backend da aplicação; ele não serve mais a interface web antiga. A porta **3000** é a única interface do SocialTrade. Acesse a API em `/docs` apenas para documentação técnica. Detalhes de arquitetura, rotas e decisões visuais estão em [docs/frontend.md](docs/frontend.md).
 
 ## Funcionalidades e limites
 
@@ -42,7 +42,7 @@ As páginas antigas do FastAPI em `/` e `/public` continuam disponíveis na port
 - Sessão assinada, senhas armazenadas com scrypt, avisos, suporte e moderação.
 - Tema claro, escuro ou conforme o sistema e interface adaptada para dispositivos móveis.
 
-Não há processamento real de doações, pagamentos na Solana, comprovantes financeiros ou relatórios de prestação de contas nesta etapa. Esses recursos pertencem ao roteiro futuro. Uma eventual confirmação de transferência na blockchain também precisará ser distinguida da comprovação do uso dos recursos.
+O backend registra intenções de doação por Pix direto para um projeto com CNPJ e chave Pix conferidos por moderação, acompanha o E2E informado pela empresa e permite que o projeto confirme manualmente o crédito e emita um recibo HTML imprimível. O SocialTrade não recebe, custodia, liquida ou repassa valores; não há PSP conectado nem taxa da plataforma. A conferência cadastral e o E2E não são verificados automaticamente junto ao banco: o recibo depende do atesto do projeto e não substitui o comprovante bancário, nota fiscal, validação fiscal ou promessa de benefício tributário. O fluxo está descrito em [docs/doacoes-pix.md](docs/doacoes-pix.md). Pagamentos por cartão, conciliação automática, criptoativos/Solana e prestação de contas seguem fora desta etapa.
 
 ## Demonstração local
 
@@ -100,8 +100,9 @@ npm run start
 - `GET /api/catalog`, `GET /api/profile`, `PATCH /api/profile`.
 - `GET /api/organizations/mine`, `POST /api/organizations`, `PATCH /api/organizations/{org_id}`.
 - `GET /api/projects`, `GET /api/projects/open`, `GET /api/memberships/mine`.
+- `POST /api/donations`, `GET /api/donations/mine`, `POST /api/donations/{id}/report-payment`, `POST /api/donations/{id}/confirm`, `GET /api/donations/{id}/receipt`.
 - `GET /api/announcements`, `POST /api/support`, `GET /api/support/mine`.
-- `GET /api/moderation/overview`, `PATCH /api/moderation/tickets/{id}`, `POST /api/moderation/announcements`.
+- `GET /api/moderation/overview`, `PATCH /api/moderation/tickets/{id}`, `POST /api/moderation/announcements`, `PATCH /api/moderation/projects/{id}/pix-verification`.
 
 As respostas públicas usam uma lista explícita de campos e não expõem proprietário, e-mail, documentos ou chave Pix. A edição institucional exige o proprietário autenticado, mantém o slug, o tipo de instituição e o CNPJ (inclusive quando nulo), e recebe os campos completos de `OrganizationCreate`.
 

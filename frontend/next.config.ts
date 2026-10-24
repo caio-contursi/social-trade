@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
+import { getApiOrigin } from "./src/lib/api-origin";
 
-const apiOrigin = (
-  process.env.SOCIALTRADE_API_URL || "http://127.0.0.1:8000"
-).replace(/\/$/, "");
+const apiOrigin = getApiOrigin();
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

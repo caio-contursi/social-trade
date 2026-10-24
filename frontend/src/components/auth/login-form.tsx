@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { AccountIntent, Catalog, LoginResponse } from "@/lib/types";
-import { normalizeDocument, safeNextPath } from "./validation";
+import { digits, normalizeDocument, safeNextPath } from "./validation";
 
 const accountOptions = [
   { value: "donor" as const, label: "Empresa", icon: Building2 },
@@ -191,7 +191,13 @@ export function LoginForm() {
             }
             maxLength={18}
             value={document}
-            onChange={(event) => setDocument(event.target.value)}
+            onChange={(event) =>
+              setDocument(
+                intent === "person"
+                  ? digits(event.target.value)
+                  : event.target.value,
+              )
+            }
             disabled={pending}
             aria-invalid={!!errors.document}
             aria-describedby={errors.document ? "document-error" : undefined}
@@ -278,12 +284,16 @@ export function LoginForm() {
           <div className="mt-3 space-y-2 leading-relaxed text-muted-foreground">
             <p>Use os dados abaixo apenas para conhecer o ambiente local.</p>
             <p>
-              <strong className="text-foreground">Projeto ou pessoa:</strong>{" "}
-              11111111111
+              <strong className="text-foreground">Projeto social para teste Pix:</strong>{" "}
+              CNPJ 90000001000129
             </p>
             <p>
               <strong className="text-foreground">Empresa:</strong>{" "}
               12345678000195
+            </p>
+            <p>
+              <strong className="text-foreground">Moderador:</strong>{" "}
+              CPF 33333333333
             </p>
             <p>
               <strong className="text-foreground">Senha:</strong>{" "}

@@ -295,6 +295,13 @@ function OrganizationSummary({
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
         {organization.short_description}
       </p>
+      {project && (
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+          A chave Pix é privada. Depois da conferência por um moderador, ela
+          poderá ser exibida somente à empresa que iniciar uma doação direta.
+          O pagamento é feito do banco da empresa para a conta do projeto.
+        </p>
+      )}
       {organization.areas.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {organization.areas.map((area) => (

@@ -12,7 +12,7 @@ Navegador :3000
                  └─ PostgreSQL
 ```
 
-As chamadas do navegador usam caminhos `/api/...` na mesma origem. `frontend/next.config.ts` encaminha esses caminhos para `SOCIALTRADE_API_URL`, com padrão `http://127.0.0.1:8000`. Essa arquitetura local dispensa configuração de CORS. A URL deve ser acessível pelo processo do Next.js; o segredo de assinatura de sessão pertence exclusivamente ao backend.
+As chamadas do navegador usam caminhos `/api/...` na mesma origem. `frontend/next.config.ts` encaminha esses caminhos para `SOCIALTRADE_API_URL`. Em desenvolvimento, o padrão é `http://127.0.0.1:8000`; em produção, a variável é obrigatória no ambiente de build para impedir que o frontend seja publicado apontando silenciosamente para o localhost do próprio servidor. A URL deve ser acessível pelo processo do Next.js; o segredo de assinatura de sessão pertence exclusivamente ao backend.
 
 | Local | Responsabilidade |
 | --- | --- |
@@ -43,7 +43,7 @@ As restrições de proprietário, tipo de conta e moderação continuam na API. 
 | `/painel/suporte` | Solicitações de suporte. |
 | `/painel/moderacao` | Gestão restrita a moderadores. |
 
-Essas rotas são servidas na porta 3000. Na porta 8000, o FastAPI mantém `/` e `/public` como interface legada de compatibilidade e `/docs` como documentação da API. O perfil legado usa `/public?slug=...`; o novo usa `/projetos/[slug]`.
+Essas rotas são servidas na porta 3000. A porta 8000 é somente o backend FastAPI: `/` identifica a API, `/public` retorna `410 Gone` para a antiga interface descontinuada, e `/docs` apresenta a documentação técnica. O perfil público atual usa `/projetos/[slug]` no Next.js.
 
 ## Execução no Windows
 
@@ -74,7 +74,7 @@ O arquivo local `frontend/.env.local` pode definir:
 SOCIALTRADE_API_URL=http://127.0.0.1:8000
 ```
 
-Depois de mudar a origem da API, reinicie o servidor de desenvolvimento. Para produção, gere novamente o build, pois os rewrites são resolvidos pela configuração do Next.js.
+Depois de mudar a origem da API, reinicie o servidor de desenvolvimento. Para produção, defina `SOCIALTRADE_API_URL` no ambiente de build e publique novamente; sem essa configuração o build falha com uma mensagem explícita. `GET /api/health` verifica a disponibilidade do banco através do mesmo rewrite usado pelo frontend.
 
 Comandos disponíveis em `frontend/`:
 

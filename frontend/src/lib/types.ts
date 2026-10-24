@@ -49,6 +49,7 @@ export interface Project {
   verification_status?: string;
   profile_completeness?: number;
   is_demo?: boolean;
+  pix_donations_available?: boolean;
   services?: Service[];
 }
 export interface Organization extends Project {
@@ -86,6 +87,49 @@ export interface Ticket {
 export interface ModerationOverview {
   counts: { users: number; organizations: number; open_tickets: number };
   tickets: Ticket[];
+}
+export type DonationStatus =
+  | "awaiting_payment"
+  | "awaiting_confirmation"
+  | "confirmed"
+  | "rejected";
+export interface Donation {
+  id: number;
+  project_id: number;
+  project_name: string;
+  amount_cents: number;
+  currency: "BRL";
+  payment_method: "pix";
+  status: DonationStatus;
+  end_to_end_id: string | null;
+  receipt_code: string | null;
+  created_at: string;
+  payment_reported_at: string | null;
+  confirmed_at: string | null;
+  donor_name?: string | null;
+  donor_cnpj?: string | null;
+  pix_key?: string;
+}
+export interface DonationStart {
+  id: number;
+  project_id: number;
+  project_name: string;
+  amount_cents: number;
+  currency: "BRL";
+  payment_method: "pix";
+  status: "awaiting_payment";
+  pix_key: string;
+  payment_instructions: string;
+  next_step: string;
+}
+export interface PixReviewCandidate {
+  id: number;
+  name: string;
+  cnpj: string | null;
+  pix_key: string | null;
+  pix_key_verified_at: string | null;
+  owner_id: number;
+  owner_name: string;
 }
 export interface LoginResponse {
   access_token: string;
