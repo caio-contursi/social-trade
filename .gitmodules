@@ -1,0 +1,5 @@
+[submodule "referencias/leis-brasileiras"]
+	path = referencias/leis-brasileiras
+	url = https://github.com/ctresb/leis.git
+	branch = main
+	shallow = true
