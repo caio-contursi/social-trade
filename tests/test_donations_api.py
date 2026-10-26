@@ -63,6 +63,8 @@ def test_pix_donation_requires_authorized_donor_and_project_with_direct_pix_key(
     assert record["status"] == "awaiting_payment"
     assert "não recebe nem repassa" in record["payment_instructions"]
     assert record["next_step"].startswith("Após pagar")
+    assert "não garante abatimento no Imposto de Renda" in record["tax_notice"]
+    assert "orientações oficiais do governo" in record["tax_notice"]
     assert "receipt_code" not in record
     public = client.get("/api/public/projects").json()
     public_project = next(item for item in public if item["id"] == accounts["project"]["id"])
@@ -104,6 +106,8 @@ def test_receipt_exists_only_after_beneficiary_confirmation_and_is_private(
     assert "Chave Pix" not in receipt.text
     assert "E1234567890ABCDE1234567890ABCDE1" in receipt.text
     assert "nota fiscal" in receipt.text
+    assert "não garante abatimento no Imposto de Renda" in receipt.text
+    assert "orientações oficiais do governo" in receipt.text
     assert client.get(receipt_url, headers=accounts["other_project_headers"]).status_code == 403
     assert client.get(receipt_url, headers=accounts["beneficiary_headers"]).status_code == 200
 

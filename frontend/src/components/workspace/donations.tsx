@@ -198,6 +198,7 @@ export function DonationsPage() {
                     <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(started.pix_key).then(() => toast.success("Chave Pix copiada."), () => toast.error("Não foi possível copiar a chave."))}><Clipboard className="size-4" />Copiar chave</Button>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{started.payment_instructions} Depois, informe o E2E que aparece no comprovante bancário.</p>
+                  <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-sm leading-relaxed">{started.tax_notice}</p>
                   <PaymentReferenceForm id={started.id} value={e2eValues[started.id] || ""} disabled={busyId === started.id} onChange={(value) => setE2eValues((values) => ({ ...values, [started.id]: value }))} onSubmit={() => void reportPayment(started.id)} />
                 </div>
               )}
@@ -227,7 +228,7 @@ export function DonationsPage() {
             )}
           </section>
           <p className="mt-8 rounded-xl border bg-muted/30 p-4 text-xs leading-relaxed text-muted-foreground">
-            O E2E é informado por quem doa e não é consultado no banco. A confirmação e o recibo dependem do projeto conferir o crédito na própria conta. Guarde também o comprovante emitido pelo seu banco. O recibo SocialTrade não é nota fiscal nem garante benefício fiscal.
+            O E2E é informado por quem doa e não é consultado no banco. A confirmação e o recibo dependem do projeto conferir o crédito na própria conta. Guarde também o comprovante emitido pelo seu banco. A SocialTrade não garante abatimento no Imposto de Renda nem qualquer benefício fiscal: consulte orientações oficiais do governo e um profissional de contabilidade para verificar as regras do seu caso.
           </p>
         </>
       )}

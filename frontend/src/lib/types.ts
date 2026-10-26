@@ -123,6 +123,7 @@ export interface DonationStart {
   pix_key: string;
   payment_instructions: string;
   next_step: string;
+  tax_notice: string;
 }
 export interface PixReviewCandidate {
   id: number;

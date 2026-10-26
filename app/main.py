@@ -242,7 +242,8 @@ def receipt_html(row) -> str:
         "@media print{body{margin:0}}</style><body><h1>Registro de doação confirmada</h1>"
         f"<dl>{details}</dl><p class='notice'>A organização beneficiária confirmou o recebimento no SocialTrade. "
         "Este documento é um recibo privado emitido com base nessa confirmação e nos dados informados. "
-        "Não é nota fiscal, validação bancária independente, certificação de elegibilidade ou garantia de benefício fiscal.</p>"
+        "Não é nota fiscal, validação bancária independente, certificação de elegibilidade ou garantia de benefício fiscal. "
+        "A SocialTrade não garante abatimento no Imposto de Renda; consulte orientações oficiais do governo e um profissional de contabilidade para verificar as regras aplicáveis ao seu caso.</p>"
         "</body></html>"
     )
 
@@ -404,6 +405,7 @@ def create_donation(payload: DonationCreateInput, user=Depends(current_user)):
         "status": "awaiting_payment", "pix_key": pix_key,
         "payment_instructions": "Faça a transferência no aplicativo do seu banco diretamente para a chave Pix do projeto. O SocialTrade não recebe nem repassa o valor.",
         "next_step": "Após pagar, informe o identificador E2E. O recibo só será emitido depois que o projeto confirmar o crédito na própria conta.",
+        "tax_notice": "A SocialTrade não garante abatimento no Imposto de Renda nem qualquer benefício fiscal. Consulte orientações oficiais do governo e um profissional de contabilidade para verificar se alguma regra se aplica ao seu caso.",
     }
 
 

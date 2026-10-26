@@ -14,8 +14,9 @@ test("frontend encaminha o health check ao FastAPI e confirma PostgreSQL", async
 test("página inicial diferencia o Pix direto disponível dos meios futuros", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("main").getByText("Doações Pix diretas", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("contentinfo").getByText("Doações não garantem abatimento no Imposto de Renda ou outro benefício fiscal.").first()).toBeVisible();
   await expect(page.getByRole("link", { name: /Quero apoiar como pessoa física/ })).toHaveAttribute("href", "/cadastro?tipo=person");
-  await expect(page.getByText("Pagamentos automatizados por PSP e cartão", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Pagamentos automatizados por PSP e cartão", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Doações pela plataforma", { exact: true })).toHaveCount(0);
 });
 
@@ -98,6 +99,7 @@ test("doação Pix direta de empresa e pessoa física passa por pagamento, confi
   await page.getByLabel("Valor em reais").fill("0,01");
   await page.getByRole("button", { name: "Continuar para o Pix" }).click();
   await expect(page.getByText("pix-e2e@example.org", { exact: true })).toBeVisible();
+  await expect(page.locator('[aria-live="polite"]').getByText(/não garante abatimento no Imposto de Renda nem qualquer benefício fiscal/)).toBeVisible();
   const e2e = `E${Date.now()}1234567890`;
   await page.getByLabel("Identificador E2E do comprovante Pix").fill(e2e);
   await page.getByRole("button", { name: "Informar pagamento" }).click();
@@ -131,6 +133,7 @@ test("doação Pix direta de empresa e pessoa física passa por pagamento, confi
   await page.getByLabel("Valor em reais").fill("0,02");
   await page.getByRole("button", { name: "Continuar para o Pix" }).click();
   await expect(page.getByText("pix-e2e@example.org", { exact: true })).toBeVisible();
+  await expect(page.locator('[aria-live="polite"]').getByText(/não garante abatimento no Imposto de Renda nem qualquer benefício fiscal/)).toBeVisible();
   const personE2e = `E${Date.now()}9876543210`;
   await page.getByLabel("Identificador E2E do comprovante Pix").fill(personE2e);
   await page.getByRole("button", { name: "Informar pagamento" }).click();

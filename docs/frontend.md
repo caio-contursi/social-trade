@@ -126,7 +126,7 @@ O percentual conta nome, tipo, cidade, estado, resumo, descrição, logo e pelo 
 
 Empresas usam o tipo `company` na nova interface. Projetos não podem usar esse tipo. Empresas legadas cadastradas como `association` continuam editáveis sem alterar seu tipo de instituição.
 
-O fluxo Pix direto está operacional como registro e acompanhamento: empresas e pessoas físicas iniciam a doação, transferem no próprio banco para a chave do projeto, informam o E2E e o projeto confirma manualmente o crédito. O SocialTrade não movimenta o dinheiro; não há cobrança Pix/PSP, conciliação bancária, carteira nem transação Solana. O recibo privado só é emitido após a confirmação do projeto e não é comprovante bancário nem garantia fiscal. Não exiba saldos ou estados de sucesso antes da confirmação. Informações demonstrativas devem ter rótulo explícito.
+O fluxo Pix direto está operacional como registro e acompanhamento: empresas e pessoas físicas iniciam a doação, transferem no próprio banco para a chave do projeto, informam o E2E e o projeto confirma manualmente o crédito. O SocialTrade não movimenta o dinheiro; não há cobrança Pix/PSP, conciliação bancária, carteira nem transação Solana. O recibo privado só é emitido após a confirmação do projeto e não é comprovante bancário nem garantia fiscal. A interface deve informar que a SocialTrade não garante abatimento no Imposto de Renda nem benefício fiscal e orientar quem doa a consultar canais oficiais do governo e um profissional de contabilidade sobre seu caso. Não exiba saldos ou estados de sucesso antes da confirmação. Informações demonstrativas devem ter rótulo explícito.
 
 ## Fases e estado do produto
 

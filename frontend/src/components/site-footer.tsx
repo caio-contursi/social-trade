@@ -51,6 +51,12 @@ export function SiteFooter() {
             Perfis e resultados são informados pelas organizações. Conheça os
             detalhes antes de apoiar.
           </p>
+          <p className="mt-3 max-w-sm text-xs leading-6 text-ink-foreground/75">
+            Doações não garantem abatimento no Imposto de Renda ou outro
+            benefício fiscal. Consulte orientações oficiais do governo e um
+            profissional de contabilidade para verificar as regras aplicáveis
+            ao seu caso.
+          </p>
         </div>
       </div>
       <div className="page-container flex flex-wrap justify-between gap-3 border-t border-white/10 py-5 text-xs text-ink-foreground/70">
