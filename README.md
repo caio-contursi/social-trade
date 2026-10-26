@@ -1,6 +1,6 @@
 # SocialTrade
 
-Plataforma para conectar empresas doadoras de todos os portes a ONGs e projetos sociais. A SocialTrade apresenta objetivos, áreas de atuação e resultados informados pelos projetos para apoiar decisões de investimento social. A integração com Solana está desativada nesta etapa.
+Plataforma para conectar empresas doadoras de todos os portes, pessoas físicas e projetos sociais. A SocialTrade apresenta objetivos, áreas de atuação e resultados informados pelos projetos para apoiar decisões de investimento social. Categorizações assistidas por IA e avaliação interna para ordenar resultados são planejadas e ainda não estão implementadas. A integração com Solana está desativada nesta etapa.
 
 A interface principal fica em `frontend/` e utiliza Next.js, TypeScript, Tailwind CSS e componentes oficiais do shadcn/ui. A API usa FastAPI, PostgreSQL e SQLAlchemy 2 Core, com migrações explícitas pelo Alembic. As informações apresentadas pelos projetos são autodeclaradas: cadastro ou perfil completo não representam verificação independente.
 
@@ -42,7 +42,7 @@ O FastAPI na porta **8000** é somente o backend da aplicação; ele não serve 
 - Sessão assinada, senhas armazenadas com scrypt, avisos, suporte e moderação.
 - Tema claro, escuro ou conforme o sistema e interface adaptada para dispositivos móveis.
 
-O backend registra intenções de doação por Pix direto feitas por empresas ou pessoas físicas para projetos com CNPJ e chave Pix conferidos por moderação. Acompanha o E2E informado por quem doa e permite que o projeto confirme manualmente o crédito e emita um recibo HTML imprimível, identificado pelo CNPJ empresarial ou CPF pessoal. O SocialTrade não recebe, custodia, liquida ou repassa valores; não há PSP conectado nem taxa da plataforma. A conferência cadastral e o E2E não são verificados automaticamente junto ao banco: o recibo depende do atesto do projeto e não substitui o comprovante bancário, nota fiscal, validação fiscal ou promessa de benefício tributário. O fluxo está descrito em [docs/doacoes-pix.md](docs/doacoes-pix.md). Pagamentos por cartão, conciliação automática, criptoativos/Solana e prestação de contas seguem fora desta etapa.
+O backend registra intenções de doação por Pix direto feitas por empresas ou pessoas físicas para projetos com CNPJ e chave Pix conferidos por moderação. Acompanha o E2E informado por quem doa e permite que o projeto confirme manualmente o crédito e emita um recibo HTML imprimível, identificado pelo CNPJ empresarial ou CPF pessoal. Este é o único fluxo Pix implementado: uma futura modalidade poderá receber na tesouraria da SocialTrade, sujeita a definições operacionais e jurídicas sobre recebimento, custódia, conciliação e repasse. O fluxo atual não tem PSP nem taxa da plataforma. A conferência cadastral e o E2E não são verificados automaticamente junto ao banco: o recibo depende do atesto do projeto e não substitui o comprovante bancário, nota fiscal, validação fiscal ou promessa de benefício tributário. O fluxo está descrito em [docs/doacoes-pix.md](docs/doacoes-pix.md). Categorizações por IA, avaliação interna, ordenação por avaliação, pagamentos por cartão, conciliação automática e criptoativos/Solana seguem fora da implementação atual.
 
 ## Demonstração local
 

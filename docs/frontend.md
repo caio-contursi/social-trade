@@ -138,8 +138,10 @@ O fluxo Pix direto está operacional como registro e acompanhamento: empresas e 
 | Qualidade | Validar com TypeScript, build, suíte de API e revisão manual de desktop, celular, teclado e estados de falha. Os comandos acima não substituem essa revisão visual. |
 | Doações Pix diretas | Implementado: empresas e pessoas físicas podem registrar a intenção, efetuar transferência fora da plataforma e informar o E2E; o projeto confirma o crédito. O SocialTrade não recebe nem transfere valores. |
 | PSP, pagamentos por cartão e conciliação | Fora do MVP; dependem de decisões operacionais, contratuais e de segurança. |
+| Pix via tesouraria SocialTrade | Futuro; não está implementado. Exige definir conta recebedora, custódia, conciliação, repasse e responsabilidades. |
+| Categorização assistida por IA e avaliação interna | Futuro; a IA poderá sugerir categorias para busca. Critérios de acompanhamento e priorização serão internos e não serão exibidos a projetos ou doadores. A avaliação não é automatizada pela IA. |
 | Solana | Futuro: integração desativada; nenhuma transação em criptoativo é realizada pela interface atual. |
-| Prestação de contas e verificação | Futuro: exigem contratos de dados, evidências e processos próprios; preenchimento cadastral não equivale a comprovação. |
+| Prestação de contas e avaliação interna | Futuro: evidências, critérios, permissões e processos próprios; preenchimento cadastral não equivale a comprovação. Consulte [avaliação e descoberta de projetos](avaliacao-e-descoberta-de-projetos.md). |
 
 ## Preservação de dados e configuração
 
