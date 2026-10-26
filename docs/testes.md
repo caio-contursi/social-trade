@@ -118,7 +118,7 @@ Execuções anteriores da mesma referência são canceladas quando uma nova come
 
 ## Limites atuais
 
-Pagamentos, doações reais, registro na Solana, comprovantes financeiros e prestação de contas ainda não foram implementados. A suíte não afirma validar esses recursos futuros. Os testes dessas integrações devem ser adicionados junto de cada etapa da V2, com provedores de teste e ambientes apropriados.
+O fluxo Pix direto é coberto por testes automatizados para empresas e pessoas físicas, incluindo registro, E2E informado, confirmação pelo projeto e recibo privado. Os testes usam dados sintéticos e não fazem transferências. PSP, conciliação bancária, cartão, registro na Solana e prestação de contas ampliada não são validados por esta suíte; testes dessas integrações devem acompanhar sua implementação, usando provedores e ambientes de teste apropriados.
 
 ## Execução e diagnóstico no Windows
 

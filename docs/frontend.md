@@ -12,7 +12,7 @@ Navegador :3000
                  └─ PostgreSQL
 ```
 
-As chamadas do navegador usam caminhos `/api/...` na mesma origem. `frontend/next.config.ts` encaminha esses caminhos para `SOCIALTRADE_API_URL`, com padrão `http://127.0.0.1:8000`. Essa arquitetura local dispensa configuração de CORS. A URL deve ser acessível pelo processo do Next.js; o segredo de assinatura de sessão pertence exclusivamente ao backend.
+As chamadas do navegador usam caminhos `/api/...` na mesma origem. `frontend/next.config.ts` encaminha esses caminhos para `SOCIALTRADE_API_URL`. Em desenvolvimento, o padrão é `http://127.0.0.1:8000`; em produção, a variável é obrigatória no ambiente de build para impedir que o frontend seja publicado apontando silenciosamente para o localhost do próprio servidor. A URL deve ser acessível pelo processo do Next.js; o segredo de assinatura de sessão pertence exclusivamente ao backend.
 
 | Local | Responsabilidade |
 | --- | --- |
@@ -43,7 +43,7 @@ As restrições de proprietário, tipo de conta e moderação continuam na API. 
 | `/painel/suporte` | Solicitações de suporte. |
 | `/painel/moderacao` | Gestão restrita a moderadores. |
 
-Essas rotas são servidas na porta 3000. Na porta 8000, o FastAPI mantém `/` e `/public` como interface legada de compatibilidade e `/docs` como documentação da API. O perfil legado usa `/public?slug=...`; o novo usa `/projetos/[slug]`.
+Essas rotas são servidas na porta 3000. A porta 8000 é somente o backend FastAPI: `/` identifica a API, `/public` retorna `410 Gone` para a antiga interface descontinuada, e `/docs` apresenta a documentação técnica. O perfil público atual usa `/projetos/[slug]` no Next.js.
 
 ## Execução no Windows
 
@@ -74,7 +74,7 @@ O arquivo local `frontend/.env.local` pode definir:
 SOCIALTRADE_API_URL=http://127.0.0.1:8000
 ```
 
-Depois de mudar a origem da API, reinicie o servidor de desenvolvimento. Para produção, gere novamente o build, pois os rewrites são resolvidos pela configuração do Next.js.
+Depois de mudar a origem da API, reinicie o servidor de desenvolvimento. Para produção, defina `SOCIALTRADE_API_URL` no ambiente de build e publique novamente; sem essa configuração o build falha com uma mensagem explícita. `GET /api/health` verifica a disponibilidade do banco através do mesmo rewrite usado pelo frontend.
 
 Comandos disponíveis em `frontend/`:
 
@@ -126,18 +126,22 @@ O percentual conta nome, tipo, cidade, estado, resumo, descrição, logo e pelo 
 
 Empresas usam o tipo `company` na nova interface. Projetos não podem usar esse tipo. Empresas legadas cadastradas como `association` continuam editáveis sem alterar seu tipo de instituição.
 
-Não há carteira, pagamento de doação, transação Solana, comprovante financeiro, relatório de aplicação de recursos ou verificação independente operacionais nesta etapa. Evite saldos, métricas de doação e estados de sucesso simulados que pareçam reais. Informações demonstrativas devem ter rótulo explícito.
+O fluxo Pix direto está operacional como registro e acompanhamento: empresas e pessoas físicas iniciam a doação, transferem no próprio banco para a chave do projeto, informam o E2E e o projeto confirma manualmente o crédito. O SocialTrade não movimenta o dinheiro; não há cobrança Pix/PSP, conciliação bancária, carteira nem transação Solana. O recibo privado só é emitido após a confirmação do projeto e não é comprovante bancário nem garantia fiscal. A interface deve informar que a SocialTrade não garante abatimento no Imposto de Renda nem benefício fiscal e orientar quem doa a consultar canais oficiais do governo e um profissional de contabilidade sobre seu caso. Não exiba saldos ou estados de sucesso antes da confirmação. Informações demonstrativas devem ter rótulo explícito.
 
 ## Fases e estado do produto
 
 | Fase | Estado nesta migração |
 | --- | --- |
 | Base visual e técnica | Next.js, TypeScript, Tailwind, shadcn/ui, fontes locais e temas compõem a nova interface. |
-| Descoberta pública | Apresentação, exploração e perfis públicos consomem a API existente e sua nova lista pública segura. |
+| Descoberta pública | Busca atual por texto, causa, localidade e ordem recente/alfabética. Próxima evolução planejada: filtro por tipo de projeto e atalhos de categorias sugeridas por IA, combináveis com a busca digitada. A IA não valida a avaliação interna nem as evidências. Consulte [avaliação e descoberta de projetos](avaliacao-e-descoberta-de-projetos.md). |
 | Fluxos autenticados | Cadastro, login, painel, dados institucionais/pessoais, avisos, suporte e moderação usam as regras da API. |
 | Qualidade | Validar com TypeScript, build, suíte de API e revisão manual de desktop, celular, teclado e estados de falha. Os comandos acima não substituem essa revisão visual. |
-| Doações e Solana | Futuro: integração desativada; nenhum pagamento real é realizado pela interface atual. |
-| Prestação de contas e verificação | Futuro: exigem contratos de dados, evidências e processos próprios; preenchimento cadastral não equivale a comprovação. |
+| Doações Pix diretas | Implementado: empresas e pessoas físicas podem registrar a intenção, efetuar transferência fora da plataforma e informar o E2E; o projeto confirma o crédito. O SocialTrade não recebe nem transfere valores. |
+| PSP, pagamentos por cartão e conciliação | Fora do MVP; dependem de decisões operacionais, contratuais e de segurança. |
+| Pix via tesouraria SocialTrade | Futuro; não está implementado. Exige definir conta recebedora, custódia, conciliação, repasse e responsabilidades. |
+| Categorização assistida por IA e avaliação interna | Futuro; a IA poderá sugerir categorias para busca. Critérios de acompanhamento e priorização serão internos e não serão exibidos a projetos ou doadores. A avaliação não é automatizada pela IA. |
+| Solana | Futuro: integração desativada; nenhuma transação em criptoativo é realizada pela interface atual. |
+| Prestação de contas e avaliação interna | Futuro: evidências, critérios, permissões e processos próprios; preenchimento cadastral não equivale a comprovação. Consulte [avaliação e descoberta de projetos](avaliacao-e-descoberta-de-projetos.md). |
 
 ## Preservação de dados e configuração
 

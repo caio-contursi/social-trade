@@ -13,7 +13,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
-import { normalizeDocument, validCnpj } from "@/components/auth/validation";
+import {
+  digits,
+  lettersAndNamePunctuation,
+  normalizeDocument,
+  validCnpj,
+} from "@/components/auth/validation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -295,6 +300,13 @@ function OrganizationSummary({
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
         {organization.short_description}
       </p>
+      {project && (
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+          A chave Pix é privada. Depois da conferência por um moderador, ela
+          poderá ser exibida somente à empresa que iniciar uma doação direta.
+          O pagamento é feito do banco da empresa para a conta do projeto.
+        </p>
+      )}
       {organization.areas.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {organization.areas.map((area) => (
@@ -367,8 +379,14 @@ export function OrganizationEditor({
     organization?.organization_type || "independent_project",
   );
   const [state, setState] = useState(organization?.state || "");
+  const [city, setCity] = useState(organization?.city || "");
+  const locations = useWorkspaceResource<
+    { id: number; name: string; city: string; state: string }[]
+  >("/api/projects/open");
   const [fieldErrors, setFieldErrors] = useState<{
     state?: string;
+    city?: string;
+    founding_year?: string;
     areas?: string;
     cnpj?: string;
   }>({});
@@ -401,6 +419,31 @@ export function OrganizationEditor({
       focusField("org-state");
       return;
     }
+    const cityOptions = locations.data
+      ?.filter((location) => location.state === state)
+      .map((location) => location.city) || [];
+    if (organization?.state === state && organization.city) {
+      cityOptions.push(organization.city);
+    }
+    if (!cityOptions.includes(city)) {
+      const message = "Selecione uma cidade cadastrada para o estado escolhido.";
+      setFieldErrors({ city: message });
+      setError(message);
+      focusField("org-city");
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    const foundingYear = String(form.get("founding_year") || "").trim();
+    if (
+      foundingYear &&
+      (!/^\d{4}$/.test(foundingYear) || Number(foundingYear) < 1800 || Number(foundingYear) > 2100)
+    ) {
+      const message = "Informe um ano entre 1800 e 2100.";
+      setFieldErrors({ founding_year: message });
+      setError(message);
+      focusField("org-year");
+      return;
+    }
     if (isProject && !areas.length) {
       const message = "Selecione ao menos uma área de atuação para o projeto.";
       setFieldErrors({ areas: message });
@@ -409,7 +452,6 @@ export function OrganizationEditor({
       return;
     }
     setFieldErrors({});
-    const form = new FormData(event.currentTarget);
     const text = (name: string) => String(form.get(name) || "").trim();
     const optional = (name: string) => text(name) || null;
     const cnpj = normalizeDocument(text("cnpj")) || null;
@@ -425,7 +467,7 @@ export function OrganizationEditor({
       organization_type: organizationType,
       institution_kind: organization?.institution_kind || "project",
       cnpj,
-      city: text("city"),
+      city,
       state,
       founding_year: text("founding_year")
         ? Number(text("founding_year"))
@@ -508,6 +550,11 @@ export function OrganizationEditor({
                 id="org-name"
                 name="name"
                 defaultValue={organization?.name}
+                onChange={(event) => {
+                  event.currentTarget.value = lettersAndNamePunctuation(
+                    event.currentTarget.value,
+                  );
+                }}
                 required
                 minLength={2}
                 maxLength={160}
@@ -540,34 +587,89 @@ export function OrganizationEditor({
                 <Input
                   id="org-year"
                   name="founding_year"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   min={1800}
                   max={2100}
                   defaultValue={organization?.founding_year || ""}
                   placeholder="Opcional"
+                  maxLength={4}
+                  onChange={(event) => {
+                    event.currentTarget.value = digits(event.currentTarget.value).slice(0, 4);
+                    if (fieldErrors.founding_year) {
+                      setFieldErrors((current) => ({ ...current, founding_year: undefined }));
+                    }
+                  }}
+                  aria-invalid={fieldErrors.founding_year ? true : undefined}
+                  aria-describedby={fieldErrors.founding_year ? "org-year-error" : undefined}
                   className="mt-2"
                 />
+                {fieldErrors.founding_year && (
+                  <p id="org-year-error" className="mt-1.5 text-xs font-medium text-destructive">
+                    {fieldErrors.founding_year}
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid gap-5 sm:grid-cols-[1fr_120px]">
               <div>
                 <Label htmlFor="org-city">Cidade *</Label>
-                <Input
-                  id="org-city"
-                  name="city"
-                  autoComplete="address-level2"
-                  defaultValue={organization?.city}
-                  required
-                  minLength={2}
-                  maxLength={100}
-                  className="mt-2"
-                />
+                <Select
+                  value={city}
+                  onValueChange={(value) => {
+                    setCity(value);
+                    if (fieldErrors.city) {
+                      setError((current) =>
+                        current === fieldErrors.city ? null : current,
+                      );
+                      setFieldErrors((current) => ({ ...current, city: undefined }));
+                    }
+                  }}
+                  disabled={pending || !state || locations.loading}
+                >
+                  <SelectTrigger
+                    id="org-city"
+                    className="mt-2 w-full"
+                    aria-invalid={fieldErrors.city ? true : undefined}
+                    aria-describedby={fieldErrors.city ? "org-city-error" : undefined}
+                  >
+                    <SelectValue placeholder="Selecione a cidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[...new Set([
+                      ...(locations.data || [])
+                        .filter((location) => location.state === state)
+                        .map((location) => location.city),
+                      ...(organization?.state === state && organization.city
+                        ? [organization.city]
+                        : []),
+                    ])]
+                      .sort((a, b) => a.localeCompare(b, "pt-BR"))
+                      .map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors.city && (
+                  <p id="org-city-error" className="mt-1.5 text-xs font-medium text-destructive">
+                    {fieldErrors.city}
+                  </p>
+                )}
+                {state && !locations.loading && locations.error && (
+                  <p role="status" className="mt-1.5 text-xs text-muted-foreground">
+                    Não foi possível carregar as cidades cadastradas.
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="org-state">Estado *</Label>
                 <Select
                   value={state}
                   onValueChange={(value) => {
+                    if (value !== state) setCity("");
                     setState(value);
                     if (fieldErrors.state) {
                       setError((current) =>
@@ -577,6 +679,9 @@ export function OrganizationEditor({
                         ...current,
                         state: undefined,
                       }));
+                    }
+                    if (fieldErrors.city) {
+                      setFieldErrors((current) => ({ ...current, city: undefined }));
                     }
                   }}
                 >

@@ -34,7 +34,13 @@ import { api } from "@/lib/api";
 import { areaLabels, brazilStates, organizationLabels } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 import type { AccountIntent, MessageResponse } from "@/lib/types";
-import { normalizeDocument, validCnpj, validCpf } from "./validation";
+import {
+  digits,
+  lettersAndNamePunctuation,
+  normalizeDocument,
+  validCnpj,
+  validCpf,
+} from "./validation";
 
 const initialValues = {
   full_name: "",
@@ -131,7 +137,15 @@ export function RegisterForm() {
 
   function updateField(name: FieldName, value: string) {
     if (name === "member_project_id" && value === "none") value = "";
-    setValues((previous) => ({ ...previous, [name]: value }));
+    if (name === "phone" || (name === "document" && intent === "person"))
+      value = digits(value);
+    if (name === "full_name" || name === "name")
+      value = lettersAndNamePunctuation(value);
+    if (name === "state") {
+      setValues((previous) => ({ ...previous, state: value, city: "" }));
+    } else {
+      setValues((previous) => ({ ...previous, [name]: value }));
+    }
     setErrors((previous) => {
       const next = { ...previous };
       delete next[name];
@@ -179,10 +193,13 @@ export function RegisterForm() {
         next.name = "Informe o nome da organização.";
       if (intent === "project" && !values.organization_type)
         next.organization_type = "Selecione o tipo de organização.";
-      if (values.city.trim().length < 2)
-        next.city = "Informe a cidade da organização.";
       if (!brazilStates.includes(values.state))
         next.state = "Selecione um estado.";
+      const availableCities = projects
+        .filter((project) => project.state === values.state)
+        .map((project) => project.city);
+      if (!availableCities.includes(values.city))
+        next.city = "Selecione uma cidade disponível para o estado escolhido.";
       if (values.short_description.trim().length < 10)
         next.short_description =
           "Escreva uma apresentação com ao menos 10 caracteres.";
@@ -328,6 +345,7 @@ export function RegisterForm() {
     label: string,
     placeholder: string,
     options: { value: string; label: string }[],
+    disabled = false,
   ) {
     return (
       <div>
@@ -337,7 +355,7 @@ export function RegisterForm() {
         <Select
           value={values[name]}
           onValueChange={(value) => updateField(name, value)}
-          disabled={pending}
+          disabled={pending || disabled}
         >
           <SelectTrigger
             id={name}
@@ -637,6 +655,7 @@ export function RegisterForm() {
               })}
               {field("phone", "Telefone (opcional)", {
                 type: "tel",
+                inputMode: "numeric",
                 autoComplete: "tel",
                 placeholder: "(11) 99999-9999",
                 maxLength: 30,
@@ -798,19 +817,42 @@ export function RegisterForm() {
                   .filter(([code]) => code !== "company")
                   .map(([value, label]) => ({ value, label })),
               )}
-            <div className="grid grid-cols-[1fr_100px] gap-4">
-              {field("city", "Cidade", {
-                autoComplete: "address-level2",
-                maxLength: 100,
-                placeholder: "Sua cidade",
-              })}
+            <div className="grid grid-cols-[100px_1fr] gap-4">
               {selectField(
                 "state",
                 "Estado",
                 "UF",
                 brazilStates.map((value) => ({ value, label: value })),
               )}
+              {selectField(
+                "city",
+                "Cidade",
+                values.state
+                  ? projectsLoading
+                    ? "Carregando cidades..."
+                    : "Selecione uma cidade"
+                  : "Selecione o estado primeiro",
+                [...new Set(
+                  projects
+                    .filter((project) => project.state === values.state)
+                    .map((project) => project.city),
+                )]
+                  .sort((a, b) => a.localeCompare(b, "pt-BR"))
+                  .map((city) => ({ value: city, label: city })),
+                !values.state || projectsLoading || projectsError,
+              )}
             </div>
+            {values.state && projectsError && (
+              <p role="status" className="-mt-4 text-xs text-muted-foreground">
+                Não foi possível carregar as cidades cadastradas. Tente novamente mais tarde.
+              </p>
+            )}
+            {values.state && !projectsLoading && !projectsError &&
+              !projects.some((project) => project.state === values.state) && (
+                <p className="-mt-4 text-xs text-muted-foreground">
+                  Não há cidades cadastradas para este estado. Selecione outro estado ou solicite o cadastro da cidade.
+                </p>
+              )}
             {textareaField(
               "short_description",
               "Apresentação breve",

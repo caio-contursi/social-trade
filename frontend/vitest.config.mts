@@ -15,6 +15,7 @@ export default defineConfig({
       thresholds: { lines: 95, statements: 95, branches: 90, functions: 90 },
       reporter: [["text", { skipFull: false }], "json-summary", "lcov", "html"],
       include: [
+        "src/lib/api-origin.ts",
         "src/components/auth-provider.tsx",
         "src/components/auth/validation.ts",
         "src/components/auth/login-form.tsx",

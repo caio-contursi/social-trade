@@ -82,12 +82,19 @@ organizations = sa.Table(
     sa.Column("website_url", sa.Text),
     sa.Column("instagram_url", sa.Text),
     sa.Column("pix_key", sa.Text),
+    sa.Column("pix_key_verified_at", sa.DateTime(timezone=True)),
+    sa.Column("pix_key_verified_by_user_id", sa.BigInteger, sa.ForeignKey("users.id", ondelete="RESTRICT")),
     sa.Column("logo_url", sa.Text),
     timestamp_column(),
     sa.UniqueConstraint("id", "institution_kind", name="uq_organizations_id_institution_kind"),
     sa.CheckConstraint("institution_kind IN ('donor','project')", name="institution_kind"),
     sa.CheckConstraint("institution_kind = 'donor' OR organization_type <> 'company'", name="company_is_donor"),
     sa.CheckConstraint("cnpj IS NULL OR cnpj ~ '^[A-Z0-9]{12}[0-9]{2}$'", name="cnpj"),
+    sa.CheckConstraint(
+        "(pix_key_verified_at IS NULL AND pix_key_verified_by_user_id IS NULL) "
+        "OR (pix_key IS NOT NULL AND pix_key_verified_at IS NOT NULL AND pix_key_verified_by_user_id IS NOT NULL AND cnpj IS NOT NULL)",
+        name="pix_review_consistency",
+    ),
     sa.CheckConstraint("state IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')", name="state"),
     sa.CheckConstraint("founding_year BETWEEN 1800 AND 2100", name="founding_year"),
 )
@@ -119,6 +126,40 @@ project_memberships = sa.Table(
     sa.CheckConstraint("member_role IN ('staff','assisted')", name="member_role"),
 )
 sa.Index("ix_project_memberships_organization", project_memberships.c.organization_id)
+
+donations = sa.Table(
+    "donations", metadata,
+    identity_column(),
+    sa.Column("donor_user_id", sa.BigInteger, sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
+    sa.Column("project_organization_id", sa.BigInteger, sa.ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False),
+    sa.Column("pix_key_snapshot", sa.Text, nullable=False),
+    sa.Column("amount_cents", sa.BigInteger, nullable=False),
+    sa.Column("currency", sa.String(3), nullable=False, server_default="BRL"),
+    sa.Column("payment_method", sa.Text, nullable=False, server_default="pix"),
+    sa.Column("status", sa.Text, nullable=False, server_default="awaiting_payment"),
+    sa.Column("end_to_end_id", sa.String(100), unique=True),
+    sa.Column("receipt_code", sa.String(36), unique=True),
+    timestamp_column(),
+    sa.Column("payment_reported_at", sa.DateTime(timezone=True)),
+    sa.Column("confirmed_at", sa.DateTime(timezone=True)),
+    sa.Column("confirmed_by_user_id", sa.BigInteger, sa.ForeignKey("users.id", ondelete="RESTRICT")),
+    sa.CheckConstraint("amount_cents > 0", name="amount_positive"),
+    sa.CheckConstraint("currency = 'BRL'", name="currency_brl"),
+    sa.CheckConstraint("payment_method = 'pix'", name="payment_method_pix"),
+    sa.CheckConstraint("status IN ('awaiting_payment','awaiting_confirmation','confirmed','rejected')", name="status"),
+    sa.CheckConstraint(
+        "(status = 'awaiting_payment' AND end_to_end_id IS NULL AND payment_reported_at IS NULL) "
+        "OR (status IN ('awaiting_confirmation','confirmed','rejected') AND end_to_end_id IS NOT NULL AND payment_reported_at IS NOT NULL)",
+        name="payment_reference_matches_status",
+    ),
+    sa.CheckConstraint(
+        "(status = 'confirmed' AND receipt_code IS NOT NULL AND confirmed_at IS NOT NULL AND confirmed_by_user_id IS NOT NULL) "
+        "OR (status <> 'confirmed' AND receipt_code IS NULL AND confirmed_at IS NULL AND confirmed_by_user_id IS NULL)",
+        name="receipt_only_after_confirmation",
+    ),
+)
+sa.Index("ix_donations_donor_created", donations.c.donor_user_id, donations.c.created_at.desc(), donations.c.id.desc())
+sa.Index("ix_donations_project_created", donations.c.project_organization_id, donations.c.created_at.desc(), donations.c.id.desc())
 
 announcements = sa.Table(
     "announcements", metadata,

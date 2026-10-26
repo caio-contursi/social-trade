@@ -302,8 +302,9 @@ def test_explicit_seed_is_idempotent_and_preserves_existing_data(api, client):
     assert session.status_code == 200
     assert session.json()["user"]["full_name"] == "Nome preservado"
     assert session.json()["user"]["role"] == "volunteer"
-    assert len(before["users"]) == 5
-    assert len(before["organizations"]) == 2
+    assert len(before["users"]) == 6
+    assert any(user["username"] == "projeto_pix" for user in before["users"])
+    assert len(before["organizations"]) == 3
     assert len(before["announcements"]) == 3
 
 

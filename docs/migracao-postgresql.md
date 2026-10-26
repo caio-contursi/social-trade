@@ -61,4 +61,4 @@ Colisões concorrentes de slugs e matrículas gerados internamente são repetida
 
 A origem SQLite permanece preservada. Antes de colocar a aplicação migrada em uso, é possível voltar ao checkout e à configuração anteriores. Depois de aceitar novas gravações no PostgreSQL, retornar ao SQLite antigo perderia essas alterações; nesse caso é necessário um plano próprio de recuperação e reconciliação.
 
-A cópia local não publica a aplicação nem configura hospedagem. Para produção, prepare backup, autenticação do PostgreSQL, segredo de sessão próprio, HTTPS e migrações explícitas na instalação. Não use demonstrações em dados reais. Pagamentos, prestação de contas e Solana seguem fora desta etapa.
+A cópia local não publica a aplicação nem configura hospedagem. Para produção, prepare backup, autenticação do PostgreSQL, segredo de sessão próprio, HTTPS e migrações explícitas na instalação. Não use demonstrações em dados reais. O Pix direto é apenas registrado e acompanhado pelo MVP; a SocialTrade não recebe valores. PSP, conciliação bancária, pagamentos por cartão, prestação de contas ampliada e Solana seguem fora desta etapa.

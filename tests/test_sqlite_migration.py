@@ -77,6 +77,9 @@ def test_import_preserves_data_login_dates_relationships_and_identities(legacy_s
         row = db.execute(select(models.users)).mappings().one()
         assert row["created_at"].isoformat() == "2026-10-17T05:43:21+00:00"
         assert db.execute(select(models.organizations.c.slug)).scalar_one() == "projeto-ficticio"
+        imported_org = db.execute(select(models.organizations)).mappings().one()
+        assert imported_org["pix_key_verified_at"] is None
+        assert imported_org["pix_key_verified_by_user_id"] is None
         assert db.execute(select(models.project_memberships.c.organization_kind)).scalar_one() == "project"
         next_id = db.execute(models.announcements.insert().values(title="Outro", body="Outro aviso").returning(models.announcements.c.id)).scalar_one()
         assert next_id == 10

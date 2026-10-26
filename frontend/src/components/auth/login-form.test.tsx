@@ -11,7 +11,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => navigation.params,
 }));
 vi.mock("@/components/auth-provider", () => ({ useAuth: () => auth }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
 
 describe("formulário de entrada", () => {
   const fetchMock = vi.fn<typeof fetch>();
@@ -22,6 +23,8 @@ describe("formulário de entrada", () => {
     navigation.params = new URLSearchParams();
     fetchMock.mockReset();
     loginRequest.mockReset();
+    toast.success.mockReset();
+    toast.error.mockReset();
     demoEnabled = false;
     fetchMock.mockImplementation((path) => {
       if (path === "/api/catalog") return Promise.resolve(jsonResponse({ demo_users_enabled: demoEnabled }));
@@ -69,6 +72,7 @@ describe("formulário de entrada", () => {
     await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
 
     await waitFor(() => expect(auth.login).toHaveBeenCalledWith(session));
+    expect(toast.success).not.toHaveBeenCalled();
     const request = fetchMock.mock.calls.find(([path]) => path === "/api/auth/login");
     expect(request?.[1]?.method).toBe("POST");
     expect(JSON.parse(request?.[1]?.body as string)).toEqual({
@@ -102,6 +106,17 @@ describe("formulário de entrada", () => {
     await user.type(screen.getByLabelText("Senha"), "SocialTrade123!");
     await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
     await waitFor(() => expect(auth.login).toHaveBeenCalled());
+  });
+
+  it("remove letras e pontuação do CPF digitado sem alterar a senha", async () => {
+    navigation.params = new URLSearchParams("tipo=person");
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    const cpf = screen.getByLabelText("Seu CPF");
+    await user.type(cpf, "529a982.247-25x");
+    expect(cpf).toHaveValue("52998224725");
+    await user.type(screen.getByLabelText("Senha"), "Senha123!");
+    expect(screen.getByLabelText("Senha")).toHaveValue("Senha123!");
   });
 
   it.each(["12ABC34501DE3A", "12ABC34501DÉ35", "1234567890A", "12ABC34501DE35!", "12 ABC34501DE35", "12/ABC/345/01DE/35", "12AſC34501DE20", "12.AſC.345/01DE-20", "12Aß4501DE313", "12.Aß.450/1DE3-13"])(
@@ -156,6 +171,9 @@ describe("formulário de entrada", () => {
     demoEnabled = true;
     render(<LoginForm />);
     expect(await screen.findByText("Ambiente de demonstração")).toBeInTheDocument();
+    expect(screen.getByText("CNPJ 90000001000129")).toBeInTheDocument();
+    expect(screen.getByText("CPF 33333333333")).toBeInTheDocument();
+    expect(screen.getByText("12345678000195")).toBeInTheDocument();
   });
 
   it("permite exibir e ocultar a senha sem enviar o formulário", async () => {

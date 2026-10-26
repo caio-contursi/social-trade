@@ -40,10 +40,10 @@ export async function registerInstitution(
   expect(response.ok(), await response.text()).toBeTruthy();
 }
 
-export async function login(page: Page, document = donorDocument, kind: "donor" | "person" = "donor") {
+export async function login(page: Page, document = donorDocument, kind: "donor" | "project" | "person" = "donor", secret = password) {
   await page.goto(`/entrar?tipo=${kind}`);
-  await page.getByLabel(kind === "donor" ? "CNPJ da empresa" : "Seu CPF", { exact: true }).fill(document);
-  await page.getByLabel("Senha", { exact: true }).fill(password);
+  await page.getByLabel(kind === "donor" ? "CNPJ da empresa" : kind === "person" ? "Seu CPF" : "CPF ou CNPJ", { exact: true }).fill(document);
+  await page.getByLabel("Senha", { exact: true }).fill(secret);
   await page.getByRole("button", { name: "Entrar na minha conta" }).click();
   await expect(page).toHaveURL(/\/painel$/);
 }

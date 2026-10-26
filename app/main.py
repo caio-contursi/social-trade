@@ -1,30 +1,30 @@
 import re
 import secrets
 import unicodedata
+import html
+from uuid import uuid4
 from contextlib import contextmanager
-from pathlib import Path
-
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from sqlalchemy import delete, func, insert, select, update
-from sqlalchemy.exc import IntegrityError
+from fastapi import Depends, FastAPI, HTTPException, Response, status
+from sqlalchemy import delete, func, insert, select, text, update
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.auth import current_user, moderator
 from app.catalog import ROLE_LABELS, get_catalog_codes, load_catalog
 from app.config import DEMO_USERS_ENABLED
 from app.database import connect, transaction
 from app.models import (
-    announcements as announcement_table, organization_areas, organization_services,
+    announcements as announcement_table, donations, organization_areas, organization_services,
     organizations, project_memberships, support_tickets, users,
 )
-from app.schemas import AnnouncementInput, InstitutionRegisterInput, LoginInput, OrganizationCreate, ProfileUpdate, RegisterInput, TicketInput, TicketStatusInput
+from app.schemas import (
+    AnnouncementInput, DonationCreateInput, DonationPaymentReportInput,
+    InstitutionRegisterInput, LoginInput, OrganizationCreate, PixVerificationInput, ProfileUpdate,
+    RegisterInput, TicketInput, TicketStatusInput,
+)
 from app.security import hash_password, issue_token, verify_password
 
 
 app = FastAPI(title="SocialTrade", version="0.1.0", description="Cadastro e acompanhamento de organizações sociais.")
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 PUBLIC_ORGANIZATION_FIELDS = (
     "id", "name", "slug", "organization_type", "city", "state", "founding_year",
     "short_description", "objective", "impact_summary", "description", "website_url",
@@ -35,6 +35,7 @@ EDITABLE_ORGANIZATION_FIELDS = (
     "short_description", "objective", "impact_summary", "description", "website_url",
     "instagram_url", "pix_key", "logo_url",
 )
+donor_organizations = organizations.alias("donor_organizations")
 
 
 @contextmanager
@@ -148,12 +149,20 @@ def organization_view(db, org_id: int) -> dict:
     selected = set(db.execute(select(organization_services.c.service_code)
         .where(organization_services.c.organization_id == org_id)).scalars())
     result["services"] = [{**item, "interested": item["code"] in selected} for item in load_catalog(db)["services"]]
+    result["pix_donations_available"] = bool(
+        result["institution_kind"] == "project" and result["cnpj"]
+        and result["pix_key"] and result["pix_key_verified_at"]
+    )
     result.update(organization_profile_metadata(result, owner_email))
     return result
 
 
 def public_organization_view(db, row) -> dict:
     result = {key: row[key] for key in PUBLIC_ORGANIZATION_FIELDS}
+    result["pix_donations_available"] = bool(
+        row["institution_kind"] == "project" and row["private_cnpj"]
+        and row["private_pix_key"] and row["private_pix_key_verified_at"]
+    )
     result["areas"] = list(db.execute(select(organization_areas.c.area_code)
         .where(organization_areas.c.organization_id == row["id"]).order_by(organization_areas.c.area_code)).scalars())
     result.update(organization_profile_metadata({**result, "institution_kind": row["institution_kind"]}, row["owner_email"]))
@@ -162,7 +171,9 @@ def public_organization_view(db, row) -> dict:
 
 def public_project_query():
     return select(*[organizations.c[field] for field in PUBLIC_ORGANIZATION_FIELDS],
-                  organizations.c.institution_kind, users.c.email.label("owner_email"))\
+                  organizations.c.institution_kind, users.c.email.label("owner_email"),
+                  organizations.c.cnpj.label("private_cnpj"), organizations.c.pix_key.label("private_pix_key"),
+                  organizations.c.pix_key_verified_at.label("private_pix_key_verified_at"))\
         .join(users, users.c.id == organizations.c.owner_id)
 
 
@@ -172,19 +183,90 @@ def public_project_list(db) -> list[dict]:
     return [public_organization_view(db, row) for row in rows]
 
 
+def donation_view(row, *, include_pix_key: bool = False) -> dict:
+    result = {
+        "id": row["id"], "project_id": row["project_organization_id"],
+        "project_name": row["project_name"], "amount_cents": row["amount_cents"],
+        "currency": row["currency"], "payment_method": row["payment_method"],
+        "status": row["status"], "end_to_end_id": row["end_to_end_id"],
+        "receipt_code": row["receipt_code"], "created_at": row["created_at"],
+        "payment_reported_at": row["payment_reported_at"], "confirmed_at": row["confirmed_at"],
+        "donor_name": row.get("donor_name"), "donor_cnpj": row.get("donor_cnpj"),
+        "donor_document": row.get("donor_document"),
+        "donor_document_type": row.get("donor_document_type"),
+    }
+    if include_pix_key:
+        result["pix_key"] = row["pix_key_snapshot"]
+    return result
+
+
+def donation_query():
+    return select(
+        donations, organizations.c.name.label("project_name"),
+        func.coalesce(donor_organizations.c.name, users.c.full_name).label("donor_name"),
+        donor_organizations.c.cnpj.label("donor_cnpj"),
+        func.coalesce(donor_organizations.c.cnpj, users.c.document).label("donor_document"),
+        users.c.account_type.label("donor_document_type"),
+    ).join(organizations, organizations.c.id == donations.c.project_organization_id) \
+        .join(users, users.c.id == donations.c.donor_user_id) \
+        .outerjoin(donor_organizations, (donor_organizations.c.owner_id == donations.c.donor_user_id) & (donor_organizations.c.institution_kind == "donor"))
+
+
+def receipt_html(row) -> str:
+    whole_reais, cents = divmod(row["amount_cents"], 100)
+    amount = f"R$ {whole_reais:,}".replace(",", ".") + f",{cents:02d}"
+    fields = {
+        "Código do comprovante": row["receipt_code"],
+        "Data da confirmação": row["confirmed_at"].isoformat(),
+        "Doador(a)": row["donor_name"],
+        ("CNPJ do doador" if row.get("donor_document_type") == "donor" else "CPF do doador"):
+            row.get("donor_document") or "Não informado",
+        "Projeto beneficiário": row["project_name"],
+        "CNPJ do projeto": row["project_cnpj"] or "Não informado",
+        "Valor confirmado": amount,
+        "Meio informado": "Pix (transferência direta à beneficiária)",
+        "Identificador E2E informado": row["end_to_end_id"],
+        "Confirmação registrada por": row["confirmed_by_name"],
+    }
+    details = "".join(
+        f"<dt>{html.escape(label)}</dt><dd>{html.escape(str(value))}</dd>"
+        for label, value in fields.items()
+    )
+    return (
+        "<!doctype html><html lang='pt-BR'><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Comprovante de doação SocialTrade</title>"
+        "<style>body{font:16px system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#17211d}"
+        "h1{color:#176b4d}dl{display:grid;grid-template-columns:240px 1fr;gap:12px;border-top:1px solid #ddd;padding-top:18px}"
+        "dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}.notice{margin-top:28px;padding:16px;background:#f1f7f3}"
+        "@media print{body{margin:0}}</style><body><h1>Registro de doação confirmada</h1>"
+        f"<dl>{details}</dl><p class='notice'>A organização beneficiária confirmou o recebimento no SocialTrade. "
+        "Este documento é um recibo privado emitido com base nessa confirmação e nos dados informados. "
+        "Não é nota fiscal, validação bancária independente, certificação de elegibilidade ou garantia de benefício fiscal. "
+        "A SocialTrade não garante abatimento no Imposto de Renda; consulte orientações oficiais do governo e um profissional de contabilidade para verificar as regras aplicáveis ao seu caso.</p>"
+        "</body></html>"
+    )
+
+
 @app.get("/")
 def index():
-    return FileResponse(STATIC_DIR / "index.html")
+    return {"service": "SocialTrade API", "message": "A interface web é servida pelo frontend Next.js."}
 
 
 @app.get("/public")
 def public_page():
-    return FileResponse(STATIC_DIR / "public.html")
+    raise HTTPException(status_code=410, detail="Esta interface foi descontinuada. Use a interface principal da SocialTrade.")
 
 
 @app.get("/health")
+@app.get("/api/health")
 def health():
-    return {"status": "ok", "blockchain": "disabled"}
+    try:
+        with connect() as db:
+            db.execute(text("SELECT 1"))
+    except SQLAlchemyError as error:
+        raise HTTPException(status_code=503, detail="Banco de dados indisponível.") from error
+    return {"status": "ok", "database": "ok", "blockchain": "disabled"}
 
 
 @app.get("/api/catalog")
@@ -283,10 +365,131 @@ def my_organizations(user=Depends(current_user)):
 
 @app.get("/api/projects")
 def projects(user=Depends(current_user)):
-    if user["account_type"] != "donor":
-        raise HTTPException(status_code=403, detail="A consulta de projetos para investimento é exclusiva de empresas doadoras.")
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="A consulta de projetos está disponível para doadores.")
     with connect() as db:
         return public_project_list(db)
+
+
+@app.post("/api/donations", status_code=status.HTTP_201_CREATED)
+def create_donation(payload: DonationCreateInput, user=Depends(current_user)):
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente empresas ou pessoas físicas podem iniciar uma doação.")
+    with write_transaction() as db:
+        project = db.execute(select(
+            organizations.c.id, organizations.c.name, organizations.c.pix_key,
+            organizations.c.cnpj, organizations.c.pix_key_verified_at,
+        ).where(
+            organizations.c.id == payload.project_id,
+            organizations.c.institution_kind == "project",
+        )).mappings().first()
+        if project is None:
+            raise HTTPException(status_code=404, detail="Projeto social não encontrado.")
+        pix_key = (project["pix_key"] or "").strip()
+        if not pix_key:
+            raise HTTPException(status_code=409, detail="Este projeto ainda não cadastrou uma chave Pix para recebimento direto.")
+        if not project["cnpj"] or not project["pix_key_verified_at"]:
+            raise HTTPException(status_code=409, detail="Este projeto ainda não passou pela conferência cadastral da chave Pix.")
+        if user["account_type"] == "donor" and not db.execute(select(organizations.c.id).where(
+            organizations.c.owner_id == user["id"], organizations.c.institution_kind == "donor",
+        )).first():
+            raise HTTPException(status_code=409, detail="A conta da empresa doadora precisa ter um perfil institucional cadastrado.")
+        donation_id = db.execute(insert(donations).values(
+            donor_user_id=user["id"], project_organization_id=project["id"],
+            pix_key_snapshot=pix_key,
+            amount_cents=payload.amount_cents,
+        ).returning(donations.c.id)).scalar_one()
+    return {
+        "id": donation_id, "project_id": project["id"], "project_name": project["name"],
+        "amount_cents": payload.amount_cents, "currency": "BRL", "payment_method": "pix",
+        "status": "awaiting_payment", "pix_key": pix_key,
+        "payment_instructions": "Faça a transferência no aplicativo do seu banco diretamente para a chave Pix do projeto. O SocialTrade não recebe nem repassa o valor.",
+        "next_step": "Após pagar, informe o identificador E2E. O recibo só será emitido depois que o projeto confirmar o crédito na própria conta.",
+        "tax_notice": "A SocialTrade não garante abatimento no Imposto de Renda nem qualquer benefício fiscal. Consulte orientações oficiais do governo e um profissional de contabilidade para verificar se alguma regra se aplica ao seu caso.",
+    }
+
+
+@app.get("/api/donations/mine")
+def my_donations(user=Depends(current_user)):
+    if user["account_type"] in {"donor", "person"}:
+        condition = donations.c.donor_user_id == user["id"]
+    elif user["account_type"] == "project":
+        condition = organizations.c.owner_id == user["id"]
+    else:
+        raise HTTPException(status_code=403, detail="Esta consulta está disponível para empresas doadoras e projetos sociais.")
+    with connect() as db:
+        rows = db.execute(donation_query().where(condition)
+            .order_by(donations.c.created_at.desc(), donations.c.id.desc())).mappings()
+        return [donation_view(row, include_pix_key=user["account_type"] in {"donor", "person"}) for row in rows]
+
+
+@app.post("/api/donations/{donation_id}/report-payment")
+def report_donation_payment(donation_id: int, payload: DonationPaymentReportInput, user=Depends(current_user)):
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente quem iniciou a doação pode informar o pagamento.")
+    with write_transaction() as db:
+        row = db.execute(select(donations.c.status).where(
+            donations.c.id == donation_id, donations.c.donor_user_id == user["id"],
+        ).with_for_update()).first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Doação não encontrada.")
+        if row.status != "awaiting_payment":
+            raise HTTPException(status_code=409, detail="Esta doação não está aguardando o envio do pagamento.")
+        db.execute(update(donations).where(donations.c.id == donation_id).values(
+            end_to_end_id=payload.end_to_end_id, status="awaiting_confirmation",
+            payment_reported_at=func.now(),
+        ))
+    return {"id": donation_id, "status": "awaiting_confirmation", "message": "Pagamento informado. O projeto precisa confirmar o crédito na conta antes da emissão do recibo."}
+
+
+@app.post("/api/donations/{donation_id}/confirm")
+def confirm_donation_receipt(donation_id: int, user=Depends(current_user)):
+    if user["account_type"] != "project":
+        raise HTTPException(status_code=403, detail="Somente o projeto beneficiário pode confirmar o recebimento.")
+    with transaction() as db:
+        row = db.execute(select(
+            donations.c.status, donations.c.project_organization_id,
+        ).join(organizations, organizations.c.id == donations.c.project_organization_id).where(
+            donations.c.id == donation_id, organizations.c.owner_id == user["id"],
+            organizations.c.institution_kind == "project",
+        ).with_for_update()).first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Doação não encontrada neste projeto.")
+        if row.status != "awaiting_confirmation":
+            raise HTTPException(status_code=409, detail="A doação precisa estar aguardando confirmação do projeto.")
+        receipt_code = str(uuid4())
+        db.execute(update(donations).where(donations.c.id == donation_id).values(
+            status="confirmed", receipt_code=receipt_code, confirmed_at=func.now(),
+            confirmed_by_user_id=user["id"],
+        ))
+    return {"id": donation_id, "status": "confirmed", "receipt_code": receipt_code, "receipt_url": f"/api/donations/{donation_id}/receipt"}
+
+
+@app.get("/api/donations/{donation_id}/receipt")
+def donation_receipt(donation_id: int, user=Depends(current_user)):
+    confirmer = users.alias("confirming_users")
+    donor_org = donor_organizations
+    with connect() as db:
+        row = db.execute(select(
+            donations, organizations.c.name.label("project_name"),
+            organizations.c.cnpj.label("project_cnpj"), organizations.c.owner_id.label("project_owner_id"),
+            func.coalesce(donor_org.c.name, users.c.full_name).label("donor_name"), donor_org.c.cnpj.label("donor_cnpj"),
+            func.coalesce(donor_org.c.cnpj, users.c.document).label("donor_document"),
+            users.c.account_type.label("donor_document_type"),
+            confirmer.c.full_name.label("confirmed_by_name"),
+        ).join(organizations, organizations.c.id == donations.c.project_organization_id)
+          .join(users, users.c.id == donations.c.donor_user_id)
+          .outerjoin(donor_org, (donor_org.c.owner_id == donations.c.donor_user_id) & (donor_org.c.institution_kind == "donor"))
+          .outerjoin(confirmer, confirmer.c.id == donations.c.confirmed_by_user_id)
+          .where(donations.c.id == donation_id)).mappings().first()
+    if row is None or row["status"] != "confirmed":
+        raise HTTPException(status_code=404, detail="Comprovante disponível somente após a confirmação do projeto.")
+    if user["id"] != row["donor_user_id"] and user["id"] != row["project_owner_id"]:
+        raise HTTPException(status_code=403, detail="Este comprovante pertence a outra doação.")
+    return Response(
+        content=receipt_html(row), media_type="text/html; charset=utf-8",
+        headers={"Content-Disposition": f'inline; filename="socialtrade-doacao-{donation_id}.html"'},
+    )
 
 
 @app.get("/api/public/projects")
@@ -340,7 +543,7 @@ def add_organization(payload: OrganizationCreate, user=Depends(current_user)):
 def update_organization(org_id: int, payload: OrganizationCreate, user=Depends(current_user)):
     data = payload.model_dump()
     with transaction() as db:
-        row = db.execute(select(organizations.c.owner_id, organizations.c.institution_kind, organizations.c.cnpj)
+        row = db.execute(select(organizations.c.owner_id, organizations.c.institution_kind, organizations.c.cnpj, organizations.c.pix_key)
             .where(organizations.c.id == org_id)).mappings().first()
         if row is None:
             raise HTTPException(status_code=404, detail="Organização não encontrada.")
@@ -353,8 +556,10 @@ def update_organization(org_id: int, payload: OrganizationCreate, user=Depends(c
         if data["cnpj"] != row["cnpj"]:
             raise HTTPException(status_code=422, detail="O CNPJ não pode ser alterado neste formulário.")
         validate_organization_catalog(db, data)
-        db.execute(update(organizations).where(organizations.c.id == org_id)
-            .values(**{field: data[field] for field in EDITABLE_ORGANIZATION_FIELDS}))
+        organization_values = {field: data[field] for field in EDITABLE_ORGANIZATION_FIELDS}
+        if data["pix_key"] != row["pix_key"]:
+            organization_values.update(pix_key_verified_at=None, pix_key_verified_by_user_id=None)
+        db.execute(update(organizations).where(organizations.c.id == org_id).values(**organization_values))
         replace_organization_relationships(db, org_id, data)
         return organization_view(db, org_id)
 
@@ -411,3 +616,36 @@ def publish_announcement(payload: AnnouncementInput, user=Depends(moderator)):
         announcement_id = db.execute(insert(announcement_table).values(title=payload.title.strip(), body=payload.body.strip(),
             category=payload.category.strip()).returning(announcement_table.c.id)).scalar_one()
     return {"id": announcement_id, "message": "Aviso publicado."}
+
+
+@app.get("/api/moderation/projects/pix-review")
+def pix_review_queue(user=Depends(moderator)):
+    with connect() as db:
+        rows = db.execute(select(
+            organizations.c.id, organizations.c.name, organizations.c.cnpj,
+            organizations.c.pix_key, organizations.c.pix_key_verified_at,
+            organizations.c.owner_id, users.c.full_name.label("owner_name"),
+        ).join(users, users.c.id == organizations.c.owner_id).where(
+            organizations.c.institution_kind == "project", organizations.c.pix_key.is_not(None),
+        ).order_by(organizations.c.created_at.desc(), organizations.c.id.desc())).mappings()
+        return [dict(row) for row in rows]
+
+
+@app.patch("/api/moderation/projects/{org_id}/pix-verification")
+def verify_project_pix_key(org_id: int, payload: PixVerificationInput, user=Depends(moderator)):
+    with transaction() as db:
+        row = db.execute(select(
+            organizations.c.owner_id, organizations.c.institution_kind,
+            organizations.c.cnpj, organizations.c.pix_key,
+        ).where(organizations.c.id == org_id).with_for_update()).mappings().first()
+        if row is None or row["institution_kind"] != "project":
+            raise HTTPException(status_code=404, detail="Projeto social não encontrado.")
+        if row["owner_id"] == user["id"]:
+            raise HTTPException(status_code=403, detail="A conferência deve ser feita por uma pessoa moderadora que não seja proprietária do projeto.")
+        if payload.verified and (not row["cnpj"] or not row["pix_key"] or not row["pix_key"].strip()):
+            raise HTTPException(status_code=409, detail="O projeto precisa informar CNPJ e chave Pix antes da conferência.")
+        db.execute(update(organizations).where(organizations.c.id == org_id).values(
+            pix_key_verified_at=func.now() if payload.verified else None,
+            pix_key_verified_by_user_id=user["id"] if payload.verified else None,
+        ))
+    return {"organization_id": org_id, "pix_key_verified": payload.verified}

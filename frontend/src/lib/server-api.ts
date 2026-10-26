@@ -1,9 +1,8 @@
 import "server-only";
+import { getApiOrigin } from "@/lib/api-origin";
 import type { Project } from "@/lib/types";
 
-const apiOrigin = (
-  process.env.SOCIALTRADE_API_URL || "http://127.0.0.1:8000"
-).replace(/\/$/, "");
+const apiOrigin = getApiOrigin();
 export async function publicProjects(): Promise<{
   projects: Project[];
   error: boolean;

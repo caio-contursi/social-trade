@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
+  CheckCircle2,
   LifeBuoy,
   Megaphone,
   ShieldCheck,
@@ -27,6 +28,7 @@ import type {
   MessageResponse,
   ModerationOverview,
   TicketStatus,
+  PixReviewCandidate,
 } from "@/lib/types";
 import { ticketLabels, TicketStatusBadge } from "./account";
 import {
@@ -62,6 +64,9 @@ function ModeratorWorkspace() {
   const overview = useWorkspaceResource<ModerationOverview>(
     "/api/moderation/overview",
   );
+  const pixReview = useWorkspaceResource<PixReviewCandidate[]>(
+    "/api/moderation/projects/pix-review",
+  );
   const request = useSessionRequest();
   const [busyTicket, setBusyTicket] = useState<number | null>(null);
   const [ticketError, setTicketError] = useState<string | null>(null);
@@ -69,6 +74,26 @@ function ModeratorWorkspace() {
   const [publishError, setPublishError] = useState<string | null>(null);
   const ticketLock = useRef(false);
   const publishLock = useRef(false);
+  const [busyPix, setBusyPix] = useState<number | null>(null);
+  const pixLock = useRef(false);
+  async function reviewPix(candidate: PixReviewCandidate, verified: boolean) {
+    if (pixLock.current) return;
+    pixLock.current = true;
+    setBusyPix(candidate.id);
+    try {
+      await request(`/api/moderation/projects/${candidate.id}/pix-verification`, {
+        method: "PATCH",
+        body: JSON.stringify({ verified }),
+      });
+      toast.success(verified ? "Chave Pix habilitada para doações." : "Habilitação da chave Pix revogada.");
+      pixReview.reload();
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Não foi possível atualizar a revisão Pix.");
+    } finally {
+      pixLock.current = false;
+      setBusyPix(null);
+    }
+  }
   async function updateTicket(id: number, status: TicketStatus) {
     if (ticketLock.current) return;
     ticketLock.current = true;
@@ -170,6 +195,43 @@ function ModeratorWorkspace() {
               </div>
             ))}
           </div>
+          <section className="surface mb-8">
+            <div className="mb-4 flex items-center gap-3">
+              <ShieldCheck className="size-5 text-primary" />
+              <h2 className="text-xl font-semibold">Conferência de chaves Pix</h2>
+            </div>
+            <p className="mb-5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Confira os documentos do projeto e confirme por canal confiável que a conta de recebimento pertence à organização. A marcação registra uma revisão humana; ela não consulta o banco automaticamente.
+            </p>
+            {pixReview.loading && !pixReview.data ? (
+              <p role="status" className="text-sm text-muted-foreground">Carregando projetos que informaram chave Pix…</p>
+            ) : pixReview.error ? (
+              <WorkspaceError message={pixReview.error} retry={pixReview.reload} />
+            ) : pixReview.data?.length ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {pixReview.data.map((candidate) => {
+                  const verified = Boolean(candidate.pix_key_verified_at);
+                  return (
+                    <article key={candidate.id} className="rounded-xl border bg-background p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div><h3 className="font-semibold">{candidate.name}</h3><p className="mt-1 text-xs text-muted-foreground">CNPJ {candidate.cnpj || "não informado"} · responsável: {candidate.owner_name}</p></div>
+                        <span className="rounded-full border px-3 py-1 text-xs">{verified ? "Chave habilitada" : "Aguardando conferência"}</span>
+                      </div>
+                      <p className="mt-4 text-xs font-medium text-muted-foreground">Chave Pix privada</p>
+                      <code className="mt-1 block break-all rounded-lg bg-muted/50 p-3 text-sm">{candidate.pix_key || "Chave não informada"}</code>
+                      <Button type="button" variant={verified ? "outline" : "default"} className="mt-4" disabled={busyPix === candidate.id || !candidate.cnpj || !candidate.pix_key} onClick={() => void reviewPix(candidate, !verified)}>
+                        {verified ? <ShieldCheck className="size-4" /> : <CheckCircle2 className="size-4" />}
+                        {busyPix === candidate.id ? "Salvando…" : verified ? "Revogar habilitação" : "Confirmar conferência e habilitar"}
+                      </Button>
+                      {(!candidate.cnpj || !candidate.pix_key) && <p className="mt-2 text-xs text-muted-foreground">O projeto precisa completar o CNPJ e a chave antes da revisão.</p>}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhum projeto informou uma chave Pix.</p>
+            )}
+          </section>
           <div className="grid items-start gap-7 xl:grid-cols-[1.25fr_1fr]">
             <section>
               <div className="mb-5 flex items-center gap-3">

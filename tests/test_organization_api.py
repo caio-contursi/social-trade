@@ -15,7 +15,7 @@ PUBLIC_FIELDS = {
     "id", "name", "slug", "organization_type", "city", "state", "founding_year",
     "short_description", "objective", "impact_summary", "description", "website_url",
     "instagram_url", "logo_url", "created_at", "areas", "verification_status",
-    "profile_completeness", "is_demo",
+    "profile_completeness", "is_demo", "pix_donations_available",
 }
 
 
@@ -101,7 +101,7 @@ class OrganizationApiTests(unittest.TestCase):
         self.assertEqual(public["objective"], organization_payload()["objective"])
         self.assertEqual(public["impact_summary"], organization_payload()["impact_summary"])
         listed = self.client.get("/api/public/projects").json()[0]
-        for field in ("verification_status", "profile_completeness", "is_demo"):
+        for field in ("verification_status", "profile_completeness", "is_demo", "pix_donations_available"):
             self.assertEqual(public[field], own[field])
             self.assertEqual(public[field], listed[field])
         self.assertEqual(public["verification_status"], "self_declared")

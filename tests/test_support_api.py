@@ -1,16 +1,55 @@
 """Support, moderation, announcements, and public/private boundaries."""
 import pytest
 from sqlalchemy import select, func
+from sqlalchemy.exc import SQLAlchemyError
 
 
 def test_anonymous_health_and_catalog_expose_no_accounts(client):
-    health = client.get("/health")
-    assert health.status_code == 200
-    assert health.json() == {"status": "ok", "blockchain": "disabled"}
+    for endpoint in ("/health", "/api/health"):
+        health = client.get(endpoint)
+        assert health.status_code == 200
+        assert health.json() == {
+            "status": "ok", "database": "ok", "blockchain": "disabled",
+        }
     catalog = client.get("/api/catalog")
     assert catalog.status_code == 200
     assert catalog.json()["demo_users_enabled"] is False
     assert not {"users", "secret", "token_secret", "database_path"}.intersection(catalog.json())
+
+
+def test_api_port_does_not_serve_the_legacy_web_interface(client):
+    root = client.get("/")
+    assert root.status_code == 200
+    assert root.json() == {
+        "service": "SocialTrade API",
+        "message": "A interface web é servida pelo frontend Next.js.",
+    }
+
+    legacy_page = client.get("/public")
+    assert legacy_page.status_code == 410
+    assert legacy_page.json() == {
+        "detail": "Esta interface foi descontinuada. Use a interface principal da SocialTrade.",
+    }
+
+    assert client.get("/api/health").status_code == 200
+
+
+def test_health_reports_database_outage_without_exposing_driver_details(client, monkeypatch):
+    class BrokenConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, _statement):
+            raise SQLAlchemyError("private database connection details")
+
+    monkeypatch.setattr("app.main.connect", lambda: BrokenConnection())
+    response = client.get("/api/health")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Banco de dados indisponível."}
+    assert "private database" not in response.text
 
 
 def test_demo_users_disabled_before_first_import(client, api):

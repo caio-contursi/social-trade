@@ -133,7 +133,14 @@ def read_snapshot(source: str | Path, *, allow_demo_documents: bool = False) -> 
                     raise MigrationError("unsupported_source_columns_" + name)
                 pk = [row[1] for row in sorted(db.execute(f'PRAGMA table_info("{name}")'), key=lambda row: row[5]) if row[5]]
                 order = ",".join(f'"{column}"' for column in pk)
-                snapshot.rows[name] = [dict(row) for row in db.execute(f'SELECT * FROM "{name}" ORDER BY {order}')]
+                rows = [dict(row) for row in db.execute(f'SELECT * FROM "{name}" ORDER BY {order}')]
+                if name == "organizations":
+                    # Legacy profiles have no reviewed Pix-key fields. Never infer
+                    # approval during import; every historical key starts unverified.
+                    for row in rows:
+                        row["pix_key_verified_at"] = None
+                        row["pix_key_verified_by_user_id"] = None
+                snapshot.rows[name] = rows
             _read_identity_high_water(db, snapshot)
     except sqlite3.Error as exc:
         raise MigrationError("source_read_error") from exc
@@ -333,7 +340,7 @@ def _validate_destination(db: Connection, snapshot: Snapshot) -> None:
             raise MigrationError("destination_check_constraints_mismatch")
     if db.execute(text("SELECT count(*) FROM pg_constraint WHERE connamespace=current_schema()::regnamespace AND NOT convalidated")).scalar_one():
         raise MigrationError("destination_constraints_not_validated")
-    for name in TABLES:
+    for name in (*TABLES, "donations"):
         if db.execute(select(func.count()).select_from(metadata.tables[name])).scalar_one():
             raise MigrationError("destination_not_empty")
     for table, column, catalog in (("organizations", "organization_type", "organization_types"), ("organization_areas", "area_code", "areas"), ("organization_services", "service_code", "services")):
@@ -402,7 +409,7 @@ def migrate(source: str | Path, engine: Engine, *, apply: bool = False, allow_de
                 schema = db.execute(text("SELECT current_schema()")).scalar_one()
                 if schema is None:
                     raise MigrationError("destination_schema_not_migrated")
-                targets = ", ".join(f"{quote(schema)}.{quote(name)}" for name in TABLES)
+                targets = ", ".join(f"{quote(schema)}.{quote(name)}" for name in (*TABLES, "donations"))
                 db.exec_driver_sql(f"LOCK TABLE {targets} IN ACCESS EXCLUSIVE MODE")
             else:
                 db.exec_driver_sql("SET TRANSACTION READ ONLY")

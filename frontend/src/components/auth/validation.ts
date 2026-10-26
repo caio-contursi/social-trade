@@ -2,6 +2,11 @@ export function digits(value: string) {
   return value.replace(/\D/g, "");
 }
 
+/** Mantém letras Unicode, espaços e pontuação comum em nomes e cidades. */
+export function lettersAndNamePunctuation(value: string) {
+  return value.replace(/[^\p{L}\p{M}\s.'’\-]/gu, "");
+}
+
 /** Aceita o documento puro ou sua máscara padrão, preservando letras e zeros. */
 export function normalizeDocument(value: string) {
   const trimmed = value.trim();

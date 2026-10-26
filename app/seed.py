@@ -18,6 +18,7 @@ def seed_demo_users(*, environment: str) -> None:
         ("Moderador", "mod@socialtrade.local", "mod", "moderator", "33333333333", "person"),
         ("Voluntário", "voluntario@socialtrade.local", "voluntario", "volunteer", "44444444444", "person"),
         ("Empresa Doadora", "doador@socialtrade.local", "doador", "member", "12345678000195", "donor"),
+        ("Projeto de Teste Pix", "projeto-pix@socialtrade.local", "projeto_pix", "member", "90000001000129", "project"),
     ]
     with transaction() as db:
         for name, email, username, role, document, account_type in demo_users:
@@ -51,6 +52,17 @@ def seed_demo_users(*, environment: str) -> None:
                     "cnpj": document, "city": "São Paulo", "state": "SP",
                     "short_description": "Empresa que investe em projetos sociais com transparência.",
                     "description": "Conta de demonstração de empresa apoiadora.", "areas": [], "interested_services": [],
+                })
+            elif username == "projeto_pix":
+                create_org(db, user_id, {
+                    "name": "Projeto de Teste Pix", "organization_type": "independent_project",
+                    "institution_kind": "project", "cnpj": document, "city": "São Paulo", "state": "SP",
+                    "founding_year": 2024,
+                    "short_description": "Perfil fictício para testar doações diretas por Pix em ambiente local.",
+                    "objective": "Validar o fluxo técnico de doação direta sem movimentar fundos pela plataforma.",
+                    "impact_summary": "Projeto exclusivamente demonstrativo; não representa uma iniciativa beneficiária real.",
+                    "description": "Use apenas em desenvolvimento, com uma chave Pix de uma conta que você controla.",
+                    "areas": ["technology"], "interested_services": ["public_profile"],
                 })
         if not db.execute(select(announcements.c.id).limit(1)).first():
             db.execute(insert(announcements), [
