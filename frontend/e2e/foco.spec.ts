@@ -33,7 +33,7 @@ test("foco opaco e verde nos controles sobre o papel", async ({ page }) => {
   await page.goto("/");
   await expectFocusRing(
     page,
-    page.getByRole("link", { name: "Encontrar um projeto" }),
+    page.getByRole("button", { name: "Encontrar um projeto" }),
     RING,
   );
   await expectFocusRing(

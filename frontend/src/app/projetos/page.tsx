@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageRetry } from "@/components/page-retry";
 import { ProjectExplorer } from "@/components/project-explorer";
+import { PageTransition } from "@/components/page-transition";
 import { publicProjects } from "@/lib/server-api";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function ProjectsPage() {
   return (
     <>
       <SiteHeader />
+      <PageTransition>
       <main
         id="conteudo"
         className="page-container pb-20 pt-10 sm:pb-24 sm:pt-16"
@@ -56,6 +58,7 @@ export default async function ProjectsPage() {
           </Suspense>
         )}
       </main>
+      </PageTransition>
       <SiteFooter />
     </>
   );

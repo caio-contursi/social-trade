@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Brand } from "@/components/brand";
+import { OpenProjectsLink } from "@/components/open-projects-link";
 
 const linkClass =
   "rounded-sm text-ink-foreground/80 underline-offset-4 decoration-energy hover:text-ink-foreground hover:underline";
@@ -27,9 +28,9 @@ export function SiteFooter() {
         <div>
           <p className="eyebrow mb-4">Faça parte da rede</p>
           <div className="flex flex-col gap-3 text-sm">
-            <Link href="/projetos" className={linkClass}>
+            <OpenProjectsLink className={linkClass}>
               Encontre um projeto
-            </Link>
+            </OpenProjectsLink>
             <Link href="/cadastro?tipo=donor" className={linkClass}>
               Cadastre sua empresa
             </Link>

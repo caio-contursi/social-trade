@@ -25,7 +25,13 @@ function normalize(value: string) {
     .toLowerCase();
 }
 
-export function ProjectExplorer({ projects }: { projects: Project[] }) {
+export function ProjectExplorer({
+  projects,
+  showInvite = true,
+}: {
+  projects: Project[];
+  showInvite?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -104,7 +110,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
   );
   const hasFilters = !!activeSearch.trim() || cause !== "all" || location !== "all";
   // Com 1 ou 2 resultados o convite entra na grade; com mais, vira faixa no fim.
-  const showInvite = filtered.length > 0 && filtered.length < 3;
+  const showProjectInvite = showInvite && filtered.length > 0 && filtered.length < 3;
 
   function reset() {
     setSearch("");
@@ -250,7 +256,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
             {filtered.map((project) => (
               <ProjectCard key={project.slug} project={project} />
             ))}
-            {showInvite && <InviteTile />}
+            {showProjectInvite && <InviteTile />}
           </div>
         </section>
       ) : (
@@ -269,23 +275,25 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
               ? "Experimente outra palavra ou remova um filtro para conhecer mais projetos."
               : "Ainda não há projetos cadastrados para conhecer. Apresente sua iniciativa e ajude a construir essa rede."}
           </p>
-          <Button
-            asChild={!hasFilters}
-            onClick={hasFilters ? reset : undefined}
-            variant="outline"
-            className="mt-6"
-          >
-            {hasFilters ? (
-              "Limpar filtros"
-            ) : (
-              <Link href="/cadastro?tipo=project">
-                Cadastrar meu projeto <ArrowRight className="size-4" />
-              </Link>
-            )}
-          </Button>
+          {(hasFilters || showInvite) && (
+            <Button
+              asChild={!hasFilters}
+              onClick={hasFilters ? reset : undefined}
+              variant="outline"
+              className="mt-6"
+            >
+              {hasFilters ? (
+                "Limpar filtros"
+              ) : (
+                <Link href="/cadastro?tipo=project">
+                  Cadastrar meu projeto <ArrowRight className="size-4" />
+                </Link>
+              )}
+            </Button>
+          )}
         </div>
       )}
-      {!showInvite && (
+      {showInvite && filtered.length >= 3 && (
         <div className="mt-12 flex flex-col justify-between gap-5 rounded-[1.4rem] border bg-muted p-6 sm:flex-row sm:items-center sm:p-8">
           <div>
             <h2 className="text-xl font-medium">
