@@ -91,7 +91,21 @@ def test_register_institution_creates_owner_and_matching_organization(
     assert owned[0]["institution_kind"] == kind
     assert owned[0]["cnpj"] == "11222333000181"
     assert session.json()["user"]["account_type"] == kind
+    users = importlib.import_module("app.models").users
+    with api.connect() as db:
+        responsible_cpf = db.execute(select(users.c.responsible_cpf)).scalar_one()
+    assert responsible_cpf == "52998224725"
+    assert "responsible_cpf" not in session.json()["user"]
     assert len(client.get("/api/public/projects").json()) == (1 if kind == "project" else 0)
+
+
+def test_institution_registration_requires_valid_responsible_cpf(client, institution_data, api):
+    response = client.post(
+        "/api/auth/register-institution",
+        json=institution_data(responsible_cpf="12345678900"),
+    )
+    assert response.status_code == 422, response.text
+    assert count_rows(api, "users") == count_rows(api, "organizations") == 0
 
 
 @pytest.mark.parametrize("field,value", [

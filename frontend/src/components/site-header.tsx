@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Menu } from "lucide-react";
+import { ArrowUpRight, LifeBuoy, Menu } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/components/auth-provider";
@@ -20,7 +20,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { user } = useAuth();
   const links = [
-    { href: "/projetos", label: "Explorar projetos" },
+    { href: "/#projetos", label: "Explorar projetos" },
     { href: "/#como-funciona", label: "Como funciona" },
     { href: "/#transparencia", label: "Transparência" },
   ];
@@ -52,13 +52,20 @@ export function SiteHeader() {
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          {user && (
+            <Button asChild variant="ghost" className="hidden sm:inline-flex">
+              <Link href="/painel/suporte">
+                <LifeBuoy className="size-4" /> Suporte
+              </Link>
+            </Button>
+          )}
           <Button asChild variant="ghost" className="hidden sm:inline-flex">
             <Link href={user ? "/painel" : "/entrar"}>
               {user ? "Meu painel" : "Entrar"}
             </Link>
           </Button>
           <Button asChild className="hidden sm:inline-flex">
-            <Link href={user ? "/projetos" : "/cadastro"}>
+            <Link href={user ? "/projetos#conteudo" : "/cadastro"}>
               {user ? "Explorar projetos" : "Fazer parte"}
               <ArrowUpRight className="size-4" />
             </Link>
@@ -92,6 +99,15 @@ export function SiteHeader() {
                     {link.label}
                   </Link>
                 ))}
+                {user && (
+                  <Link
+                    className="rounded-xl px-3 py-4 font-display text-xl hover:bg-accent"
+                    href="/painel/suporte"
+                    onClick={() => setOpen(false)}
+                  >
+                    Suporte
+                  </Link>
+                )}
                 <Button asChild variant="outline" className="mt-5">
                   <Link
                     href={user ? "/painel" : "/entrar"}

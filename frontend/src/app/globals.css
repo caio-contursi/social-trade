@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+
 /* Tokens e regras de uso: docs/design.md */
 @theme inline {
   --color-background: var(--background);

@@ -315,7 +315,8 @@ def register_institution(payload: InstitutionRegisterInput):
             raise HTTPException(status_code=409, detail="Este usuário já está em uso.")
         user_id = db.execute(insert(users).values(
             full_name=payload.full_name.strip(), username=payload.document.lower(), email=str(payload.email).lower(),
-            password_hash=hash_password(payload.password), phone=payload.phone, role="member", document=payload.document,
+            password_hash=hash_password(payload.password), phone=payload.phone, responsible_cpf=payload.responsible_cpf,
+            role="member", document=payload.document,
             account_type=payload.institution_kind,
         ).returning(users.c.id)).scalar_one()
         create_org(db, user_id, data)

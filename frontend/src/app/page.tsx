@@ -153,7 +153,8 @@ export default async function HomePage() {
                 </h2>
               </div>
               <Link
-                href="/projetos"
+                href="/projetos#conteudo"
+                scroll
                 className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
               >
                 Ver todos os projetos <ArrowRight className="size-4" />
@@ -187,6 +188,7 @@ export default async function HomePage() {
 
         <section
           className="page-container py-16 sm:py-24"
+          id="projetos"
           aria-labelledby="projects-title"
         >
           <div className="mb-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
@@ -202,7 +204,7 @@ export default async function HomePage() {
               </p>
             </div>
             <Button asChild variant="outline">
-              <Link href="/projetos">
+              <Link href="/projetos#conteudo" scroll>
                 Explorar todos os projetos <ArrowRight className="size-4" />
               </Link>
             </Button>

@@ -224,6 +224,7 @@ class OrganizationApiTests(unittest.TestCase):
     def test_registration_accepts_company_for_donors_and_rejects_it_for_projects(self):
         payload = {
             "full_name": "Responsável da empresa", "document": "04252011000110",
+            "responsible_cpf": "52998224725",
             "email": "new-company@example.org", "password": PASSWORD, "password_confirmation": PASSWORD,
             "institution_kind": "donor", "organization": organization_payload("donor", organization_type="company"),
         }

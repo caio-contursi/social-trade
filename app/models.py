@@ -28,6 +28,7 @@ users = sa.Table(
     sa.Column("password_hash", sa.Text, nullable=False),
     sa.Column("phone", sa.Text),
     sa.Column("title", sa.Text),
+    sa.Column("responsible_cpf", sa.String(11)),
     sa.Column("role", sa.Text, nullable=False, server_default="member"),
     sa.Column("document", sa.String(14), nullable=False, unique=True),
     sa.Column("account_type", sa.Text, nullable=False, server_default="person"),

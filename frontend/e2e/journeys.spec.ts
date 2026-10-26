@@ -25,12 +25,10 @@ test("descoberta pública, busca sem acentos e limpeza de filtros", async ({ pag
   await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible();
   const search = page.getByRole("textbox", { name: "Buscar projetos por nome, cidade ou palavra" });
   await search.fill("educacao aberta");
-  await page.getByRole("button", { name: "Buscar projetos", exact: true }).click();
   await expect(page).toHaveURL(/busca=educacao/);
   await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Rede Saúde Comunitária", exact: true })).toHaveCount(0);
   await search.fill("nenhum-projeto-com-este-nome");
-  await page.getByRole("button", { name: "Buscar projetos", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ainda não encontramos essa combinação." })).toBeVisible();
   await page.getByRole("button", { name: "Limpar filtros", exact: true }).first().click();
   await expect(page).toHaveURL(/\/projetos$/);
@@ -57,6 +55,19 @@ test("perfil público vem no HTML e preserva dados privados", async ({ page, req
   await expect(page.getByRole("main").getByText(/Informações declaradas pelo próprio projeto/)).toBeVisible();
   await page.goto("/projetos/perfil-que-nao-existe");
   await expect(page.getByRole("heading", { name: "Vamos encontrar outro caminho?" })).toBeVisible();
+});
+
+test("links de projetos abrem os destinos no início sem herdar a rolagem anterior", async ({ page }) => {
+  await page.goto("/projetos");
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.getByRole("link", { name: `Conhecer ${projectName}` }).click();
+  await expect(page).toHaveURL(/\/projetos\/[^/]+#conteudo$/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
+
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.getByRole("main").getByRole("link", { name: "Explorar projetos", exact: true }).click();
+  await expect(page).toHaveURL(/\/projetos#conteudo$/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
 });
 
 test("doação Pix direta de empresa e pessoa física passa por pagamento, confirmação e recibo", async ({ page, request }, testInfo) => {
@@ -232,6 +243,7 @@ test("CNPJ alfanumérico permanece no cadastro, no login e no perfil institucion
   await page.goto("/cadastro?tipo=donor");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByLabel("Nome completo do responsável", { exact: true }).fill("Responsável fictício");
+  await page.getByLabel("CPF da pessoa responsável", { exact: true }).fill("52998224725");
   await page.getByLabel("CNPJ da instituição", { exact: true }).fill(masked);
   await page.getByLabel("E-mail", { exact: true }).fill(`${document.toLowerCase()}@example.org`);
   await page.getByLabel("Crie uma senha", { exact: true }).fill(password);
@@ -271,7 +283,8 @@ test("navegação móvel funciona por teclado e página não transborda", async 
   const navigation = page.getByRole("navigation", { name: "Navegação móvel" });
   await expect(navigation).toBeVisible();
   await navigation.getByRole("link", { name: "Explorar projetos", exact: true }).click();
-  await expect(page).toHaveURL(/\/projetos$/);
+  await expect(page).toHaveURL(/#projetos$/);
+  await expect(page.locator("#projetos")).toBeInViewport();
   await expect(navigation).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });

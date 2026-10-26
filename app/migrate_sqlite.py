@@ -134,6 +134,10 @@ def read_snapshot(source: str | Path, *, allow_demo_documents: bool = False) -> 
                 pk = [row[1] for row in sorted(db.execute(f'PRAGMA table_info("{name}")'), key=lambda row: row[5]) if row[5]]
                 order = ",".join(f'"{column}"' for column in pk)
                 rows = [dict(row) for row in db.execute(f'SELECT * FROM "{name}" ORDER BY {order}')]
+                if name == "users":
+                    # A coluna é nova no PostgreSQL; registros legados não têm CPF de responsável.
+                    for row in rows:
+                        row["responsible_cpf"] = None
                 if name == "organizations":
                     # Legacy profiles have no reviewed Pix-key fields. Never infer
                     # approval during import; every historical key starts unverified.

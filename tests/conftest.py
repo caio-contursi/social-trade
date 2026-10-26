@@ -196,6 +196,7 @@ def institution_data(organization_data):
     def payload(kind="project", **overrides):
         result = {
             "full_name": "Responsável da instituição", "email": "instituicao@example.org",
+            "responsible_cpf": "52998224725",
             "document": "11222333000181", "password": PASSWORD,
             "password_confirmation": PASSWORD, "institution_kind": kind,
             "organization": organization_data(kind),
