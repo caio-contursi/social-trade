@@ -24,3 +24,7 @@ reports/
 frontend/coverage/
 frontend/.next-e2e/
 frontend/.e2e-run.lock
+
+# Artefatos locais temporários; mantém tmp/pdfs visível para revisão.
+/tmp/*
+!/tmp/pdfs/
