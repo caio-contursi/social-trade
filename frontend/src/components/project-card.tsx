@@ -86,7 +86,8 @@ export function ProjectCard({ project }: { project: Project }) {
         </p>
         <h3 className="mt-2.5 text-[1.45rem] leading-tight font-medium">
           <Link
-            href={`/projetos/${encodeURIComponent(project.slug)}`}
+            href={`/projetos/${encodeURIComponent(project.slug)}#conteudo`}
+            scroll
             className="rounded-sm underline-offset-4 decoration-energy decoration-2 hover:underline"
           >
             {project.name}
@@ -128,7 +129,8 @@ export function ProjectCard({ project }: { project: Project }) {
           )}
         </ul>
         <Link
-          href={`/projetos/${encodeURIComponent(project.slug)}`}
+          href={`/projetos/${encodeURIComponent(project.slug)}#conteudo`}
+          scroll
           aria-label={`Conhecer ${project.name}`}
           className="mt-auto inline-flex items-center justify-between gap-3 border-t pt-4 text-sm font-semibold text-primary"
         >

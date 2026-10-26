@@ -25,7 +25,13 @@ function normalize(value: string) {
     .toLowerCase();
 }
 
-export function ProjectExplorer({ projects }: { projects: Project[] }) {
+export function ProjectExplorer({
+  projects,
+  showInvite = true,
+}: {
+  projects: Project[];
+  showInvite?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -34,10 +40,20 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
   const location = params.get("local") || "all";
   const order = params.get("ordem") === "nome" ? "nome" : "recentes";
   const querySearch = params.get("busca") || "";
+  const activeSearch = search;
 
   useEffect(() => {
     setSearch(querySearch);
   }, [querySearch]);
+
+  // Mantém o filtro e a URL sincronizados enquanto o termo é digitado.
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const value = search.trim();
+      if (value !== querySearch) updateQuery({ busca: value });
+    }, 150);
+    return () => window.clearTimeout(timeout);
+  }, [search, querySearch]);
 
   function updateQuery(values: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
@@ -79,7 +95,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
             ].join(" "),
           );
           return (
-            (!querySearch || text.includes(normalize(querySearch.trim()))) &&
+            (!activeSearch || text.includes(normalize(activeSearch.trim()))) &&
             (cause === "all" || project.areas.includes(cause)) &&
             (location === "all" ||
               `${project.city}/${project.state}` === location)
@@ -90,11 +106,11 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
             ? a.name.localeCompare(b.name, "pt-BR")
             : compareRecentProjects(a, b),
         ),
-    [projects, querySearch, cause, location, order],
+    [projects, activeSearch, cause, location, order],
   );
-  const hasFilters = !!querySearch || cause !== "all" || location !== "all";
+  const hasFilters = !!activeSearch.trim() || cause !== "all" || location !== "all";
   // Com 1 ou 2 resultados o convite entra na grade; com mais, vira faixa no fim.
-  const showInvite = filtered.length > 0 && filtered.length < 3;
+  const showProjectInvite = showInvite && filtered.length > 0 && filtered.length < 3;
 
   function reset() {
     setSearch("");
@@ -104,13 +120,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
   return (
     <div>
       <div className="rounded-[1.6rem] border bg-card p-4 shadow-sm shadow-primary/5 sm:p-5">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            updateQuery({ busca: search.trim() });
-          }}
-          className="flex flex-col gap-3 sm:flex-row"
-        >
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
             <Label htmlFor="project-search" className="sr-only">
               Buscar projetos por nome, cidade ou palavra
@@ -129,10 +139,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
               className="h-12 rounded-full bg-background pl-12"
             />
           </div>
-          <Button type="submit" size="lg">
-            Buscar projetos
-          </Button>
-        </form>
+        </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div>
             <Label
@@ -249,7 +256,7 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
             {filtered.map((project) => (
               <ProjectCard key={project.slug} project={project} />
             ))}
-            {showInvite && <InviteTile />}
+            {showProjectInvite && <InviteTile />}
           </div>
         </section>
       ) : (
@@ -268,23 +275,25 @@ export function ProjectExplorer({ projects }: { projects: Project[] }) {
               ? "Experimente outra palavra ou remova um filtro para conhecer mais projetos."
               : "Ainda não há projetos cadastrados para conhecer. Apresente sua iniciativa e ajude a construir essa rede."}
           </p>
-          <Button
-            asChild={!hasFilters}
-            onClick={hasFilters ? reset : undefined}
-            variant="outline"
-            className="mt-6"
-          >
-            {hasFilters ? (
-              "Limpar filtros"
-            ) : (
-              <Link href="/cadastro?tipo=project">
-                Cadastrar meu projeto <ArrowRight className="size-4" />
-              </Link>
-            )}
-          </Button>
+          {(hasFilters || showInvite) && (
+            <Button
+              asChild={!hasFilters}
+              onClick={hasFilters ? reset : undefined}
+              variant="outline"
+              className="mt-6"
+            >
+              {hasFilters ? (
+                "Limpar filtros"
+              ) : (
+                <Link href="/cadastro?tipo=project">
+                  Cadastrar meu projeto <ArrowRight className="size-4" />
+                </Link>
+              )}
+            </Button>
+          )}
         </div>
       )}
-      {!showInvite && (
+      {showInvite && filtered.length >= 3 && (
         <div className="mt-12 flex flex-col justify-between gap-5 rounded-[1.4rem] border bg-muted p-6 sm:flex-row sm:items-center sm:p-8">
           <div>
             <h2 className="text-xl font-medium">

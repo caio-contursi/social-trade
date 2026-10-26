@@ -16,6 +16,7 @@ export async function registerInstitution(
   const response = await request.post(`${process.env.SOCIALTRADE_API_URL}/api/auth/register-institution`, {
     data: {
       full_name: "Responsável de teste",
+      responsible_cpf: "52998224725",
       document,
       email: `${document}@example.org`,
       password,

@@ -44,6 +44,7 @@ import {
 
 const initialValues = {
   full_name: "",
+  responsible_cpf: "",
   document: "",
   email: "",
   phone: "",
@@ -137,7 +138,7 @@ export function RegisterForm() {
 
   function updateField(name: FieldName, value: string) {
     if (name === "member_project_id" && value === "none") value = "";
-    if (name === "phone" || (name === "document" && intent === "person"))
+    if (name === "phone" || name === "responsible_cpf" || (name === "document" && intent === "person"))
       value = digits(value);
     if (name === "full_name" || name === "name")
       value = lettersAndNamePunctuation(value);
@@ -159,6 +160,8 @@ export function RegisterForm() {
     if (currentStep === 2) {
       if (values.full_name.trim().length < 2)
         next.full_name = "Informe seu nome completo (ao menos 2 caracteres).";
+      if (intent !== "person" && !validCpf(values.responsible_cpf))
+        next.responsible_cpf = "Informe um CPF válido para a pessoa responsável.";
       if (
         !(intent === "person"
           ? validCpf(values.document)
@@ -251,6 +254,7 @@ export function RegisterForm() {
           }
         : {
             ...access,
+            responsible_cpf: digits(values.responsible_cpf),
             institution_kind: intent,
             organization: {
               name: values.name.trim(),
@@ -629,6 +633,14 @@ export function RegisterForm() {
                 placeholder: "Como você se chama?",
               },
             )}
+            {intent !== "person" &&
+              field("responsible_cpf", "CPF da pessoa responsável", {
+                inputMode: "numeric",
+                autoComplete: "off",
+                maxLength: 14,
+                placeholder: "000.000.000-00",
+                help: "Informe o CPF de quem responde pelo cadastro da instituição.",
+              })}
             {field(
               "document",
               intent === "person" ? "CPF" : "CNPJ da instituição",

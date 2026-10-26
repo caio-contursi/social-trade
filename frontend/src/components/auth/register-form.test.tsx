@@ -42,11 +42,15 @@ describe("cadastro institucional com CNPJ alfanumérico", () => {
     vi.stubGlobal("fetch", fetchMock);
   });
 
-  async function fillAccess(document: string) {
+  async function fillAccess(document: string, responsibleCpfValue = "52998224725") {
     const user = userEvent.setup();
     render(<RegisterForm />);
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.type(screen.getByLabelText("Nome completo do responsável"), "Responsável fictício");
+    const responsibleCpf = screen.getByLabelText("CPF da pessoa responsável");
+    expect(responsibleCpf).toHaveAttribute("inputmode", "numeric");
+    await user.type(responsibleCpf, responsibleCpfValue === "52998224725" ? "529a982.247-25x" : responsibleCpfValue);
+    expect(responsibleCpf).toHaveValue(responsibleCpfValue);
     const field = screen.getByLabelText("CNPJ da instituição");
     expect(field).toHaveAttribute("inputmode", "text");
     await user.type(field, document);
@@ -78,9 +82,17 @@ describe("cadastro institucional com CNPJ alfanumérico", () => {
     const request = fetchMock.mock.calls.find(([path]) => path === "/api/auth/register-institution");
     const payload = JSON.parse(request?.[1]?.body as string);
     expect(payload.document).toBe("12ABC34501DE35");
+    expect(payload.responsible_cpf).toBe("52998224725");
     expect(payload.organization.cnpj).toBe("12ABC34501DE35");
     expect(payload.organization.city).toBe("Rio de Janeiro");
     expect(payload.organization.state).toBe("RJ");
+  });
+
+  it("exige um CPF válido para quem responde pela instituição", async () => {
+    await fillAccess("12.abc.345/01de-35", "12345678900");
+
+    expect(screen.getByText("Informe um CPF válido para a pessoa responsável.")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([path]) => path === "/api/projects/open")).toBe(true);
   });
 
   it("limpa a cidade escolhida quando o estado muda e não aceita texto livre", async () => {

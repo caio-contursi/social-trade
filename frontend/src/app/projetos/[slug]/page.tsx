@@ -59,7 +59,8 @@ export default async function ProjectPage({
         <SiteHeader />
         <main id="conteudo" className="page-container py-16">
           <Link
-            href="/projetos"
+            href="/projetos#conteudo"
+            scroll
             className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" /> Voltar aos projetos
@@ -90,7 +91,8 @@ export default async function ProjectPage({
         <section className="border-b bg-card">
           <div className="page-container pb-10 pt-7 sm:pb-12 sm:pt-9">
             <Link
-              href="/projetos"
+              href="/projetos#conteudo"
+              scroll
               className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="size-4" /> Voltar aos projetos
@@ -352,7 +354,7 @@ export default async function ProjectPage({
               </p>
             </div>
             <Button asChild variant="outline" className="shrink-0">
-              <Link href="/projetos">
+              <Link href="/projetos#conteudo" scroll>
                 Explorar projetos <ArrowUpRight className="size-4" />
               </Link>
             </Button>

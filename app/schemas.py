@@ -125,6 +125,7 @@ class RegisterInput(PostgresInput):
 
 class InstitutionRegisterInput(PostgresInput):
     full_name: str = Field(min_length=2, max_length=120)
+    responsible_cpf: str = Field(min_length=11, max_length=14)
     document: str = Field(min_length=14, max_length=18)
     email: EmailStr
     password: str = Field(min_length=10, max_length=128)
@@ -137,6 +138,11 @@ class InstitutionRegisterInput(PostgresInput):
     @classmethod
     def normalize_document(cls, value: str) -> str:
         return valid_cnpj(value)
+
+    @field_validator("responsible_cpf")
+    @classmethod
+    def normalize_responsible_cpf(cls, value: str) -> str:
+        return valid_cpf(value)
 
     @field_validator("full_name", mode="before")
     @classmethod

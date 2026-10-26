@@ -11,13 +11,76 @@ test("frontend encaminha o health check ao FastAPI e confirma PostgreSQL", async
   });
 });
 
-test("página inicial diferencia o Pix direto disponível dos meios futuros", async ({ page }) => {
+test("página 1 apresenta as três seções institucionais e a situação atual do Pix", async ({ page }) => {
   await page.goto("/");
+  let navigation = page.getByRole("navigation", { name: "Navegação principal" });
+  const mobile = !(await navigation.isVisible());
+  if (mobile) {
+    await page.getByRole("button", { name: "Abrir navegação" }).click();
+    navigation = page.getByRole("navigation", { name: "Navegação móvel" });
+  }
+  await expect(navigation.getByRole("link", { name: "Quem somos" })).toHaveAttribute("href", "/#quem-somos");
+  await expect(navigation.getByRole("link", { name: "Como funciona" })).toHaveAttribute("href", "/#como-funciona");
+  await expect(navigation.getByRole("link", { name: "Transparência" })).toHaveAttribute("href", "/#transparencia");
+  if (mobile) await navigation.getByRole("link", { name: "Quem somos" }).click();
+  await expect(page.getByRole("heading", { name: /Conectamos quem quer apoiar/ })).toBeVisible();
   await expect(page.getByRole("main").getByText("Doações Pix diretas", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("contentinfo").getByText("Doações não garantem abatimento no Imposto de Renda ou outro benefício fiscal.").first()).toBeVisible();
-  await expect(page.getByRole("link", { name: /Quero apoiar como pessoa física/ })).toHaveAttribute("href", "/cadastro?tipo=person");
   await expect(page.getByRole("main").getByText("Pagamentos automatizados por PSP e cartão", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Como escolher e apoiar um projeto" })).toBeVisible();
+  await expect(page.getByText(/faça o Pix diretamente para a chave conferida do projeto/)).toBeVisible();
+  await expect(page.getByText(/voluntariado ou doações de itens/)).toBeVisible();
   await expect(page.getByText("Doações pela plataforma", { exact: true })).toHaveCount(0);
+});
+
+test("suporte, login e cadastro ficam visíveis no cabeçalho da página inicial", async ({ page, isMobile }) => {
+  await page.goto("/");
+  const header = page.getByRole("banner");
+  if (isMobile) {
+    await header.getByRole("button", { name: "Abrir navegação" }).click();
+    const navigation = page.getByRole("navigation", { name: "Navegação móvel" });
+    await expect(navigation.getByRole("link", { name: "Suporte" })).toHaveAttribute("href", "/entrar?proximo=%2Fpainel%2Fsuporte");
+    await expect(navigation.getByRole("link", { name: "Entrar", exact: true })).toHaveAttribute("href", "/entrar");
+    await expect(navigation.getByRole("link", { name: "Fazer cadastro", exact: true })).toHaveAttribute("href", "/cadastro");
+  } else {
+    await expect(header.getByRole("link", { name: "Suporte" })).toHaveAttribute("href", "/entrar?proximo=%2Fpainel%2Fsuporte");
+    await expect(header.getByRole("link", { name: "Entrar", exact: true })).toHaveAttribute("href", "/entrar");
+    await expect(header.getByRole("link", { name: "Fazer cadastro", exact: true })).toHaveAttribute("href", "/cadastro");
+  }
+});
+
+test("CTA principal desliza para a tela de projetos sem recarregar a página", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Encontrar um projeto", exact: false }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: /Existe uma causa que conecta você/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
+  await expect(page.getByRole("link", { name: "Meu projeto", exact: true })).toHaveAttribute("href", "/cadastro?tipo=project");
+  await expect(page.getByText("Apresentar meu projeto", { exact: true })).toHaveCount(0);
+  await page.getByRole("banner").getByRole("link", { name: "SocialTrade, início" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: /Apoiar uma causa/ })).toBeVisible();
+});
+
+test("Meu projeto aponta para o perfil público da organização do usuário autenticado", async ({ page }) => {
+  await login(page, "90000001000129", "project", "SocialTrade123!");
+  await page.goto("/");
+  await page.getByRole("button", { name: "Encontrar um projeto", exact: false }).click();
+  await expect(page.getByRole("link", { name: "Meu projeto", exact: true })).toHaveAttribute(
+    "href",
+    /\/projetos\/projeto-de-teste-pix#conteudo$/,
+  );
+});
+
+test("CTA da transparência abre a lista de projetos no início", async ({ page }) => {
+  await page.goto("/#transparencia");
+  await page.getByRole("link", { name: "Conhecer os projetos", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: /Existe uma causa que conecta você/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
+  await expect(page.locator("html")).toHaveAttribute("data-exploring-projects", "true");
+  await expect(page.getByRole("link", { name: "Meu projeto", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Confiança se constrói com informação/ })).toHaveCount(0);
+  await expect(page.getByRole("contentinfo")).toBeVisible();
 });
 
 test("descoberta pública, busca sem acentos e limpeza de filtros", async ({ page }) => {
@@ -25,12 +88,10 @@ test("descoberta pública, busca sem acentos e limpeza de filtros", async ({ pag
   await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible();
   const search = page.getByRole("textbox", { name: "Buscar projetos por nome, cidade ou palavra" });
   await search.fill("educacao aberta");
-  await page.getByRole("button", { name: "Buscar projetos", exact: true }).click();
   await expect(page).toHaveURL(/busca=educacao/);
   await expect(page.getByRole("heading", { name: projectName, exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Rede Saúde Comunitária", exact: true })).toHaveCount(0);
   await search.fill("nenhum-projeto-com-este-nome");
-  await page.getByRole("button", { name: "Buscar projetos", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ainda não encontramos essa combinação." })).toBeVisible();
   await page.getByRole("button", { name: "Limpar filtros", exact: true }).first().click();
   await expect(page).toHaveURL(/\/projetos$/);
@@ -57,6 +118,19 @@ test("perfil público vem no HTML e preserva dados privados", async ({ page, req
   await expect(page.getByRole("main").getByText(/Informações declaradas pelo próprio projeto/)).toBeVisible();
   await page.goto("/projetos/perfil-que-nao-existe");
   await expect(page.getByRole("heading", { name: "Vamos encontrar outro caminho?" })).toBeVisible();
+});
+
+test("links de projetos abrem os destinos no início sem herdar a rolagem anterior", async ({ page }) => {
+  await page.goto("/projetos");
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.getByRole("link", { name: `Conhecer ${projectName}` }).click();
+  await expect(page).toHaveURL(/\/projetos\/[^/]+#conteudo$/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
+
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.getByRole("main").getByRole("link", { name: "Explorar projetos", exact: true }).click();
+  await expect(page).toHaveURL(/\/projetos#conteudo$/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
 });
 
 test("doação Pix direta de empresa e pessoa física passa por pagamento, confirmação e recibo", async ({ page, request }, testInfo) => {
@@ -232,6 +306,7 @@ test("CNPJ alfanumérico permanece no cadastro, no login e no perfil institucion
   await page.goto("/cadastro?tipo=donor");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByLabel("Nome completo do responsável", { exact: true }).fill("Responsável fictício");
+  await page.getByLabel("CPF da pessoa responsável", { exact: true }).fill("52998224725");
   await page.getByLabel("CNPJ da instituição", { exact: true }).fill(masked);
   await page.getByLabel("E-mail", { exact: true }).fill(`${document.toLowerCase()}@example.org`);
   await page.getByLabel("Crie uma senha", { exact: true }).fill(password);
@@ -270,8 +345,13 @@ test("navegação móvel funciona por teclado e página não transborda", async 
   await page.keyboard.press("Enter");
   const navigation = page.getByRole("navigation", { name: "Navegação móvel" });
   await expect(navigation).toBeVisible();
-  await navigation.getByRole("link", { name: "Explorar projetos", exact: true }).click();
-  await expect(page).toHaveURL(/\/projetos$/);
+  await navigation.getByRole("link", { name: "Quem somos", exact: true }).click();
+  await expect(page).toHaveURL(/#quem-somos$/);
+  await expect(page.locator("#quem-somos")).toBeInViewport();
   await expect(navigation).toHaveCount(0);
+  await page.getByRole("button", { name: "Encontrar um projeto", exact: false }).click();
+  await expect(page.locator("#projetos")).toBeInViewport();
+  await expect(page.getByRole("link", { name: "Meu projeto", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Confiança se constrói com informação/ })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
