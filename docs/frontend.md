@@ -133,7 +133,7 @@ O fluxo Pix direto está operacional como registro e acompanhamento: empresas e 
 | Fase | Estado nesta migração |
 | --- | --- |
 | Base visual e técnica | Next.js, TypeScript, Tailwind, shadcn/ui, fontes locais e temas compõem a nova interface. |
-| Descoberta pública | Apresentação, exploração e perfis públicos consomem a API existente e sua nova lista pública segura. |
+| Descoberta pública | Busca atual por texto, causa, localidade e ordem recente/alfabética. Próxima evolução planejada: filtro por tipo de projeto e atalhos de categorias sugeridas por IA, combináveis com a busca digitada. A IA não valida a avaliação interna nem as evidências. Consulte [avaliação e descoberta de projetos](avaliacao-e-descoberta-de-projetos.md). |
 | Fluxos autenticados | Cadastro, login, painel, dados institucionais/pessoais, avisos, suporte e moderação usam as regras da API. |
 | Qualidade | Validar com TypeScript, build, suíte de API e revisão manual de desktop, celular, teclado e estados de falha. Os comandos acima não substituem essa revisão visual. |
 | Doações Pix diretas | Implementado: empresas e pessoas físicas podem registrar a intenção, efetuar transferência fora da plataforma e informar o E2E; o projeto confirma o crédito. O SocialTrade não recebe nem transfere valores. |

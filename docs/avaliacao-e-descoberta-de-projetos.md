@@ -12,6 +12,18 @@ O desenho separa três responsabilidades:
 
 A categorização pode ajudar a encontrar iniciativas relevantes, mas não substitui a leitura do perfil. A equipe deve conseguir revisar as categorias sugeridas e corrigir erros. A avaliação que afeta a visibilidade permanece sob responsabilidade humana, com histórico e possibilidade de revisão; a IA apenas usa esse resultado como um dos fatores de ordenação.
 
+## Jornada de pesquisa para doadores
+
+Empresas e pessoas físicas terão acesso à mesma descoberta de projetos. A tela deve oferecer três caminhos, combináveis entre si:
+
+1. **Busca digitada:** procurar um projeto pelo nome ou descrever uma iniciativa, causa ou objetivo de interesse em linguagem comum.
+2. **Filtros explícitos:** refinar por tipo de projeto/instituição, área de atuação e localidade. O tipo institucional deve usar opções padronizadas do cadastro; as categorias temáticas sugeridas por IA são um filtro distinto.
+3. **Categorias rápidas:** escolher, com poucos cliques, temas sugeridos pela categorização assistida por IA para chegar a projetos relacionados aos interesses de quem pesquisa.
+
+As categorias devem ter nomes claros e servir como atalhos de navegação. A interface pode combinar categoria, termo digitado, tipo e localidade, além de permitir remover cada seleção e limpar todos os filtros. A busca deve explicar quando não encontrar resultados e oferecer um caminho simples para tentar outra categoria ou consulta.
+
+A busca atual já tem texto livre, filtro de causa, localidade e ordenação recente/alfabética. Filtro por tipo de projeto, categorias geradas por IA e ordenação baseada na avaliação interna são planejados, não estão implementados. A IA sugere categorias e pode apoiar a ordenação de relevância; não valida a qualidade dos projetos, os documentos ou a aplicação das doações.
+
 ## Critérios de acompanhamento sugeridos
 
 Cada critério deve admitir **não avaliado**, **evidência recebida**, **em revisão**, **precisa de esclarecimento** e **revisado pela equipe**. Um item sem evidência não deve ser automaticamente descrito como fraude ou irregularidade.
@@ -38,4 +50,4 @@ Cada critério deve admitir **não avaliado**, **evidência recebida**, **em rev
 
 ## Fora da implementação atual
 
-Não há, nesta etapa, upload ou análise de evidências financeiras, nota de avaliação, ranking interno, categorização por IA, ajuste de frequência nos resultados, integração com PSP ou Pix para tesouraria SocialTrade. O Pix atualmente disponível registra uma transferência direta para a instituição beneficiária. A futura modalidade de tesouraria depende de decisões próprias sobre conta recebedora, custódia, conciliação, repasse e responsabilidades.
+Não há, nesta etapa, filtro por tipo de projeto, categorias geradas por IA, upload ou análise de evidências financeiras, nota de avaliação, ranking interno, ajuste de frequência nos resultados, integração com PSP ou Pix para tesouraria SocialTrade. O Pix atualmente disponível registra uma transferência direta para a instituição beneficiária. A futura modalidade de tesouraria depende de decisões próprias sobre conta recebedora, custódia, conciliação, repasse e responsabilidades.

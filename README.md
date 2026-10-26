@@ -1,6 +1,6 @@
 # SocialTrade
 
-Plataforma para conectar empresas doadoras de todos os portes, pessoas físicas e projetos sociais. A SocialTrade apresenta objetivos, áreas de atuação e resultados informados pelos projetos para apoiar decisões de investimento social. Categorizações assistidas por IA e avaliação interna para ordenar resultados são planejadas e ainda não estão implementadas. A integração com Solana está desativada nesta etapa.
+Plataforma para conectar empresas doadoras de todos os portes, pessoas físicas e projetos sociais. A SocialTrade apresenta objetivos, áreas de atuação e resultados informados pelos projetos para apoiar decisões de investimento social. A descoberta planejada permitirá buscar por nome ou interesse, filtrar por tipo de projeto e navegar por categorias sugeridas por IA. A avaliação interna poderá influenciar a ordem dos resultados sem ser exibida a doadores ou projetos; essas funções ainda não estão implementadas. A integração com Solana está desativada nesta etapa.
 
 A interface principal fica em `frontend/` e utiliza Next.js, TypeScript, Tailwind CSS e componentes oficiais do shadcn/ui. A API usa FastAPI, PostgreSQL e SQLAlchemy 2 Core, com migrações explícitas pelo Alembic. As informações apresentadas pelos projetos são autodeclaradas: cadastro ou perfil completo não representam verificação independente.
 
