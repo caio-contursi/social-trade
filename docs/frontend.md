@@ -126,7 +126,7 @@ O percentual conta nome, tipo, cidade, estado, resumo, descrição, logo e pelo 
 
 Empresas usam o tipo `company` na nova interface. Projetos não podem usar esse tipo. Empresas legadas cadastradas como `association` continuam editáveis sem alterar seu tipo de instituição.
 
-Não há carteira, pagamento de doação, transação Solana, comprovante financeiro, relatório de aplicação de recursos ou verificação independente operacionais nesta etapa. Evite saldos, métricas de doação e estados de sucesso simulados que pareçam reais. Informações demonstrativas devem ter rótulo explícito.
+O fluxo Pix direto está operacional como registro e acompanhamento: empresas e pessoas físicas iniciam a doação, transferem no próprio banco para a chave do projeto, informam o E2E e o projeto confirma manualmente o crédito. O SocialTrade não movimenta o dinheiro; não há cobrança Pix/PSP, conciliação bancária, carteira nem transação Solana. O recibo privado só é emitido após a confirmação do projeto e não é comprovante bancário nem garantia fiscal. Não exiba saldos ou estados de sucesso antes da confirmação. Informações demonstrativas devem ter rótulo explícito.
 
 ## Fases e estado do produto
 
@@ -136,7 +136,9 @@ Não há carteira, pagamento de doação, transação Solana, comprovante financ
 | Descoberta pública | Apresentação, exploração e perfis públicos consomem a API existente e sua nova lista pública segura. |
 | Fluxos autenticados | Cadastro, login, painel, dados institucionais/pessoais, avisos, suporte e moderação usam as regras da API. |
 | Qualidade | Validar com TypeScript, build, suíte de API e revisão manual de desktop, celular, teclado e estados de falha. Os comandos acima não substituem essa revisão visual. |
-| Doações e Solana | Futuro: integração desativada; nenhum pagamento real é realizado pela interface atual. |
+| Doações Pix diretas | Implementado: empresas e pessoas físicas podem registrar a intenção, efetuar transferência fora da plataforma e informar o E2E; o projeto confirma o crédito. O SocialTrade não recebe nem transfere valores. |
+| PSP, pagamentos por cartão e conciliação | Fora do MVP; dependem de decisões operacionais, contratuais e de segurança. |
+| Solana | Futuro: integração desativada; nenhuma transação em criptoativo é realizada pela interface atual. |
 | Prestação de contas e verificação | Futuro: exigem contratos de dados, evidências e processos próprios; preenchimento cadastral não equivale a comprovação. |
 
 ## Preservação de dados e configuração

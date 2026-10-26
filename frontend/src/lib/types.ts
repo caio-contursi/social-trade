@@ -108,6 +108,8 @@ export interface Donation {
   confirmed_at: string | null;
   donor_name?: string | null;
   donor_cnpj?: string | null;
+  donor_document?: string | null;
+  donor_document_type?: "person" | "donor";
   pix_key?: string;
 }
 export interface DonationStart {

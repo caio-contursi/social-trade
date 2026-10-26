@@ -49,6 +49,11 @@ const steps = [
 
 const available = [
   {
+    title: "Doações Pix diretas",
+    description:
+      "Empresas e pessoas físicas transferem direto para a chave conferida do projeto; a plataforma registra e acompanha a confirmação.",
+  },
+  {
     title: "Perfis públicos de projetos",
     description:
       "História, objetivos, ações e canais de contato, informados pelos próprios projetos.",
@@ -61,9 +66,9 @@ const available = [
 ];
 
 const nextSteps = [
-  "Doações pela plataforma",
+  "Pagamentos automatizados por PSP e cartão",
   "Registro das doações na rede Solana",
-  "Prestação de contas dos projetos",
+  "Prestação de contas ampliada dos projetos",
 ];
 
 export default async function HomePage() {
@@ -396,14 +401,21 @@ export default async function HomePage() {
                 Quer apoiar uma causa?
               </h3>
               <p className="mt-3 mb-8 leading-relaxed text-muted-foreground">
-                Cadastre sua empresa, conheça projetos por causa e região e
-                converse diretamente com quem faz.
+                Empresas e pessoas físicas cadastradas podem conhecer projetos,
+                fazer doações Pix diretamente e conversar com quem faz.
               </p>
-              <Button asChild className="mt-auto w-fit">
-                <Link href="/cadastro?tipo=donor">
-                  Quero apoiar como empresa <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              <div className="mt-auto flex flex-wrap gap-3">
+                <Button asChild className="w-fit">
+                  <Link href="/cadastro?tipo=donor">
+                    Quero apoiar como empresa <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-fit">
+                  <Link href="/cadastro?tipo=person">
+                    Quero apoiar como pessoa física <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
             </div>
             <div className="flex flex-col rounded-[1.4rem] border bg-card p-7 sm:p-9">
               <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-primary">

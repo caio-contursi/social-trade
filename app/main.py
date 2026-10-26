@@ -192,6 +192,8 @@ def donation_view(row, *, include_pix_key: bool = False) -> dict:
         "receipt_code": row["receipt_code"], "created_at": row["created_at"],
         "payment_reported_at": row["payment_reported_at"], "confirmed_at": row["confirmed_at"],
         "donor_name": row.get("donor_name"), "donor_cnpj": row.get("donor_cnpj"),
+        "donor_document": row.get("donor_document"),
+        "donor_document_type": row.get("donor_document_type"),
     }
     if include_pix_key:
         result["pix_key"] = row["pix_key_snapshot"]
@@ -203,6 +205,8 @@ def donation_query():
         donations, organizations.c.name.label("project_name"),
         func.coalesce(donor_organizations.c.name, users.c.full_name).label("donor_name"),
         donor_organizations.c.cnpj.label("donor_cnpj"),
+        func.coalesce(donor_organizations.c.cnpj, users.c.document).label("donor_document"),
+        users.c.account_type.label("donor_document_type"),
     ).join(organizations, organizations.c.id == donations.c.project_organization_id) \
         .join(users, users.c.id == donations.c.donor_user_id) \
         .outerjoin(donor_organizations, (donor_organizations.c.owner_id == donations.c.donor_user_id) & (donor_organizations.c.institution_kind == "donor"))
@@ -214,8 +218,9 @@ def receipt_html(row) -> str:
     fields = {
         "Código do comprovante": row["receipt_code"],
         "Data da confirmação": row["confirmed_at"].isoformat(),
-        "Doadora": row["donor_name"],
-        "CNPJ da doadora": row["donor_cnpj"] or "Não informado",
+        "Doador(a)": row["donor_name"],
+        ("CNPJ do doador" if row.get("donor_document_type") == "donor" else "CPF do doador"):
+            row.get("donor_document") or "Não informado",
         "Projeto beneficiário": row["project_name"],
         "CNPJ do projeto": row["project_cnpj"] or "Não informado",
         "Valor confirmado": amount,
@@ -359,16 +364,16 @@ def my_organizations(user=Depends(current_user)):
 
 @app.get("/api/projects")
 def projects(user=Depends(current_user)):
-    if user["account_type"] != "donor":
-        raise HTTPException(status_code=403, detail="A consulta de projetos para investimento é exclusiva de empresas doadoras.")
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="A consulta de projetos está disponível para doadores.")
     with connect() as db:
         return public_project_list(db)
 
 
 @app.post("/api/donations", status_code=status.HTTP_201_CREATED)
 def create_donation(payload: DonationCreateInput, user=Depends(current_user)):
-    if user["account_type"] != "donor":
-        raise HTTPException(status_code=403, detail="Somente empresas doadoras podem iniciar uma doação.")
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente empresas ou pessoas físicas podem iniciar uma doação.")
     with write_transaction() as db:
         project = db.execute(select(
             organizations.c.id, organizations.c.name, organizations.c.pix_key,
@@ -384,10 +389,10 @@ def create_donation(payload: DonationCreateInput, user=Depends(current_user)):
             raise HTTPException(status_code=409, detail="Este projeto ainda não cadastrou uma chave Pix para recebimento direto.")
         if not project["cnpj"] or not project["pix_key_verified_at"]:
             raise HTTPException(status_code=409, detail="Este projeto ainda não passou pela conferência cadastral da chave Pix.")
-        if not db.execute(select(organizations.c.id).where(
+        if user["account_type"] == "donor" and not db.execute(select(organizations.c.id).where(
             organizations.c.owner_id == user["id"], organizations.c.institution_kind == "donor",
         )).first():
-            raise HTTPException(status_code=409, detail="A conta doadora precisa ter um perfil de empresa cadastrado.")
+            raise HTTPException(status_code=409, detail="A conta da empresa doadora precisa ter um perfil institucional cadastrado.")
         donation_id = db.execute(insert(donations).values(
             donor_user_id=user["id"], project_organization_id=project["id"],
             pix_key_snapshot=pix_key,
@@ -404,7 +409,7 @@ def create_donation(payload: DonationCreateInput, user=Depends(current_user)):
 
 @app.get("/api/donations/mine")
 def my_donations(user=Depends(current_user)):
-    if user["account_type"] == "donor":
+    if user["account_type"] in {"donor", "person"}:
         condition = donations.c.donor_user_id == user["id"]
     elif user["account_type"] == "project":
         condition = organizations.c.owner_id == user["id"]
@@ -413,13 +418,13 @@ def my_donations(user=Depends(current_user)):
     with connect() as db:
         rows = db.execute(donation_query().where(condition)
             .order_by(donations.c.created_at.desc(), donations.c.id.desc())).mappings()
-        return [donation_view(row, include_pix_key=user["account_type"] == "donor") for row in rows]
+        return [donation_view(row, include_pix_key=user["account_type"] in {"donor", "person"}) for row in rows]
 
 
 @app.post("/api/donations/{donation_id}/report-payment")
 def report_donation_payment(donation_id: int, payload: DonationPaymentReportInput, user=Depends(current_user)):
-    if user["account_type"] != "donor":
-        raise HTTPException(status_code=403, detail="Somente a empresa doadora pode informar o pagamento.")
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente quem iniciou a doação pode informar o pagamento.")
     with write_transaction() as db:
         row = db.execute(select(donations.c.status).where(
             donations.c.id == donation_id, donations.c.donor_user_id == user["id"],
@@ -467,6 +472,8 @@ def donation_receipt(donation_id: int, user=Depends(current_user)):
             donations, organizations.c.name.label("project_name"),
             organizations.c.cnpj.label("project_cnpj"), organizations.c.owner_id.label("project_owner_id"),
             func.coalesce(donor_org.c.name, users.c.full_name).label("donor_name"), donor_org.c.cnpj.label("donor_cnpj"),
+            func.coalesce(donor_org.c.cnpj, users.c.document).label("donor_document"),
+            users.c.account_type.label("donor_document_type"),
             confirmer.c.full_name.label("confirmed_by_name"),
         ).join(organizations, organizations.c.id == donations.c.project_organization_id)
           .join(users, users.c.id == donations.c.donor_user_id)

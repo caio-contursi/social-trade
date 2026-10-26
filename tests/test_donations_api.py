@@ -29,7 +29,7 @@ def setup_donation_accounts(client, user_factory, organization_factory, login, *
     return accounts
 
 
-def test_pix_donation_requires_donor_and_project_with_direct_pix_key(
+def test_pix_donation_requires_authorized_donor_and_project_with_direct_pix_key(
     client, user_factory, organization_factory, login,
 ):
     accounts = setup_donation_accounts(client, user_factory, organization_factory, login, approve_pix=False)
@@ -37,7 +37,7 @@ def test_pix_donation_requires_donor_and_project_with_direct_pix_key(
     payload = {"project_id": accounts["project"]["id"], "amount_cents": 12500}
 
     assert client.post(endpoint, json=payload).status_code == 401
-    assert client.post(endpoint, headers=accounts["person_headers"], json=payload).status_code == 403
+    assert client.post(endpoint, headers=accounts["person_headers"], json=payload).status_code == 409
     assert client.post(endpoint, headers=accounts["beneficiary_headers"], json=payload).status_code == 403
     assert client.post(endpoint, headers=accounts["donor_headers"], json={**payload, "amount_cents": 0}).status_code == 422
     assert client.post(endpoint, headers=accounts["donor_headers"], json={**payload, "project_id": 999999}).status_code == 404
@@ -128,7 +128,7 @@ def test_pix_e2e_reference_is_required_unique_and_payment_report_is_owner_only(
     valid = {"end_to_end_id": "E1234567890ABCDE1234567890ABCDE2"}
 
     assert client.post(path, json=valid).status_code == 401
-    assert client.post(path, headers=accounts["person_headers"], json=valid).status_code == 403
+    assert client.post(path, headers=accounts["person_headers"], json=valid).status_code == 404
     assert client.post(path, headers=accounts["other_project_headers"], json=valid).status_code == 403
     assert client.post(path, headers=accounts["donor_headers"], json={"end_to_end_id": "curto"}).status_code == 422
     assert client.post(path, headers=accounts["donor_headers"], json=valid).status_code == 200
@@ -136,6 +136,42 @@ def test_pix_e2e_reference_is_required_unique_and_payment_report_is_owner_only(
     duplicate = client.post(f"/api/donations/{second['id']}/report-payment", headers=accounts["donor_headers"], json=valid)
     assert duplicate.status_code == 409
     assert client.post(path, headers=accounts["donor_headers"], json=valid).status_code == 409
+
+
+def test_person_can_donate_report_payment_and_receive_private_cpf_receipt(
+    client, user_factory, organization_factory, login,
+):
+    accounts = setup_donation_accounts(client, user_factory, organization_factory, login)
+    person = accounts["person"]
+    headers = accounts["person_headers"]
+    project_id = accounts["project"]["id"]
+
+    assert client.get("/api/projects", headers=headers).status_code == 200
+    created = client.post("/api/donations", headers=headers, json={
+        "project_id": project_id, "amount_cents": 2500,
+    })
+    assert created.status_code == 201, created.text
+    donation_id = created.json()["id"]
+    mine = client.get("/api/donations/mine", headers=headers)
+    assert mine.status_code == 200
+    assert [row["id"] for row in mine.json()] == [donation_id]
+    assert mine.json()[0]["pix_key"] == "projeto-pix@example.test"
+    assert mine.json()[0]["donor_document"] == person["document"]
+    assert mine.json()[0]["donor_document_type"] == "person"
+
+    reported = client.post(f"/api/donations/{donation_id}/report-payment", headers=headers, json={
+        "end_to_end_id": "E1234567890ABCDE1234567890ABCDE9",
+    })
+    assert reported.status_code == 200, reported.text
+    assert client.post(f"/api/donations/{donation_id}/confirm",
+        headers=accounts["beneficiary_headers"]).status_code == 200
+    receipt = client.get(f"/api/donations/{donation_id}/receipt", headers=headers)
+    assert receipt.status_code == 200
+    assert "CPF do doador" in receipt.text
+    assert person["document"] in receipt.text
+    assert "CNPJ da doadora" not in receipt.text
+    assert client.get(f"/api/donations/{donation_id}/receipt",
+        headers=accounts["other_project_headers"]).status_code == 403
 
 
 def test_pix_review_queue_is_moderator_only_and_does_not_expose_keys_publicly(

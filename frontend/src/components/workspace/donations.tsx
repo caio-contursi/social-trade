@@ -55,7 +55,8 @@ export function DonationsPage() {
   const lock = useRef(false);
 
   if (!user) return null;
-  const isDonor = user.account_type === "donor";
+  const isDonor = user.account_type === "donor" || user.account_type === "person";
+  const donorKind = user.account_type === "person" ? "pessoa física" : "empresa";
   const resourceError = donations.error || (isDonor ? projects.error : null);
 
   async function startDonation(event: React.FormEvent<HTMLFormElement>) {
@@ -148,7 +149,7 @@ export function DonationsPage() {
         eyebrow="Transferência direta"
         title={isDonor ? "Doações por Pix." : "Doações recebidas."}
         description={isDonor
-          ? "Escolha um projeto com chave revisada, faça o Pix no seu banco e informe o E2E para o projeto confirmar o recebimento."
+          ? `Escolha um projeto com chave revisada, faça o Pix no seu banco e informe o E2E para o projeto confirmar o recebimento. Você está doando como ${donorKind}.`
           : "Confira os créditos no extrato da própria organização antes de confirmar. O SocialTrade não recebe nem repassa os valores."}
       />
       {resourceError ? (
@@ -208,7 +209,7 @@ export function DonationsPage() {
               <div className="space-y-4">{list.map((donation) => (
                 <article key={donation.id} className="surface">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div><p className="text-sm text-muted-foreground">{isDonor ? donation.project_name : donation.donor_name || "Empresa doadora"} · {formatDate(donation.created_at)}</p><h3 className="mt-1 text-xl font-semibold">{money(donation.amount_cents)}</h3></div>
+                    <div><p className="text-sm text-muted-foreground">{isDonor ? donation.project_name : donation.donor_name || "Pessoa ou empresa doadora"} · {formatDate(donation.created_at)}</p><h3 className="mt-1 text-xl font-semibold">{money(donation.amount_cents)}</h3></div>
                     <Badge variant={donation.status === "confirmed" ? "secondary" : "outline"}>{statusLabels[donation.status]}</Badge>
                   </div>
                   {isDonor && donation.status === "awaiting_payment" && donation.pix_key && donation.id !== started?.id && (
@@ -216,17 +217,17 @@ export function DonationsPage() {
                   )}
                   {donation.end_to_end_id && <p className="mt-4 text-sm text-muted-foreground">E2E informado: <code>{donation.end_to_end_id}</code>{donation.status === "awaiting_confirmation" ? ". O projeto confirmará o crédito na conta." : "."}</p>}
                   {!isDonor && donation.status === "awaiting_confirmation" && (
-                    <div className="mt-4 rounded-xl bg-muted/40 p-4"><p className="text-sm leading-relaxed">A empresa informou o E2E <code>{donation.end_to_end_id}</code>. Confira no extrato da conta do projeto se este valor foi recebido antes de confirmar.</p><Button type="button" className="mt-4" disabled={busyId === donation.id} onClick={() => void confirmReceipt(donation.id)}><CheckCircle2 className="size-4" />{busyId === donation.id ? "Confirmando…" : "Confirmar que recebi"}</Button></div>
+                    <div className="mt-4 rounded-xl bg-muted/40 p-4"><p className="text-sm leading-relaxed">Quem doou informou o E2E <code>{donation.end_to_end_id}</code>. Confira no extrato da conta do projeto se este valor foi recebido antes de confirmar.</p><Button type="button" className="mt-4" disabled={busyId === donation.id} onClick={() => void confirmReceipt(donation.id)}><CheckCircle2 className="size-4" />{busyId === donation.id ? "Confirmando…" : "Confirmar que recebi"}</Button></div>
                   )}
                   {donation.status === "confirmed" && <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Código do recibo: <code>{donation.receipt_code}</code></p><Button type="button" variant="outline" onClick={() => void downloadReceipt(donation.id)}><ArrowDownToLine className="size-4" />Baixar recibo</Button></div>}
                 </article>
               ))}</div>
             ) : (
-              <EmptyState title={isDonor ? "Ainda não há doações" : "Ainda não há recebimentos"} description={isDonor ? "Quando você iniciar uma doação Pix, ela aparecerá aqui para acompanhamento." : "Quando uma empresa informar um pagamento para um dos seus projetos, você poderá conferir e confirmar o crédito aqui."} icon={isDonor ? <WalletCards className="size-6" /> : <Building2 className="size-6" />} />
+              <EmptyState title={isDonor ? "Ainda não há doações" : "Ainda não há recebimentos"} description={isDonor ? "Quando você iniciar uma doação Pix, ela aparecerá aqui para acompanhamento." : "Quando uma pessoa ou empresa informar um pagamento para um dos seus projetos, você poderá conferir e confirmar o crédito aqui."} icon={isDonor ? <WalletCards className="size-6" /> : <Building2 className="size-6" />} />
             )}
           </section>
           <p className="mt-8 rounded-xl border bg-muted/30 p-4 text-xs leading-relaxed text-muted-foreground">
-            O E2E é informado pela empresa e não é consultado no banco. A confirmação e o recibo dependem do projeto conferir o crédito na própria conta. Guarde também o comprovante emitido pelo seu banco. O recibo SocialTrade não é nota fiscal nem garante benefício fiscal.
+            O E2E é informado por quem doa e não é consultado no banco. A confirmação e o recibo dependem do projeto conferir o crédito na própria conta. Guarde também o comprovante emitido pelo seu banco. O recibo SocialTrade não é nota fiscal nem garante benefício fiscal.
           </p>
         </>
       )}

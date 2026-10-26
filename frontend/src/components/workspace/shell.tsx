@@ -61,9 +61,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const items = [
     { href: "/painel", label: "Visão geral", icon: LayoutDashboard },
     { href: "/projetos", label: "Explorar projetos", icon: Compass },
-    ...(user.account_type !== "person"
-      ? [{ href: "/painel/doacoes", label: "Doações por Pix", icon: HandCoins }]
-      : []),
+    { href: "/painel/doacoes", label: "Doações por Pix", icon: HandCoins },
     {
       href: "/painel/organizacoes",
       label: organizationLabel,

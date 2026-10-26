@@ -32,7 +32,7 @@ As operações de cadastro, suporte e edição foram executadas exclusivamente e
 
 A revisão visual é uma amostragem dos fluxos, não uma auditoria completa de acessibilidade ou segurança. A área de moderação foi implementada e tipada, mas suas mutações não foram exercitadas nesta revisão pelo navegador. Autorização e dados continuam sob responsabilidade da API.
 
-Pagamentos, transações Solana, verificação independente e prestação de contas financeira não foram implementados nesta etapa. A interface identifica esses recursos como futuros.
+O fluxo de registro de doações por Pix direto entre empresas ou pessoas físicas e projetos foi implementado. A interface acompanha o pagamento informado e só apresenta recibo depois da confirmação manual do projeto. O SocialTrade não movimenta o valor nem verifica transações bancárias. PSP, pagamentos por cartão, transações Solana, verificação independente e prestação de contas financeira ampliada continuam fora desta etapa.
 
 ## Suíte automatizada atual
 
