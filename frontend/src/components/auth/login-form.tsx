@@ -98,7 +98,6 @@ export function LoginForm() {
         }),
       });
       auth.login(result);
-      toast.success("Você entrou na SocialTrade.");
       router.replace(safeNextPath(searchParams.get("proximo")));
     } catch (error) {
       const message =

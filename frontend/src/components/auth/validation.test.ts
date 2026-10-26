@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { digits, normalizeDocument, safeNextPath, validCnpj, validCpf } from "./validation";
+import { digits, lettersAndNamePunctuation, normalizeDocument, safeNextPath, validCnpj, validCpf } from "./validation";
 
 describe("documentos do cadastro", () => {
+  it("mantém acentos e pontuação de nomes, removendo números e símbolos", () => {
+    expect(lettersAndNamePunctuation("João2 D'Ávila#")).toBe("João D'Ávila");
+  });
+
   it("normaliza documentos formatados antes do envio", () => {
     expect(digits("CPF: 529.982.247-25")).toBe("52998224725");
     expect(digits("04.252.011/0001-10")).toBe("04252011000110");

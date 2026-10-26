@@ -11,6 +11,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import {
+  digits,
+  lettersAndNamePunctuation,
+} from "@/components/auth/validation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +122,11 @@ export function AccountProfile() {
                 name="full_name"
                 autoComplete="name"
                 defaultValue={user.full_name}
+                onChange={(event) => {
+                  event.currentTarget.value = lettersAndNamePunctuation(
+                    event.currentTarget.value,
+                  );
+                }}
                 minLength={2}
                 maxLength={120}
                 required
@@ -136,9 +145,13 @@ export function AccountProfile() {
                   id="profile-phone"
                   name="phone"
                   type="tel"
+                  inputMode="numeric"
                   autoComplete="tel"
                   defaultValue={user.phone || ""}
                   maxLength={30}
+                  onChange={(event) => {
+                    event.currentTarget.value = digits(event.currentTarget.value);
+                  }}
                   className="mt-2"
                 />
               </div>

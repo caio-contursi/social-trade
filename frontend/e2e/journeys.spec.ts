@@ -238,9 +238,10 @@ test("CNPJ alfanumérico permanece no cadastro, no login e no perfil institucion
   await page.getByLabel("Confirme a senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByLabel("Nome da empresa", { exact: true }).fill("Instituição alfanumérica de teste");
-  await page.getByLabel("Cidade", { exact: true }).fill("Niterói");
   await page.getByRole("combobox", { name: "Estado", exact: true }).click();
-  await page.getByRole("option", { name: "RJ", exact: true }).click();
+  await page.getByRole("option", { name: "SP", exact: true }).click();
+  await page.getByRole("combobox", { name: "Cidade", exact: true }).click();
+  await page.getByRole("option", { name: "São Paulo", exact: true }).click();
   await page.getByLabel("Apresentação breve", { exact: true }).fill("Empresa fictícia que apoia iniciativas comunitárias.");
   await page.getByRole("button", { name: "Criar minha conta", exact: true }).click();
   await expect(page.getByRole("heading", { name: /conta está pronta|cadastro.*concluído|faz parte|bem-vindo/i })).toBeVisible();
@@ -250,7 +251,9 @@ test("CNPJ alfanumérico permanece no cadastro, no login e no perfil institucion
     headers: { Authorization: `Bearer ${await page.evaluate(() => sessionStorage.getItem("socialtrade_token"))}` },
   });
   expect(profile.ok()).toBeTruthy();
-  expect((await profile.json())[0].cnpj).toBe(document);
+  const profileData = await profile.json();
+  expect(profileData[0].cnpj).toBe(document);
+  expect(profileData[0]).toMatchObject({ city: "São Paulo", state: "SP" });
   await page.goto("/painel/organizacoes");
   await page.getByRole("button", { name: /Editar/ }).first().click();
   await expect(page.getByLabel(/CNPJ/)).toHaveValue(document);

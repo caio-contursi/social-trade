@@ -1,5 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchDonationReceipt, parseDonationAmount } from "./donations";
+import {
+  fetchDonationReceipt,
+  normalizeDonationAmount,
+  parseDonationAmount,
+} from "./donations";
+
+describe("normalizeDonationAmount", () => {
+  it.each([
+    ["R$ 25,00", "25,00"],
+    ["12a,345", "12,34"],
+    ["12345678999.99", "123456789.99"],
+    ["25", "25"],
+  ])("normalizes %s for a numeric currency field", (value, expected) => {
+    expect(normalizeDonationAmount(value)).toBe(expected);
+  });
+});
 
 describe("parseDonationAmount", () => {
   it.each([

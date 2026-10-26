@@ -11,7 +11,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => navigation.params,
 }));
 vi.mock("@/components/auth-provider", () => ({ useAuth: () => auth }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
 
 describe("formulário de entrada", () => {
   const fetchMock = vi.fn<typeof fetch>();
@@ -22,6 +23,8 @@ describe("formulário de entrada", () => {
     navigation.params = new URLSearchParams();
     fetchMock.mockReset();
     loginRequest.mockReset();
+    toast.success.mockReset();
+    toast.error.mockReset();
     demoEnabled = false;
     fetchMock.mockImplementation((path) => {
       if (path === "/api/catalog") return Promise.resolve(jsonResponse({ demo_users_enabled: demoEnabled }));
@@ -69,6 +72,7 @@ describe("formulário de entrada", () => {
     await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
 
     await waitFor(() => expect(auth.login).toHaveBeenCalledWith(session));
+    expect(toast.success).not.toHaveBeenCalled();
     const request = fetchMock.mock.calls.find(([path]) => path === "/api/auth/login");
     expect(request?.[1]?.method).toBe("POST");
     expect(JSON.parse(request?.[1]?.body as string)).toEqual({

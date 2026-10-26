@@ -62,6 +62,16 @@ describe("editor de organização", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
+    fetchMock.mockImplementation((input) => {
+      if (String(input) === "/api/projects/open") {
+        return Promise.resolve(jsonResponse([
+          organization(),
+          organization({ id: 9, name: "Instituto Cenu", city: "Rio de Janeiro" }),
+          organization({ id: 10, city: "São Paulo", state: "SP" }),
+        ]));
+      }
+      return Promise.resolve(jsonResponse(organization()));
+    });
     vi.stubGlobal("fetch", fetchMock);
     // O jsdom não tem ResizeObserver, usado pelos checkboxes do Radix.
     vi.stubGlobal(
@@ -72,6 +82,12 @@ describe("editor de organização", () => {
         disconnect() {}
       },
     );
+    Object.defineProperties(HTMLElement.prototype, {
+      hasPointerCapture: { configurable: true, value: () => false },
+      setPointerCapture: { configurable: true, value: () => {} },
+      releasePointerCapture: { configurable: true, value: () => {} },
+      scrollIntoView: { configurable: true, value: () => {} },
+    });
   });
 
   function renderEditor(value: Organization) {
@@ -100,7 +116,7 @@ describe("editor de organização", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Selecione o estado da organização.",
     );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/organizations/7")).toBe(false);
   });
 
   it("sem áreas, descreve o grupo, marca as opções e foca a primeira", async () => {
@@ -116,7 +132,7 @@ describe("editor de organização", () => {
     ).toHaveAccessibleDescription(
       "Selecione ao menos uma área de atuação para o projeto.",
     );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/organizations/7")).toBe(false);
 
     await user.click(first);
     expect(first).not.toHaveAttribute("aria-invalid");
@@ -133,16 +149,44 @@ describe("editor de organização", () => {
     expect(screen.getByText("Planejado, sem previsão")).toBeInTheDocument();
   });
 
+  it("remove números do nome, restringe o ano e oferece apenas cidades cadastradas no estado", async () => {
+    const user = userEvent.setup();
+    renderEditor(organization());
+
+    const name = screen.getByLabelText(/Nome do projeto/);
+    await user.type(name, " 2026");
+    expect(name).toHaveValue("Projeto Horta Viva ");
+    const year = screen.getByLabelText("Ano de fundação");
+    await user.type(year, "20a26");
+    expect(year).toHaveValue("2026");
+
+    const city = screen.getByRole("combobox", { name: /Cidade/ });
+    await user.click(city);
+    expect(screen.getByRole("option", { name: "Niterói" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Rio de Janeiro" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "São Paulo" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Rio de Janeiro" }));
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/organizations/7")).toBe(true));
+    const save = fetchMock.mock.calls.find(([path]) => String(path) === "/api/organizations/7");
+    const payload = JSON.parse(save?.[1]?.body as string);
+    expect(payload.name).toBe("Projeto Horta Viva");
+    expect(payload.founding_year).toBe(2026);
+    expect(payload.city).toBe("Rio de Janeiro");
+    expect(payload.state).toBe("RJ");
+  });
+
   it("preserva o CNPJ alfanumérico salvo e o normaliza no envio da edição", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(organization()));
     const user = userEvent.setup();
     renderEditor(organization({ cnpj: "12.abc.345/01de-35" }));
     const cnpj = screen.getByLabelText(/CNPJ/);
     expect(cnpj).toHaveAttribute("inputmode", "text");
     expect(cnpj).toHaveAttribute("readonly");
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string).cnpj).toBe("12ABC34501DE35");
+    await waitFor(() => expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/organizations/7")).toBe(true));
+    const save = fetchMock.mock.calls.find(([path]) => String(path) === "/api/organizations/7");
+    expect(JSON.parse(save?.[1]?.body as string).cnpj).toBe("12ABC34501DE35");
   });
 
   it("rejeita CNPJ alfanumérico com DV incorreto e foca o campo", async () => {
@@ -152,7 +196,7 @@ describe("editor de organização", () => {
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
     await waitFor(() => expect(cnpj).toHaveFocus());
     expect(cnpj).toHaveAccessibleDescription("Informe um CNPJ válido, numérico ou alfanumérico.");
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([path]) => String(path) === "/api/organizations/7")).toBe(false);
   });
 
   it("mantém CNPJ institucional já salvo somente para leitura", () => {

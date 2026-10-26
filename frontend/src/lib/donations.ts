@@ -6,6 +6,16 @@ export function parseDonationAmount(value: string): number | null {
   return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
 }
 
+/** Mantém somente dígitos e um separador decimal, com até duas casas. */
+export function normalizeDonationAmount(value: string): string {
+  const normalized = value.replace(/[^\d,.]/g, "");
+  const separator = normalized.match(/[,.]/)?.[0];
+  if (!separator) return normalized.slice(0, 9);
+  const [integer = "", ...fractionParts] = normalized.split(/[,.]/);
+  const fraction = fractionParts.join("").slice(0, 2);
+  return `${integer.slice(0, 9)}${separator}${fraction}`;
+}
+
 export async function fetchDonationReceipt(
   donationId: number,
   token: string,

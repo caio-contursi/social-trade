@@ -16,7 +16,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { parseDonationAmount, fetchDonationReceipt } from "@/lib/donations";
+import {
+  fetchDonationReceipt,
+  normalizeDonationAmount,
+  parseDonationAmount,
+} from "@/lib/donations";
 import { formatDate } from "@/lib/catalog";
 import type { Donation, DonationStart, Project } from "@/lib/types";
 import {
@@ -179,7 +183,7 @@ export function DonationsPage() {
                   </div>
                   <div>
                     <Label htmlFor="donation-amount">Valor em reais</Label>
-                    <Input id="donation-amount" inputMode="decimal" placeholder="25,00" value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-2" required />
+                    <Input id="donation-amount" inputMode="decimal" placeholder="25,00" value={amount} onChange={(event) => setAmount(normalizeDonationAmount(event.target.value))} className="mt-2" maxLength={12} required />
                   </div>
                   <Button type="submit" disabled={creating}>{creating ? "Preparando…" : "Continuar para o Pix"}</Button>
                 </form>
