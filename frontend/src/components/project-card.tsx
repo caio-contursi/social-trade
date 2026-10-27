@@ -66,11 +66,11 @@ export function ProjectVisual({
 
 export function ProjectCard({ project }: { project: Project }) {
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[1.4rem] border bg-card transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10">
+    <article className="public-card group flex h-full flex-col overflow-hidden rounded-[1.5rem] border text-[var(--surface-green-foreground)] transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10">
       <div className="relative">
         <ProjectVisual project={project} />
         {project.is_demo && (
-          <Badge className="absolute top-3 right-3 gap-1.5 border border-border bg-card/95 text-foreground">
+          <Badge className="absolute top-3 right-3 gap-1.5 border border-border bg-card/95 text-[#17392e]">
             <span
               aria-hidden="true"
               className="size-1.5 rounded-full bg-energy"
@@ -78,13 +78,18 @@ export function ProjectCard({ project }: { project: Project }) {
             Demonstração
           </Badge>
         )}
+        {project.pix_donations_available && (
+          <Badge variant="secondary" className="absolute right-3 bottom-3 bg-card/95 text-[#17392e]">
+            Pix direto disponível
+          </Badge>
+        )}
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--surface-green-muted)]">
           <MapPin className="size-3.5" aria-hidden="true" />
           {project.city}, {project.state}
         </p>
-        <h3 className="mt-2.5 text-[1.45rem] leading-tight font-medium">
+        <h3 className="mt-2.5 font-sans text-[1.4rem] leading-tight font-semibold tracking-tight">
           <Link
             href={`/projetos/${encodeURIComponent(project.slug)}#conteudo`}
             scroll
@@ -93,7 +98,7 @@ export function ProjectCard({ project }: { project: Project }) {
             {project.name}
           </Link>
         </h3>
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[var(--surface-green-muted)]">
           {project.short_description}
         </p>
         <ul className="mt-4 mb-6 flex flex-wrap gap-1.5" aria-label="Causas">
@@ -103,7 +108,7 @@ export function ProjectCard({ project }: { project: Project }) {
               <li key={area}>
                 <Badge
                   variant="outline"
-                  className="gap-1.5 bg-background text-[11px] font-medium"
+                  className="gap-1.5 bg-background text-[11px] font-medium text-[#17392e]"
                 >
                   <span
                     aria-hidden="true"
@@ -121,7 +126,7 @@ export function ProjectCard({ project }: { project: Project }) {
             <li>
               <Badge
                 variant="outline"
-                className="bg-background text-[11px] font-medium"
+                className="bg-background text-[11px] font-medium text-[#17392e]"
               >
                 +{project.areas.length - 2} causas
               </Badge>
@@ -132,7 +137,7 @@ export function ProjectCard({ project }: { project: Project }) {
           href={`/projetos/${encodeURIComponent(project.slug)}#conteudo`}
           scroll
           aria-label={`Conhecer ${project.name}`}
-          className="mt-auto inline-flex items-center justify-between gap-3 border-t pt-4 text-sm font-semibold text-primary"
+          className="mt-auto inline-flex items-center justify-between gap-3 border-t pt-4 text-sm font-semibold text-[#145b4b]"
         >
           Conhecer o projeto
           <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:translate-x-0.5">

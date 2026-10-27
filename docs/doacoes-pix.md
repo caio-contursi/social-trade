@@ -47,6 +47,14 @@ O valor é inteiro em centavos (ex.: `25000` = R$ 250,00); moeda e meio são fix
 3. Decidir com as organizações o conteúdo, guarda, correção e contestação do recibo e dos registros, além de retenção e acesso a dados pessoais.
 4. Revisar contratos, privacidade, segurança, estornos e mensagens do fluxo antes de habilitar pagamentos reais. O sistema não faz análise fiscal nem promete dedutibilidade.
 
+## Modalidades planejadas
+
+A interface está sendo organizada em dois destinos: (1) transferência direta para um projeto específico, atualmente disponível por Pix; e (2) contribuição para uma categoria, com futura divisão automática entre projetos elegíveis. O segundo destino não recebe nem registra pagamentos ainda: a conta recebedora da SocialTrade e o provedor Pix estão por definir. A divisão automática não deve ser simulada como pagamento concluído.
+
+Na doação direta, o Pix atual continua sendo uma transferência iniciada no banco do doador para a chave revisada do projeto; não há QR dinâmico, PSP ou prazo de expiração de 10 minutos. Pagamento com SOL também está indisponível até haver carteira da SocialTrade/projeto, método de conexão/QR decidido, custódia e recuperação de acesso, taxas, conversão e conciliação. A interface identifica essas modalidades como “em preparação”.
+
+Quando a divisão indireta for implementada, a intenção deverá guardar o total, a categoria, a moeda, a regra de rateio e as alocações individuais por projeto, sem misturar o registro de intenção com a confirmação de pagamento/liquidação. A prioridade poderá usar a avaliação interna confidencial documentada em `avaliacao-e-descoberta-de-projetos.md`; estrelas, critérios, evidências, justificativas e histórico nunca serão incluídos em payloads para doadores, projetos ou páginas públicas.
+
 ## Como fazer um teste local controlado
 
 1. Inicie o banco e a API de desenvolvimento e execute `python -m app.seed --environment development`. O seed é aditivo e não altera contas já existentes. Se algum identificador de demonstração já estiver ocupado, confira o cadastro existente em vez de apagar ou substituir dados.

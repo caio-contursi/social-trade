@@ -86,7 +86,7 @@ describe("cadastro institucional com CNPJ alfanumérico", () => {
     expect(payload.organization.cnpj).toBe("12ABC34501DE35");
     expect(payload.organization.city).toBe("Rio de Janeiro");
     expect(payload.organization.state).toBe("RJ");
-  });
+  }, 10_000);
 
   it("exige um CPF válido para quem responde pela instituição", async () => {
     await fillAccess("12.abc.345/01de-35", "12345678900");

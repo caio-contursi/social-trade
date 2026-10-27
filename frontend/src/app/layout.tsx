@@ -5,6 +5,7 @@ import "@fontsource-variable/fraunces/full-italic.css";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { RouteScrollManager } from "@/components/route-scroll-manager";
+import { RouteTransitionManager } from "@/components/route-transition-manager";
 
 export const metadata: Metadata = {
   title: {
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className="antialiased">
         <Providers>
           <RouteScrollManager />
+          <RouteTransitionManager />
           <a href="#conteudo" className="skip-link">
             Pular para o conteúdo
           </a>

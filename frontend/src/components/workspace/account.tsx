@@ -4,8 +4,7 @@ import { useRef, useState } from "react";
 import {
   Bell,
   CheckCircle2,
-  CircleHelp,
-  MessageSquareText,
+  Headset,
   Send,
   UserRound,
 } from "lucide-react";
@@ -279,7 +278,7 @@ export function AnnouncementsPage() {
   );
 }
 
-export function SupportPage() {
+export function SupportPage({ suggestion = false }: { suggestion?: boolean }) {
   const request = useSessionRequest();
   const tickets = useWorkspaceResource<Ticket[]>("/api/support/mine");
   const [pending, setPending] = useState(false);
@@ -305,9 +304,9 @@ export function SupportPage() {
       });
       formElement.reset();
       setConfirmation(
-        `Solicitação${result.id ? ` #${result.id}` : ""} recebida. Você pode acompanhar o status abaixo.`,
+        `Ticket aberto com sucesso. Protocolo ${result.id ?? "gerado"}. A moderação avaliará seu relato e você pode acompanhar o andamento abaixo.`,
       );
-      toast.success("Sua solicitação foi enviada.");
+      toast.success("Ticket aberto com sucesso.");
       tickets.reload();
     } catch (reason) {
       setError(
@@ -323,15 +322,17 @@ export function SupportPage() {
   return (
     <>
       <WorkspaceHeading
-        eyebrow="Estamos por perto"
-        title="Como podemos ajudar?"
-        description="Conte o que aconteceu ou envie sua dúvida. Evite incluir senhas ou outros dados sensíveis na mensagem."
+        eyebrow="Central de atendimento"
+        title={suggestion ? "Abra um ticket com sua sugestão." : "Abra um ticket com o suporte."}
+        description={suggestion
+          ? "Registre sua sugestão em um ticket. A moderação vai avaliá-la em tempo hábil. Evite incluir senhas ou outros dados sensíveis."
+          : "Registre sua dúvida ou reclamação em um ticket. A moderação vai avaliar o relato em tempo hábil. Evite incluir senhas ou outros dados sensíveis."}
       />
       <div className="grid items-start gap-6 xl:grid-cols-[1.1fr_1fr]">
         <section className="surface">
           <div className="mb-6 flex items-center gap-3">
-            <CircleHelp className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold">Nova solicitação</h2>
+            <Headset className="size-5 text-primary" />
+            <h2 className="text-xl font-semibold">Novo ticket</h2>
           </div>
           <form onSubmit={submit} className="space-y-5">
             <div>
@@ -340,6 +341,7 @@ export function SupportPage() {
                 id="support-subject"
                 name="subject"
                 placeholder="Sobre o que você precisa falar?"
+                defaultValue={suggestion ? "Sugestão para a SocialTrade" : undefined}
                 minLength={4}
                 maxLength={140}
                 required
@@ -347,7 +349,7 @@ export function SupportPage() {
               />
             </div>
             <div>
-              <Label htmlFor="support-message">Sua mensagem</Label>
+              <Label htmlFor="support-message">Relato</Label>
               <Textarea
                 id="support-message"
                 name="message"
@@ -355,7 +357,7 @@ export function SupportPage() {
                 minLength={10}
                 maxLength={4000}
                 required
-                placeholder="Descreva sua dúvida ou o problema com alguns detalhes."
+                placeholder="Descreva sua dúvida, reclamação ou sugestão com alguns detalhes."
                 className="mt-2 resize-y"
               />
             </div>
@@ -370,14 +372,14 @@ export function SupportPage() {
             )}
             <Button disabled={pending} type="submit">
               <Send className="size-4" />
-              {pending ? "Enviando…" : "Enviar solicitação"}
+              {pending ? "Abrindo ticket…" : "Abrir ticket"}
             </Button>
           </form>
         </section>
         <section>
           <div className="mb-5 flex items-center gap-3">
-            <MessageSquareText className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold">Seu histórico</h2>
+            <Headset className="size-5 text-primary" />
+            <h2 className="text-xl font-semibold">Seus tickets</h2>
           </div>
           {tickets.loading ? (
             <WorkspaceLoading />
@@ -405,9 +407,9 @@ export function SupportPage() {
             </div>
           ) : (
             <EmptyState
-              title="Nenhuma solicitação ainda"
-              description="O histórico e o status das mensagens que você enviar aparecerão aqui."
-              icon={<MessageSquareText className="size-6" />}
+              title="Nenhum ticket ainda"
+              description="Os protocolos, relatos e atualizações da moderação aparecerão aqui."
+              icon={<Headset className="size-6" />}
             />
           )}
         </section>

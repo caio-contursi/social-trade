@@ -68,7 +68,7 @@ export function AuthShell({
           </div>
         </div>
         <Link
-          href="/projetos"
+          href="/?explorar=projetos#projetos"
           className="relative inline-flex w-fit items-center gap-2 rounded-sm text-sm font-semibold text-energy underline-offset-4 hover:underline"
         >
           Conhecer os projetos <ArrowUpRight className="size-4" />

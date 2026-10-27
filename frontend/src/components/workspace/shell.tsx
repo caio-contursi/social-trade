@@ -11,7 +11,7 @@ import {
   HandCoins,
   HeartHandshake,
   LayoutDashboard,
-  LifeBuoy,
+  Headset,
   LogOut,
   Menu,
   ShieldCheck,
@@ -58,18 +58,21 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       : user.account_type === "person"
         ? "Meus vínculos"
         : "Meus projetos";
+  const organizationItem = user.account_type === "project"
+    ? { href: "/painel/meu-projeto", label: "Meu projeto", icon: Building2 }
+    : {
+        href: "/painel/organizacoes",
+        label: organizationLabel,
+        icon: user.account_type === "person" ? HeartHandshake : Building2,
+      };
   const items = [
     { href: "/painel", label: "Visão geral", icon: LayoutDashboard },
-    { href: "/projetos", label: "Explorar projetos", icon: Compass },
+    { href: "/?explorar=projetos#projetos", label: "Explorar projetos", icon: Compass },
     { href: "/painel/doacoes", label: "Doações por Pix", icon: HandCoins },
-    {
-      href: "/painel/organizacoes",
-      label: organizationLabel,
-      icon: user.account_type === "person" ? HeartHandshake : Building2,
-    },
+    organizationItem,
     { href: "/painel/avisos", label: "Avisos", icon: Bell },
     { href: "/painel/perfil", label: "Minha conta", icon: UserRound },
-    { href: "/painel/suporte", label: "Suporte", icon: LifeBuoy },
+    { href: "/painel/suporte", label: "Suporte", icon: Headset },
     ...(user.role === "moderator"
       ? [{ href: "/painel/moderacao", label: "Moderação", icon: ShieldCheck }]
       : []),
@@ -97,18 +100,21 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           const active =
             item.href === "/painel"
               ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              : item.href.includes("explorar=projetos")
+                ? false
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}
               href={item.href}
+              data-route-transition={item.label === "Suporte" ? true : undefined}
               onClick={() => setMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={`flex min-h-11 items-center gap-3 rounded-full px-4 py-3 text-sm font-medium transition-colors ${active ? "bg-energy font-semibold text-energy-foreground shadow-sm" : "text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground"}`}
             >
               <item.icon className="size-[18px] shrink-0" />
               {item.label}
-              {item.href === "/projetos" && (
+              {item.href.includes("explorar=projetos") && (
                 <ArrowUpRight className="ml-auto size-3.5 opacity-65" />
               )}
             </Link>
@@ -145,7 +151,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           ? "Projeto social"
           : "Pessoa física";
   return (
-    <div className="min-h-screen bg-background">
+    <div className="workspace-app min-h-screen bg-background">
       <aside className="on-ink fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto bg-sidebar px-4 py-7 text-sidebar-foreground lg:flex">
         {navigation}
       </aside>
@@ -209,9 +215,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 pb-8 pt-3 text-xs text-muted-foreground sm:px-8 lg:px-10">
           <span>SocialTrade · Juntos, o impacto vai mais longe.</span>
           <Link
-            className="underline-offset-4 hover:underline"
+            className="inline-flex items-center gap-2 underline-offset-4 hover:underline"
             href="/painel/suporte"
           >
+            <Headset className="size-4" aria-hidden="true" />
             Precisa de ajuda?
           </Link>
         </footer>

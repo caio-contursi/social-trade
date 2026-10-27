@@ -50,6 +50,7 @@ export interface Project {
   profile_completeness?: number;
   is_demo?: boolean;
   pix_donations_available?: boolean;
+  sol_donations_available?: boolean;
   services?: Service[];
 }
 export interface Organization extends Project {

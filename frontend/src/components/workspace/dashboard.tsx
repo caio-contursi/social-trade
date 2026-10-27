@@ -10,7 +10,7 @@ import {
   Compass,
   HeartHandshake,
   Leaf,
-  LifeBuoy,
+  Headset,
   LockKeyhole,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
@@ -65,11 +65,6 @@ export function Dashboard() {
   const isDonor = user.account_type === "donor";
   const mainOrg = orgs[0];
   const incomplete = orgs.find((org) => (org.profile_completeness ?? 0) < 100);
-  const orgLabel = isDonor
-    ? "Minha empresa"
-    : isPerson
-      ? "Meus vínculos"
-      : "Meus projetos";
   const stats = [
     {
       label: isPerson
@@ -79,7 +74,7 @@ export function Dashboard() {
           : "Projetos cadastrados",
       value: isPerson ? links.length : orgs.length,
       icon: isPerson ? HeartHandshake : Building2,
-      href: "/painel/organizacoes",
+      href: user.account_type === "project" ? "/painel/meu-projeto" : "/painel/organizacoes",
     },
     {
       label: "Avisos da plataforma",
@@ -90,7 +85,7 @@ export function Dashboard() {
     {
       label: "Solicitações em aberto",
       value: pendingTickets,
-      icon: LifeBuoy,
+      icon: Headset,
       href: "/painel/suporte",
     },
   ];
@@ -129,12 +124,12 @@ export function Dashboard() {
                 : "Um perfil claro ajuda as pessoas a entenderem o seu trabalho, suas necessidades e o impacto que você busca."}
           </p>
           <Button asChild variant="energy" className="mt-7">
-            <Link href={isDonor ? "/projetos" : "/painel/organizacoes"}>
+            <Link href={isDonor ? "/?explorar=projetos#projetos" : isPerson ? "/painel/organizacoes" : "/painel/meu-projeto"}>
               {isDonor
                 ? "Explorar projetos"
                 : isPerson
                   ? "Ver meus vínculos"
-                  : "Cuidar dos meus projetos"}
+                  : "Administrar meu projeto"}
               <ArrowRight className="size-4" />
             </Link>
           </Button>
@@ -180,7 +175,7 @@ export function Dashboard() {
               </p>
               <Button asChild variant="outline" className="mt-5">
                 <Link
-                  href={links.length ? "/painel/organizacoes" : "/projetos"}
+                  href={links.length ? "/painel/organizacoes" : "/?explorar=projetos#projetos"}
                 >
                   {links.length ? "Consultar vínculos" : "Conhecer iniciativas"}
                   <ArrowRight className="size-4" />
@@ -196,9 +191,9 @@ export function Dashboard() {
               </p>
               <Button asChild className="mt-5">
                 <Link
-                  href={isDonor ? "/painel/suporte" : "/painel/organizacoes"}
+                  href={isDonor ? "/painel/suporte" : isPerson ? "/painel/organizacoes" : "/painel/meu-projeto"}
                 >
-                  {isDonor ? "Falar com o suporte" : "Cadastrar projeto"}
+                  {isDonor ? "Falar com o suporte" : isPerson ? "Cadastrar projeto" : "Administrar meu projeto"}
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
@@ -230,8 +225,8 @@ export function Dashboard() {
                   : "As informações principais foram preenchidas. Revise o perfil sempre que houver novidades."}
               </p>
               <Button asChild variant="outline" className="mt-5">
-                <Link href="/painel/organizacoes">
-                  {incomplete ? "Completar informações" : orgLabel}
+                <Link href="/painel/meu-projeto">
+                  {incomplete ? "Completar informações" : "Administrar meu projeto"}
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>

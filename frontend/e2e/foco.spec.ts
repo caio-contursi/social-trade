@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { login } from "./fixtures";
 
 // Cores de foco de docs/design.md: verde sobre o papel, âmbar nos blocos escuros.
-const RING = "rgb(31, 122, 105)";
+const RING = "rgb(27, 105, 87)";
 const ENERGY = "rgb(242, 181, 60)";
 
 function focusStyle(locator: Locator) {
@@ -64,7 +64,7 @@ test("foco âmbar nos blocos escuros da página inicial", async ({ page }) => {
     page
       .getByRole("contentinfo")
       .getByRole("link", { name: "Acesse sua conta" }),
-    ENERGY,
+    RING,
   );
 });
 

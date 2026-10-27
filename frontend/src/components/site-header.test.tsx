@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SiteHeader } from "./site-header";
 
@@ -18,7 +18,10 @@ describe("navegação do cabeçalho", () => {
       "href",
       "/entrar?proximo=%2Fpainel%2Fsuporte",
     );
+    expect(screen.getByRole("link", { name: "Suporte" }).querySelector("svg")).toHaveClass("lucide-headset");
+    expect(screen.getByRole("link", { name: "Suporte" })).toHaveAttribute("data-route-transition");
     expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/entrar");
+    expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("data-route-transition");
     expect(screen.getByRole("link", { name: "Fazer cadastro" })).toHaveAttribute("href", "/cadastro");
   });
 
@@ -31,6 +34,13 @@ describe("navegação do cabeçalho", () => {
       "href",
       "/painel/suporte",
     );
+    expect(screen.getByRole("link", { name: "Suporte" })).toHaveAttribute("data-route-transition");
+    const navigation = screen.getByRole("navigation", { name: "Navegação principal" });
+    expect(within(navigation).getByRole("link", { name: "Procurar projeto/instituição" })).toHaveAttribute(
+      "href",
+      "/?explorar=projetos",
+    );
+    expect(screen.queryByRole("link", { name: "Explorar projetos" })).not.toBeInTheDocument();
   });
 
   it("mantém somente as três seções institucionais na página 1", () => {
@@ -45,5 +55,22 @@ describe("navegação do cabeçalho", () => {
     expect(screen.getByRole("link", { name: "Transparência" })).toHaveAttribute("href", "/#transparencia");
     expect(screen.getByRole("link", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fazer cadastro" })).toBeInTheDocument();
+  });
+
+  it("liga o menu de descoberta aos três destinos sem selo de em breve", () => {
+    auth.user = null;
+    auth.pathname = "/";
+    render(<SiteHeader />);
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("socialtrade:explore-projects", { detail: true }));
+    });
+
+    const navigation = screen.getByRole("navigation", { name: "Navegação principal" });
+    expect(within(navigation).getByRole("link", { name: "Procurar projeto/instituição" })).toHaveAttribute("href", "#projetos");
+    expect(within(navigation).getByRole("link", { name: "Meu projeto" })).toHaveAttribute("href", "#meu-projeto");
+    const causeFinder = within(navigation).getByRole("link", { name: "Encontre sua causa" });
+    expect(causeFinder).toHaveAttribute("href", "#encontre-sua-causa");
+    expect(causeFinder).not.toHaveTextContent("Em breve");
   });
 });

@@ -19,6 +19,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageRetry } from "@/components/page-retry";
 import { ProjectVisual } from "@/components/project-card";
+import { ShareProjectButton } from "@/components/share-project-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -59,7 +60,7 @@ export default async function ProjectPage({
         <SiteHeader />
         <main id="conteudo" className="page-container py-16">
           <Link
-            href="/projetos#conteudo"
+            href="/?explorar=projetos"
             scroll
             className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
@@ -91,7 +92,7 @@ export default async function ProjectPage({
         <section className="border-b bg-card">
           <div className="page-container pb-10 pt-7 sm:pb-12 sm:pt-9">
             <Link
-              href="/projetos#conteudo"
+              href="/?explorar=projetos"
               scroll
               className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
             >
@@ -141,6 +142,26 @@ export default async function ProjectPage({
                     </Badge>
                   ))}
                 </div>
+                <div className="mt-7 flex flex-wrap items-center gap-3">
+                  {project.pix_donations_available ? (
+                    <Button asChild variant="energy" className="h-12 px-6 text-base shadow-sm">
+                      <Link href="/painel/doacoes">
+                        <HeartHandshake className="size-5" />
+                        Faça sua contribuição!
+                        <ArrowUpRight className="size-4" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="energy" disabled className="h-12 px-6 text-base" title="A contribuição Pix ficará disponível após a conferência dos dados do projeto.">
+                      <HeartHandshake className="size-5" />
+                      Faça sua contribuição!
+                    </Button>
+                  )}
+                  <ShareProjectButton />
+                </div>
+                {!project.pix_donations_available && (
+                  <p className="mt-2 text-xs text-muted-foreground">A contribuição Pix será liberada após a conferência dos dados do projeto.</p>
+                )}
               </div>
               <ProjectVisual
                 project={project}
@@ -332,12 +353,20 @@ export default async function ProjectPage({
                     aria-hidden="true"
                     className="size-1.5 rounded-full bg-energy"
                   />
-                  Transparência em construção
+                  {project.pix_donations_available ? "Pix direto disponível" : "Doações Pix em conferência"}
                 </p>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Doações na plataforma, registro em Solana e prestação de
-                  contas ainda estão em desenvolvimento. Não há pagamentos
-                  disponíveis nesta etapa.
+                  {project.pix_donations_available
+                    ? "Pessoas físicas e empresas podem iniciar uma doação pelo painel. A transferência vai diretamente para a chave Pix conferida do projeto; a SocialTrade registra a intenção, mas não recebe nem retém o dinheiro."
+                    : "A transferência Pix direta fica disponível depois que a equipe confere o CNPJ e a chave informados pelo projeto. A SocialTrade não recebe nem retém valores."}
+                </p>
+                {project.is_demo && project.pix_donations_available && (
+                  <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs leading-relaxed">
+                    Projeto, CNPJ e chave são fictícios para teste. Não faça transferências reais.
+                  </p>
+                )}
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  Pagamentos por cartão, registro em Solana e prestação de contas ampliada ainda não estão disponíveis.
                 </p>
               </div>
             </section>
@@ -354,8 +383,8 @@ export default async function ProjectPage({
               </p>
             </div>
             <Button asChild variant="outline" className="shrink-0">
-              <Link href="/projetos#conteudo" scroll>
-                Explorar projetos <ArrowUpRight className="size-4" />
+              <Link href="/?explorar=projetos" scroll>
+                Procurar projeto/instituição <ArrowUpRight className="size-4" />
               </Link>
             </Button>
           </div>
