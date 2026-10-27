@@ -2,12 +2,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, LifeBuoy, Menu } from "lucide-react";
+import { ArrowUpRight, Headset, Menu } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
-import type { Organization } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -17,41 +15,24 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { scrollToSection } from "@/lib/scroll-to-section";
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const isLanding = pathname === "/";
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [exploring, setExploring] = useState(false);
-  const [myProject, setMyProject] = useState<Organization | null>(null);
   useEffect(() => {
     const update = (event: Event) => setExploring((event as CustomEvent<boolean>).detail);
     window.addEventListener("socialtrade:explore-projects", update);
     return () => window.removeEventListener("socialtrade:explore-projects", update);
   }, []);
   useEffect(() => setExploring(false), [pathname]);
-  useEffect(() => {
-    if (!user || user.account_type !== "project" || !token) {
-      setMyProject(null);
-      return;
-    }
-    let active = true;
-    api<Organization[]>("/api/organizations/mine", { token })
-      .then((organizations) => {
-        if (active) setMyProject(organizations.find((org) => org.institution_kind === "project") || null);
-      })
-      .catch(() => { if (active) setMyProject(null); });
-    return () => { active = false; };
-  }, [user, token]);
-
-  const myProjectHref = myProject
-    ? `/projetos/${encodeURIComponent(myProject.slug)}#conteudo`
-    : "/cadastro?tipo=project";
   const links = isLanding
     ? exploring
       ? [
-          { href: "#projetos", label: "Encontrar projeto" },
-          { href: myProjectHref, label: "Meu projeto" },
+          { href: "#projetos", label: "Procurar projeto/instituição" },
+          { href: "#meu-projeto", label: "Meu projeto" },
         ]
       : [
           { href: "/#quem-somos", label: "Quem somos" },
@@ -59,17 +40,18 @@ export function SiteHeader() {
           { href: "/#transparencia", label: "Transparência" },
         ]
     : [
-        { href: "/projetos", label: "Explorar projetos" },
+        { href: "/?explorar=projetos", label: "Procurar projeto/instituição" },
         { href: "/#como-funciona", label: "Como funciona" },
         { href: "/#transparencia", label: "Transparência" },
       ];
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
-      <div className="page-container flex h-[4.5rem] items-center justify-between gap-6">
+    <header className="site-header-frost sticky top-0 z-40 border-b backdrop-blur-xl">
+      <div className="page-container relative grid h-[4.5rem] grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-6">
         <Link
           href="/"
           onClick={isLanding && exploring ? (event) => {
             event.preventDefault();
+            window.history.replaceState(window.history.state, "", "/");
             window.dispatchEvent(new CustomEvent("socialtrade:show-home"));
           } : undefined}
           transitionTypes={pathname === "/projetos" ? ["discovery-back"] : undefined}
@@ -79,22 +61,23 @@ export function SiteHeader() {
         </Link>
         <nav
           aria-label="Navegação principal"
-          className="hidden items-center gap-8 text-sm md:flex"
+          className="hidden min-w-0 items-center justify-center gap-4 text-[13px] xl:flex xl:gap-6"
         >
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              onClick={isLanding && !exploring && link.href.startsWith("/#") ? (event) => {
+              onClick={isLanding && link.href.startsWith("/#") ? (event) => {
                 event.preventDefault();
                 const sectionId = link.href.slice(2);
                 window.history.pushState(window.history.state, "", link.href);
-                document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-              } : isLanding && link.label === "Explorar projetos" ? (event) => {
+                const target = document.getElementById(sectionId);
+                if (target) scrollToSection(target);
+              } : isLanding && link.href.startsWith("#") ? (event) => {
                 event.preventDefault();
-                window.history.replaceState(window.history.state, "", "/");
-                window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-                window.dispatchEvent(new CustomEvent("socialtrade:open-projects"));
+                window.history.pushState(window.history.state, "", link.href);
+                const target = document.getElementById(link.href.slice(1));
+                if (target) scrollToSection(target);
               } : isLanding && exploring && link.label === "Início" ? (event) => {
                 event.preventDefault();
                 window.dispatchEvent(new CustomEvent("socialtrade:explore-projects", { detail: false }));
@@ -106,7 +89,7 @@ export function SiteHeader() {
               }
               aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "rounded-sm py-1 underline-offset-[6px] decoration-energy decoration-2 transition-colors hover:text-foreground hover:underline",
+                "site-nav-link rounded-sm py-1 whitespace-nowrap underline-offset-[6px] decoration-energy decoration-2 transition-colors hover:text-foreground",
                 pathname === link.href
                   ? "font-semibold text-foreground underline"
                   : "text-muted-foreground",
@@ -115,31 +98,37 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          {isLanding && exploring && <ComingSoonMenuItem />}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="col-start-3 flex items-center justify-self-end gap-2">
           <ThemeToggle />
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link href={user ? "/painel/suporte" : "/entrar?proximo=%2Fpainel%2Fsuporte"}>
-              <LifeBuoy className="size-4" /> Suporte
+            <Link data-route-transition href={user ? "/painel/suporte" : "/entrar?proximo=%2Fpainel%2Fsuporte"}>
+              <Headset className="size-4" /> Suporte
             </Link>
           </Button>
           <Button asChild variant="ghost" className="hidden sm:inline-flex">
-            <Link href={user ? "/painel" : "/entrar"}>
+            <Link data-route-transition href={user ? "/painel" : "/entrar"}>
               {user ? "Meu painel" : "Entrar"}
             </Link>
           </Button>
-          <Button asChild className="hidden sm:inline-flex">
-            <Link href={user ? "/projetos#conteudo" : "/cadastro"}>
+          {(!user || (isLanding && !exploring)) && <Button asChild className="hidden sm:inline-flex">
+            <Link href={user ? "/?explorar=projetos#projetos" : "/cadastro"} onClick={user ? (event) => {
+              event.preventDefault();
+              window.history.replaceState(window.history.state, "", "/?explorar=projetos#projetos");
+              setExploring(true);
+              window.dispatchEvent(new CustomEvent("socialtrade:open-projects"));
+            } : undefined}>
               {user ? "Explorar projetos" : "Fazer cadastro"}
               <ArrowUpRight className="size-4" />
             </Link>
-          </Button>
+          </Button>}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button
                 size="icon"
                 variant="outline"
-                className="md:hidden"
+                className="xl:hidden"
                 aria-label="Abrir navegação"
               >
                 <Menu className="size-5" />
@@ -160,18 +149,16 @@ export function SiteHeader() {
                     href={link.href}
                     onClick={(event) => {
                       setOpen(false);
-                      if (isLanding && !exploring && link.href.startsWith("/#")) {
+                      if (isLanding && (link.href.startsWith("/#") || link.href.startsWith("#"))) {
                         event.preventDefault();
-                        const sectionId = link.href.slice(2);
+                        const sectionId = link.href.startsWith("/#") ? link.href.slice(2) : link.href.slice(1);
                         window.history.pushState(window.history.state, "", link.href);
-                        const scrollToSection = () => document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        if (open) window.setTimeout(scrollToSection, 350);
-                        else scrollToSection();
-                      } else if (isLanding && link.label === "Explorar projetos") {
-                        event.preventDefault();
-                        window.history.replaceState(window.history.state, "", "/");
-                        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-                        window.dispatchEvent(new CustomEvent("socialtrade:open-projects"));
+                        const scrollToTarget = () => {
+                          const target = document.getElementById(sectionId);
+                          if (target) scrollToSection(target);
+                        };
+                        if (open) window.setTimeout(scrollToTarget, 350);
+                        else scrollToTarget();
                       } else if (isLanding && exploring && link.label === "Início") {
                         event.preventDefault();
                         window.dispatchEvent(new CustomEvent("socialtrade:explore-projects", { detail: false }));
@@ -181,17 +168,21 @@ export function SiteHeader() {
                     {link.label}
                   </Link>
                 ))}
+                {isLanding && exploring && <ComingSoonMenuItem mobile onClick={() => setOpen(false)} />}
                 {user && !isLanding && (
                   <Link
+                    data-route-transition
                     className="rounded-xl px-3 py-4 font-display text-xl hover:bg-accent"
                     href="/painel/suporte"
                     onClick={() => setOpen(false)}
                   >
+                    <Headset className="mr-2 inline size-4" aria-hidden="true" />
                     Suporte
                   </Link>
                 )}
                 {!isLanding && <Button asChild variant="outline" className="mt-5">
                   <Link
+                    data-route-transition
                     href={user ? "/painel" : "/entrar"}
                     onClick={() => setOpen(false)}
                   >
@@ -203,22 +194,32 @@ export function SiteHeader() {
                     Fazer parte
                   </Link>
                 </Button>}
-                {isLanding && (
+                {isLanding && (!user || !exploring) && (
                   <>
                     <Link
+                      data-route-transition
                       className="rounded-xl px-3 py-4 font-display text-xl hover:bg-accent"
                       href={user ? "/painel/suporte" : "/entrar?proximo=%2Fpainel%2Fsuporte"}
                       onClick={() => setOpen(false)}
                     >
+                      <Headset className="mr-2 inline size-4" aria-hidden="true" />
                       Suporte
                     </Link>
                     <Button asChild variant="outline" className="mt-3">
-                      <Link href={user ? "/painel" : "/entrar"} onClick={() => setOpen(false)}>
+                      <Link data-route-transition href={user ? "/painel" : "/entrar"} onClick={() => setOpen(false)}>
                         {user ? "Meu painel" : "Entrar"}
                       </Link>
                     </Button>
                     <Button asChild>
-                      <Link href={user ? "/projetos#conteudo" : "/cadastro"} onClick={() => setOpen(false)}>
+                      <Link href={user ? "/?explorar=projetos#projetos" : "/cadastro"} onClick={(event) => {
+                        setOpen(false);
+                        if (user) {
+                          event.preventDefault();
+                          window.history.replaceState(window.history.state, "", "/?explorar=projetos#projetos");
+                          setExploring(true);
+                          window.dispatchEvent(new CustomEvent("socialtrade:open-projects"));
+                        }
+                      }}>
                         {user ? "Explorar projetos" : "Fazer cadastro"}
                       </Link>
                     </Button>
@@ -230,15 +231,52 @@ export function SiteHeader() {
         </div>
       </div>
       {isLanding && exploring && (
-        <nav aria-label="Navegação de projetos" className="page-container grid grid-cols-2 gap-2 border-t py-2 md:hidden">
-          <Link href="#projetos" className="rounded-lg px-3 py-2 text-center text-sm font-semibold text-primary hover:bg-accent">
-            Encontrar projeto
+        <nav aria-label="Navegação de projetos" className="page-container grid grid-cols-3 gap-2 border-t py-2 xl:hidden">
+          <Link href="#projetos" className="rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold text-primary hover:bg-accent sm:px-3 sm:text-sm">
+            Procurar projeto/instituição
           </Link>
-          <Link href={myProjectHref} className="rounded-lg px-3 py-2 text-center text-sm font-semibold text-primary hover:bg-accent">
+          <Link href="#meu-projeto" className="rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold text-primary hover:bg-accent sm:px-3 sm:text-sm">
             Meu projeto
           </Link>
+          <ComingSoonMenuItem compact />
         </nav>
       )}
     </header>
+  );
+}
+
+function ComingSoonMenuItem({
+  mobile = false,
+  compact = false,
+  onClick,
+}: {
+  mobile?: boolean;
+  compact?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      href="#encontre-sua-causa"
+      onClick={(event) => {
+        onClick?.();
+        if (window.location.pathname !== "/") return;
+        const target = document.getElementById("encontre-sua-causa");
+        if (!target) return;
+        event.preventDefault();
+        window.history.pushState(window.history.state, "", "#encontre-sua-causa");
+        const scroll = () => scrollToSection(target);
+        if (mobile) window.setTimeout(scroll, 350);
+        else scroll();
+      }}
+      aria-label="Encontre sua causa"
+      className={cn(
+        "inline-flex shrink-0 items-center gap-2 rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        mobile && "justify-between px-3 py-4 font-display text-xl",
+        compact && "justify-center px-1 py-1 text-center text-[11px] leading-tight font-semibold",
+        !mobile && !compact && "whitespace-nowrap py-1 text-[13px]",
+      )}
+    >
+      <span>Encontre sua causa</span>
+    </Link>
   );
 }

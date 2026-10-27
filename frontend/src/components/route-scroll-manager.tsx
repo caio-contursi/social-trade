@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { scrollToSection } from "@/lib/scroll-to-section";
 
 /** Restaura o topo ou resolve uma âncora após cada navegação entre páginas. */
 export function RouteScrollManager() {
@@ -21,7 +22,7 @@ export function RouteScrollManager() {
       }
 
       if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollToSection(target);
       } else {
         window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       }

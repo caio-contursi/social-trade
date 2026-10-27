@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "@/lib/types";
 import { jsonResponse } from "@/test/helpers";
@@ -6,13 +7,14 @@ import { DonationsPage } from "./donations";
 
 let account: User;
 const fetchMock = vi.fn<typeof fetch>();
+const navigation = vi.hoisted(() => ({ router: { replace: vi.fn(), push: vi.fn() }, expireSession: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => navigation.router,
   usePathname: () => "/painel/doacoes",
 }));
 vi.mock("@/components/auth-provider", () => ({
-  useAuth: () => ({ user: account, token: "token-de-teste", expireSession: vi.fn() }),
+    useAuth: () => ({ user: account, token: "token-de-teste", expireSession: navigation.expireSession }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -27,9 +29,11 @@ describe("fluxo de doações Pix", () => {
     fetchMock.mockImplementation(async (input) => {
       const path = String(input);
       if (path === "/api/donations/mine") return jsonResponse([]);
-      if (path === "/api/public/projects") return jsonResponse([{
-        id: 12, name: "Projeto de teste", city: "Niterói", state: "RJ", pix_donations_available: true,
-      }]);
+      if (path === "/api/public/projects") return jsonResponse([
+        { id: 12, name: "Projeto de teste", city: "Niterói", state: "RJ", areas: ["education"], pix_donations_available: true },
+        { id: 13, name: "Esporte para todos", city: "Rio de Janeiro", state: "RJ", areas: ["sports"], pix_donations_available: true },
+        { id: 14, name: "Projeto sem Pix", city: "Niterói", state: "RJ", areas: ["sports"], pix_donations_available: false },
+      ]);
       return jsonResponse({ detail: "Rota inesperada" }, 404);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -39,9 +43,46 @@ describe("fluxo de doações Pix", () => {
     render(<DonationsPage />);
 
     expect(await screen.findByRole("heading", { name: "Doações por Pix." })).toBeVisible();
-    expect(await screen.findByRole("heading", { name: "Iniciar uma doação Pix" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Doar diretamente para um projeto" })).toBeVisible();
     expect(await screen.findByRole("option", { name: "Projeto de teste · Niterói, RJ" })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/donations/mine", expect.any(Object));
     expect(fetchMock).toHaveBeenCalledWith("/api/public/projects", expect.any(Object));
+  });
+
+  it("filtra projetos Pix disponíveis por nome sem acentos e por categoria", async () => {
+    const user = userEvent.setup();
+    render(<DonationsPage />);
+
+    const projectSelect = await screen.findByLabelText("Projeto social");
+    expect(screen.getByRole("option", { name: "Esporte para todos · Rio de Janeiro, RJ" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Projeto sem Pix · Niterói, RJ" })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "sports");
+    expect(screen.getByRole("option", { name: "Esporte para todos · Rio de Janeiro, RJ" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Projeto de teste · Niterói, RJ" })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "");
+    await user.type(screen.getByLabelText("Pesquisar projetos"), "esporte");
+    expect(screen.getByRole("option", { name: "Esporte para todos · Rio de Janeiro, RJ" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Projeto de teste · Niterói, RJ" })).not.toBeInTheDocument();
+    expect(projectSelect).toBeInTheDocument();
+  });
+
+  it("apresenta o destino por categoria como indisponível sem criar uma doação falsa", async () => {
+    const user = userEvent.setup();
+    render(<DonationsPage />);
+
+    const indirectOption = await screen.findByRole("button", { name: /Doe indiretamente/ });
+    await user.click(indirectOption);
+
+    expect(indirectOption).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("heading", { name: "Doação por categoria" })).toBeVisible();
+    expect(screen.getByText(/conta recebedora da SocialTrade e a carteira Solana ainda serão definidas/i)).toBeVisible();
+    expect(screen.getByText(/Aguardando definição da conta recebedora e do provedor de pagamentos/)).toBeVisible();
+    expect(screen.queryByLabelText("Pesquisar projetos")).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/donations", expect.anything());
+
+    await user.click(screen.getByRole("button", { name: /Ajude seu projeto favorito!/ }));
+    expect(await screen.findByLabelText("Pesquisar projetos")).toBeVisible();
   });
 });

@@ -65,10 +65,280 @@ html {
 .discovery-viewport {
   width: 100%;
   overflow: hidden;
+  background-color: var(--surface-green);
+  transition: background-color 500ms ease;
+}
+
+.discovery-viewport[data-exploring="true"] {
+  background-color: var(--forest);
+}
+
+.discovery-viewport[data-exploring="false"] [aria-label="Apresentação da SocialTrade"] {
+  background-color: var(--surface-green);
+}
+
+.discovery-viewport[data-exploring="false"] [aria-label="Apresentação da SocialTrade"] .title-mark {
+  color: #155e52;
+}
+
+.discovery-viewport[data-exploring="false"] [aria-label="Apresentação da SocialTrade"] .text-muted-foreground {
+  color: var(--surface-green-muted);
+}
+
+.landing-details {
+  background-color: var(--surface-green);
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 780ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 780ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear;
+}
+
+.landing-details #como-funciona {
+  color: var(--forest-foreground);
+  background-color: var(--forest);
+  --focus-ring: var(--energy);
+  --forest-number: #f4f6ef;
+}
+
+.landing-details .ink-panel {
+  background-color: var(--forest);
+  color: var(--forest-foreground);
+}
+
+.landing-details #como-funciona .eyebrow,
+.landing-details #como-funciona .title-mark {
+  color: var(--moss-highlight);
+}
+
+.landing-details #como-funciona .text-muted-foreground {
+  color: var(--forest-muted);
+}
+
+.landing-details #como-funciona article {
+  border-color: var(--forest-border);
+  background-color: var(--forest-surface);
+}
+
+.landing-details #como-funciona article .text-muted-foreground {
+  color: var(--forest-muted-strong);
+}
+
+[data-projects-panel] {
+  color: var(--forest-foreground);
+}
+
+[data-projects-panel] .eyebrow,
+[data-projects-panel] .title-mark {
+  color: var(--moss-highlight);
+}
+
+[data-projects-panel] .my-7 p[role="status"],
+[data-projects-panel] .my-7 button {
+  color: var(--forest-muted);
+}
+
+[data-projects-panel] .my-7 p[role="status"] strong {
+  color: #ffffff;
+}
+
+[data-projects-panel] .text-muted-foreground {
+  color: var(--forest-muted);
+}
+
+[data-filter-card] .text-muted-foreground {
+  color: var(--surface-green-muted);
+}
+
+[data-filter-card] input {
+  background-color: var(--surface-green-raised);
+  color: #17392e;
+}
+
+[data-filter-card] [role="combobox"] {
+  background-color: var(--surface-green-raised);
+  color: #17392e;
+}
+
+.site-header-frost {
+  color: #17392e;
+  border-color: rgb(34 62 47 / 14%);
+  background-color: rgb(246 239 226 / 58%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  backdrop-filter: blur(18px) saturate(135%);
+  box-shadow: 0 6px 24px rgb(20 48 38 / 7%);
+}
+
+.site-header-frost .text-muted-foreground {
+  color: #344b3d;
+}
+
+.site-header-frost a:hover {
+  color: #17392e;
+}
+
+.site-header-frost [data-variant="ghost"],
+.site-header-frost [data-variant="outline"] {
+  color: #17392e;
+}
+
+.site-header-frost [data-variant="outline"] {
+  border-color: #87988b;
+}
+
+.site-header-frost .site-nav-link {
+  position: relative;
+  color: #344b3d;
+  font-weight: 550;
+}
+
+.site-header-frost a[aria-label="Encontre sua causa"] {
+  position: relative;
+  color: #344b3d;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 550;
+}
+
+.site-header-frost .site-nav-link:hover,
+.site-header-frost .site-nav-link[aria-current="page"] {
+  color: #17392e;
+}
+
+.site-header-frost .site-nav-link::after,
+.site-header-frost a[aria-label="Encontre sua causa"]::after {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: block;
+  height: 2px;
+  width: 100%;
+  content: "";
+  background: var(--energy);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 220ms ease;
+}
+
+.site-header-frost .site-nav-link:hover::after,
+.site-header-frost .site-nav-link[aria-current="page"]::after,
+.site-header-frost a[aria-label="Encontre sua causa"]:hover::after,
+.site-header-frost a[aria-label="Encontre sua causa"]:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.route-transition-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(13 37 31 / 12%);
+  -webkit-backdrop-filter: blur(9px) saturate(80%);
+  backdrop-filter: blur(9px) saturate(80%);
+  animation: route-transition-in 220ms ease both;
+}
+
+.route-transition-overlay.is-closing {
+  animation: route-transition-out 340ms ease both;
+}
+
+.route-transition-spinner {
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 3px solid rgb(255 255 255 / 75%);
+  border-top-color: var(--energy);
+  border-right-color: var(--primary);
+  border-radius: 9999px;
+  box-shadow: 0 8px 32px rgb(11 35 28 / 22%);
+  animation: route-transition-spin 850ms linear infinite;
+}
+
+.hero-carousel-image {
+  opacity: 0;
+  transition: opacity 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity;
+}
+
+.hero-carousel-image.is-active {
+  opacity: 1;
+}
+
+@keyframes route-transition-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes route-transition-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes route-transition-out {
+  to {
+    opacity: 0;
+    -webkit-backdrop-filter: blur(0) saturate(100%);
+    backdrop-filter: blur(0) saturate(100%);
+  }
+}
+
+.workspace-app {
+  background:
+    radial-gradient(ellipse at 82% 0%, rgb(40 88 66 / 6%), transparent 34rem),
+    var(--background);
+}
+
+.workspace-app > div > header {
+  border-color: color-mix(in srgb, var(--border) 75%, transparent);
+  box-shadow: 0 5px 24px rgb(25 60 49 / 4%);
+}
+
+.workspace-app main#conteudo {
+  min-height: calc(100svh - 9rem);
+}
+
+.workspace-app main#conteudo > * + * {
+  margin-top: 1.25rem;
+}
+
+.workspace-app .surface {
+  border-color: color-mix(in srgb, var(--border) 85%, #ffffff);
+  box-shadow: 0 8px 26px rgb(25 60 49 / 4%);
+}
+
+.workspace-app footer {
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.site-footer-cream {
+  color: #17392e;
+  background-color: var(--cream);
+}
+
+.site-footer-cream .footer-copy {
+  color: #485f50;
+}
+
+.site-footer-cream .footer-link {
+  color: #344e40;
+}
+
+.site-footer-cream .footer-link:hover {
+  color: #17392e;
+}
+
+.site-footer-cream .footer-rule {
+  border-color: var(--cream-border);
+}
+
+.public-card [class*="bg-background"],
+.public-card [class*="bg-card"] {
+  background-color: var(--surface-green-raised);
 }
 
 .discovery-track {
   display: grid;
+  align-items: start;
   width: 200%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   transform: translate3d(0, 0, 0);
@@ -80,12 +350,68 @@ html {
   transform: translate3d(-50%, 0, 0);
 }
 
+.discovery-viewport[data-exploring="true"] [data-projects-panel] {
+  min-height: calc(100svh - 4.5rem);
+}
+
+.discovery-viewport[data-exploring="false"] [data-projects-panel] {
+  grid-column: 2;
+  grid-row: 1;
+  height: 0;
+  min-height: 0;
+  padding-block: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.discovery-viewport[data-exploring="true"] [aria-label="Apresentação da SocialTrade"] {
+  grid-column: 1;
+  grid-row: 1;
+  height: 0;
+  padding-block: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+}
+
 .discovery-panel {
   min-width: 0;
 }
 
 html[data-exploring-projects="true"] .landing-details {
-  display: none;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-100vw);
+  visibility: hidden;
+  transition:
+    opacity 780ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 780ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 780ms;
+}
+
+.searchable-option:hover,
+.searchable-option[data-active="true"] {
+  color: #111111 !important;
+  background-color: #e6efdf !important;
+}
+
+.discovery-viewport #encontre-sua-causa .eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #214c3b;
+}
+
+[data-slot="select-item"][data-highlighted],
+[data-slot="select-item"]:focus {
+  color: #111111 !important;
+  background-color: #e6efdf !important;
+}
+
+@media (max-width: 1279px) {
+  .site-header-frost a[aria-label="Encontre sua causa"] {
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
 }
 
 /* Tokens e regras de uso: docs/design.md */
@@ -124,32 +450,47 @@ html[data-exploring-projects="true"] .landing-details {
 }
 
 :root {
-  --background: #faf7f0;
+  --background: #f6f2e9;
   --foreground: #12302a;
-  --card: #fffdf8;
+  --card: #fbf9f3;
   --card-foreground: #12302a;
-  --popover: #fffdf8;
+  --popover: #fbf9f3;
   --popover-foreground: #12302a;
   --primary: #155e52;
   --primary-foreground: #ffffff;
-  --secondary: #ece9df;
+  --secondary: #e8eee3;
   --secondary-foreground: #1d4a41;
-  --muted: #f2ede2;
+  --muted: #eaf0e6;
   --muted-foreground: #4f625b;
-  --accent: #e7efe6;
+  --accent: #e1ebdf;
   --accent-foreground: #155e52;
   --destructive: #b0302a;
-  --border: #e6dfd1;
+  --border: #b9c9b7;
   --input: #8f8676; /* contorno funcional: 3,4:1 sobre papel */
-  --ring: #1f7a69;
+  --ring: #1b6957;
   --radius: 0.9rem;
   --sidebar: #12302a;
   --sidebar-foreground: #e9efe9;
   --energy: #f2b53c;
   --energy-foreground: #2b1e04;
-  --ink-panel: #12302a;
+  --ink-panel: #193c31;
   --ink-panel-foreground: #eef3ee;
   --focus-ring: var(--ring);
+  --forest: #193c31;
+  --forest-surface: #285842;
+  --forest-border: #567461;
+  --forest-foreground: #f4f6ef;
+  --forest-muted: #d5e0d2;
+  --forest-muted-strong: #e0e9dc;
+  --surface-green: #dae7d0;
+  --surface-green-raised: #e6efdf;
+  --surface-green-border: #aec2ad;
+  --surface-green-foreground: #17392e;
+  --surface-green-muted: #405a49;
+  --surface-green-accent: #285842;
+  --moss-highlight: #c9dda9;
+  --cream: #f6efe2;
+  --cream-border: #cfc5b3;
 }
 .dark {
   --background: #0f1d1a;
@@ -177,6 +518,21 @@ html[data-exploring-projects="true"] .landing-details {
   --ink-panel: #0b1614;
   --ink-panel-foreground: #eef3ee;
   --focus-ring: var(--ring);
+  --forest: #193c31;
+  --forest-surface: #285842;
+  --forest-border: #567461;
+  --forest-foreground: #f4f6ef;
+  --forest-muted: #d5e0d2;
+  --forest-muted-strong: #e0e9dc;
+  --surface-green: #dae7d0;
+  --surface-green-raised: #e6efdf;
+  --surface-green-border: #aec2ad;
+  --surface-green-foreground: #17392e;
+  --surface-green-muted: #405a49;
+  --surface-green-accent: #285842;
+  --moss-highlight: #c9dda9;
+  --cream: #f6efe2;
+  --cream-border: #cfc5b3;
 }
 @layer base {
   * {
@@ -224,6 +580,31 @@ html[data-exploring-projects="true"] .landing-details {
   }
   .surface {
     @apply rounded-2xl border bg-card p-5 sm:p-7;
+  }
+  .public-card {
+  --primary: #155e52;
+  --primary-foreground: #ffffff;
+  --secondary: #e6efdf;
+  --secondary-foreground: #17392e;
+  --muted: #e6efdf;
+  --muted-foreground: #405a49;
+  --accent: #e1ebdf;
+  --accent-foreground: #155e52;
+  --border: var(--surface-green-border);
+  --ring: #1b6957;
+    border-color: var(--surface-green-border);
+    background-color: var(--surface-green);
+    box-shadow: 0 10px 30px rgb(25 60 49 / 7%);
+  }
+  .public-card .bg-background,
+  .public-card .bg-card,
+  .public-card [class*="bg-background"],
+  .public-card [class*="bg-card"] {
+  background-color: var(--surface-green-raised);
+}
+  .public-card-quiet {
+    border-color: var(--surface-green-border);
+    background-color: var(--surface-green-raised);
   }
   .field-label {
     @apply mb-2 block text-sm font-medium;
@@ -301,5 +682,12 @@ html[data-exploring-projects="true"] .landing-details {
   }
   .discovery-track {
     transition-duration: 0.01ms !important;
+  }
+  .landing-details,
+  html[data-exploring-projects="true"] .landing-details {
+    transition-duration: 0.01ms !important;
+  }
+  .route-transition-spinner {
+    animation: none;
   }
 }

@@ -7,7 +7,9 @@ import {
   Building2,
   CheckCircle2,
   Clipboard,
+  HandCoins,
   HeartHandshake,
+  Landmark,
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +23,7 @@ import {
   normalizeDonationAmount,
   parseDonationAmount,
 } from "@/lib/donations";
-import { formatDate } from "@/lib/catalog";
+import { areaLabels, formatDate } from "@/lib/catalog";
 import type { Donation, DonationStart, Project } from "@/lib/types";
 import {
   EmptyState,
@@ -49,7 +51,10 @@ export function DonationsPage() {
   const request = useSessionRequest();
   const donations = useWorkspaceResource<Donation[]>("/api/donations/mine");
   const projects = useWorkspaceResource<Project[]>("/api/public/projects");
+  const [donationTarget, setDonationTarget] = useState<"project" | "socialtrade">("project");
   const [selectedProject, setSelectedProject] = useState("");
+  const [projectQuery, setProjectQuery] = useState("");
+  const [projectArea, setProjectArea] = useState("");
   const [amount, setAmount] = useState("");
   const [started, setStarted] = useState<DonationStart | null>(null);
   const [e2eValues, setE2eValues] = useState<Record<number, string>>({});
@@ -67,7 +72,7 @@ export function DonationsPage() {
     event.preventDefault();
     if (lock.current) return;
     const amountCents = parseDonationAmount(amount);
-    if (!selectedProject || !amountCents) {
+    if (!selectedProject || !filteredProjects.some((project) => String(project.id) === selectedProject) || !amountCents) {
       setError("Escolha um projeto habilitado e informe um valor válido a partir de R$ 0,01.");
       return;
     }
@@ -146,6 +151,15 @@ export function DonationsPage() {
 
   const allProjects = projects.data || [];
   const availableProjects = allProjects.filter((project) => project.pix_donations_available);
+  const projectAreas = [...new Set(availableProjects.flatMap((project) => project.areas))]
+    .sort((a, b) => (areaLabels[a] || a).localeCompare(areaLabels[b] || b, "pt-BR"));
+  const normalizedQuery = projectQuery.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  const filteredProjects = availableProjects.filter((project) => {
+    const matchesArea = !projectArea || project.areas.includes(projectArea);
+    const searchable = `${project.name} ${project.city} ${project.state}`
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    return matchesArea && (!normalizedQuery || searchable.includes(normalizedQuery));
+  });
   const list = donations.data || [];
   return (
     <>
@@ -164,21 +178,72 @@ export function DonationsPage() {
         <>
           <FormError message={error} />
           {isDonor && (
-            <section className="surface mb-7">
-              <div className="mb-5 flex items-center gap-3">
-                <WalletCards className="size-5 text-primary" />
-                <h2 className="text-xl font-semibold">Iniciar uma doação Pix</h2>
-              </div>
-              <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
-                O site não cobra nem movimenta o dinheiro. Você pagará no aplicativo do banco diretamente à chave do projeto.
-              </p>
-              {availableProjects.length ? (
-                <form onSubmit={startDonation} className="grid gap-4 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
+            <>
+              <section className="surface mb-6">
+                <p className="eyebrow mb-3">Etapa 1 · Destino</p>
+                <h2 className="text-xl font-semibold">Como você quer direcionar sua doação?</h2>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <button type="button" aria-pressed={donationTarget === "project"} onClick={() => setDonationTarget("project")} className={`rounded-2xl border p-5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${donationTarget === "project" ? "border-primary bg-primary/5 ring-1 ring-primary/25" : "bg-card hover:bg-muted/40"}`}>
+                    <span className="flex items-center gap-3"><HeartHandshake className="size-5 text-primary" /><span className="font-semibold">Ajude seu projeto favorito!</span></span>
+                    <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">Escolha uma iniciativa pelo nome ou encontre projetos por categoria.</span>
+                    <span className="mt-3 inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">Disponível · Pix direto</span>
+                  </button>
+                  <button type="button" aria-pressed={donationTarget === "socialtrade"} onClick={() => setDonationTarget("socialtrade")} className={`rounded-2xl border p-5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${donationTarget === "socialtrade" ? "border-primary bg-primary/5 ring-1 ring-primary/25" : "bg-card hover:bg-muted/40"}`}>
+                    <span className="flex items-center gap-3"><Landmark className="size-5 text-primary" /><span className="font-semibold">Doe indiretamente</span></span>
+                    <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">A SocialTrade distribuirá a doação entre projetos elegíveis da causa escolhida.</span>
+                    <span className="mt-3 inline-flex rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">Em preparação</span>
+                  </button>
+                </div>
+              </section>
+
+              {donationTarget === "socialtrade" ? (
+                <section className="surface mb-7" aria-live="polite">
+                  <div className="mb-4 flex items-center gap-3">
+                    <HandCoins className="size-5 text-primary" />
+                    <h2 className="text-xl font-semibold">Doação por categoria</h2>
+                  </div>
+                  <p className="leading-relaxed text-muted-foreground">Este formato está em preparação. A conta recebedora da SocialTrade e a carteira Solana ainda serão definidas. Quando estiver disponível, você poderá escolher uma causa e a distribuição automática priorizará projetos elegíveis conforme critérios internos de acompanhamento.</p>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border p-4"><p className="font-medium">Pix para a SocialTrade</p><p className="mt-1 text-sm text-muted-foreground">Aguardando definição da conta recebedora e do provedor de pagamentos.</p></div>
+                    <div className="rounded-xl border p-4"><p className="font-medium">Doações em SOL</p><p className="mt-1 text-sm text-muted-foreground">Aguardando criação da carteira e integração segura com a rede Solana.</p></div>
+                  </div>
+                </section>
+              ) : (
+                <>
+                  <section className="surface mb-6">
+                    <p className="eyebrow mb-3">Etapa 2 · Forma de pagamento</p>
+                    <h2 className="text-xl font-semibold">Escolha como pagar</h2>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><div className="flex items-center gap-3"><WalletCards className="size-5 text-primary" /><p className="font-semibold">Doações por Pix · BRL</p></div><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Ativo para transferência direta do seu banco à chave revisada do projeto.</p></div>
+                      <div className="rounded-xl border bg-muted/20 p-4"><div className="flex items-center gap-3"><HandCoins className="size-5 text-muted-foreground" /><p className="font-semibold">Doações em SOL</p></div><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Em preparação. O projeto precisa cadastrar uma carteira compatível e a integração Solana precisa ser configurada.</p></div>
+                    </div>
+                  </section>
+                  <section className="surface mb-7">
+                    <div className="mb-5 flex items-center gap-3">
+                      <WalletCards className="size-5 text-primary" />
+                      <h2 className="text-xl font-semibold">Doar diretamente para um projeto</h2>
+                    </div>
+                    <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+                      Encontre uma iniciativa por nome ou categoria. O pagamento é feito no seu banco diretamente à chave Pix revisada do projeto.
+                    </p>
+                    {availableProjects.length ? (
+                <form onSubmit={startDonation} className="grid gap-4 sm:grid-cols-[1fr_1fr_12rem_auto] sm:items-end">
+                  <div>
+                    <Label htmlFor="donation-project-search">Pesquisar projetos</Label>
+                    <Input id="donation-project-search" type="search" value={projectQuery} onChange={(event) => { setProjectQuery(event.target.value); setSelectedProject(""); }} placeholder="Nome, cidade ou estado" className="mt-2" />
+                  </div>
+                  <div>
+                    <Label htmlFor="donation-project-area">Categoria</Label>
+                    <select id="donation-project-area" value={projectArea} onChange={(event) => { setProjectArea(event.target.value); setSelectedProject(""); }} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm">
+                      <option value="">Todas as categorias</option>
+                      {projectAreas.map((area) => <option key={area} value={area}>{areaLabels[area] || area}</option>)}
+                    </select>
+                  </div>
                   <div>
                     <Label htmlFor="donation-project">Projeto social</Label>
                     <select id="donation-project" value={selectedProject} onChange={(event) => setSelectedProject(event.target.value)} required className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm">
                       <option value="">Selecione um projeto</option>
-                      {availableProjects.map((project) => <option key={project.id} value={project.id}>{project.name} · {project.city}, {project.state}</option>)}
+                      {filteredProjects.map((project) => <option key={project.id} value={project.id}>{project.name} · {project.city}, {project.state}</option>)}
                     </select>
                   </div>
                   <div>
@@ -187,9 +252,9 @@ export function DonationsPage() {
                   </div>
                   <Button type="submit" disabled={creating}>{creating ? "Preparando…" : "Continuar para o Pix"}</Button>
                 </form>
-              ) : (
-                <EmptyState title="Nenhum projeto habilitado para Pix" description="Os projetos precisam informar CNPJ e chave Pix e passar pela conferência de uma pessoa moderadora antes de receber doações." icon={<HeartHandshake className="size-6" />} action={<Button asChild variant="outline"><Link href="/projetos">Explorar projetos</Link></Button>} />
-              )}
+                    ) : (
+                <EmptyState title="Nenhum projeto habilitado para Pix" description="Os projetos precisam informar CNPJ e chave Pix e passar pela conferência de uma pessoa moderadora antes de receber doações." icon={<HeartHandshake className="size-6" />} action={<Button asChild variant="outline"><Link href="/?explorar=projetos#projetos">Explorar projetos</Link></Button>} />
+                    )}
               {started && (
                 <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/5 p-5" aria-live="polite">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -206,7 +271,10 @@ export function DonationsPage() {
                   <PaymentReferenceForm id={started.id} value={e2eValues[started.id] || ""} disabled={busyId === started.id} onChange={(value) => setE2eValues((values) => ({ ...values, [started.id]: value }))} onSubmit={() => void reportPayment(started.id)} />
                 </div>
               )}
-            </section>
+                  </section>
+                </>
+              )}
+            </>
           )}
           <section>
             <h2 className="mb-4 text-xl font-semibold">{isDonor ? "Histórico das minhas doações" : "Movimentações dos projetos"}</h2>

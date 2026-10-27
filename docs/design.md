@@ -6,8 +6,8 @@ Guia visual da interface em `frontend/`. Descreve a direção, os tokens, a comp
 
 O SocialTrade liga quem apoia (empresas e pessoas) a quem transforma (projetos sociais). A interface usa uma linguagem editorial e calorosa, de publicação de impacto, em vez do visual genérico de painel:
 
-- **Papel e tinta.** Fundo creme quente e texto verde quase preto, com alto contraste.
-- **Uma cor de energia.** Âmbar marca ação e ênfase. O verde continua sendo a cor da marca e dos botões principais sobre fundo claro.
+- **Papel, floresta e tinta.** O cabeçalho translúcido e o rodapé usam creme; a apresentação institucional usa verde claro com painéis floresta, e a descoberta de projetos inverte essa relação. As superfícies verdes claras usam tinta escura; as escuras usam texto claro.
+- **Uma cor de energia.** Âmbar marca a ação principal, estados selecionados e foco em blocos escuros. O verde marca links e ações secundárias, sempre com contraste legível.
 - **Cada causa com sua cor.** Os projetos ainda não têm fotos; a capa do card usa a cor e o ícone da causa principal, com um padrão de pontos.
 - **Títulos com voz.** Serifada editorial (Fraunces) nos títulos; DM Sans no texto corrido e nos controles.
 - **A marca é uma ponte:** um arco ligando dois pontos âmbar (`BrandMark` em `components/brand.tsx`). O favicon usa a mesma marca, com traço mais grosso para ficar legível em 16 px: `app/icon.svg` (navegadores atuais), `app/favicon.ico` (16, 32 e 48 px, para os antigos) e `app/apple-icon.png` (180 px, sem cantos, porque o iOS arredonda sozinho). O Next gera as tags `<link>`; o teste `e2e/icones.spec.ts` confere que elas existem e respondem como imagem.
@@ -17,7 +17,7 @@ O SocialTrade liga quem apoia (empresas e pessoas) a quem transforma (projetos s
 1. **Honestidade visível.** Nada de números, depoimentos, logotipos de parceiros ou selos inventados. Demonstração, imagem ilustrativa e recursos ainda não disponíveis sempre aparecem sinalizados. Selos de disponibilidade qualificam funcionalidades, nunca validam organizações.
 2. **Contraste primeiro.** Texto com 4,5:1 (AA) no claro e no escuro, inclusive o secundário. Contornos de campos e indicadores de foco com 3:1 contra o fundo ao lado. Cor nunca é a única pista (causas também têm nome e ícone).
 3. **Uma ação principal por bloco.** Os demais caminhos são links ou botões secundários.
-4. **Mesmo vocabulário em todas as telas.** Os componentes de `components/ui` herdam os tokens; nada de cor solta em hexadecimal fora de `globals.css` e `lib/causes.ts`.
+4. **Mesmo vocabulário em todas as telas.** Os componentes públicos usam superfícies, raios, bordas e sombras compartilhados (`.public-card` e `.public-card-quiet`). Os componentes de `components/ui` herdam os tokens; cores de marca ficam em `globals.css` e as cores próprias das causas em `lib/causes.ts`.
 
 ## Tokens
 
@@ -25,21 +25,25 @@ Contrastes medidos pela fórmula da WCAG, no formato claro / escuro.
 
 | Token | Claro | Escuro | Uso e contraste |
 | --- | --- | --- | --- |
-| `--background` (papel) | `#faf7f0` | `#0f1d1a` | fundo da página |
-| `--card` | `#fffdf8` | `#162824` | cartões e painéis |
-| `--foreground` (tinta) | `#12302a` | `#eef3ee` | texto: 13,2 / 15,4 sobre o fundo |
-| `--muted-foreground` | `#4f625b` | `#a9bdb4` | texto secundário: 6,1 / 8,8 sobre o fundo; 5,6 sobre `--muted` |
-| `--primary` | `#155e52` | `#7fd3b8` | marca, botões e links: 7,1 / 9,8 sobre o fundo |
+| `--background` (papel) | `#f6f2e9` | `#0f1d1a` | fundo neutro de páginas e superfícies de apoio |
+| `--card` | `#fbf9f3` | `#162824` | cartões e painéis neutros |
+| `--foreground` (tinta) | `#12302a` | `#eef3ee` | texto: 12,7 / 15,4 sobre o fundo |
+| `--muted-foreground` | `#4f625b` | `#a9bdb4` | texto secundário: 5,8 / 8,8 sobre o fundo; 5,6 sobre `--muted` |
+| `--primary` | `#155e52` | `#7fd3b8` | marca, botões e links: 6,8 / 9,8 sobre o fundo |
 | `--primary-foreground` | `#ffffff` | `#0f1d1a` | texto do botão primário: 7,6 / 9,8 |
-| `--secondary` / `--muted` / `--accent` | `#ece9df` / `#f2ede2` / `#e7efe6` | `#213833` / `#1a2f2a` / `#23403a` | superfícies de apoio, nunca contorno funcional |
-| `--border` | `#e6dfd1` | `#2e4740` | divisória decorativa (não identifica controles) |
-| `--input` | `#8f8676` | `#6a8a80` | contorno funcional de campos, selects e checkboxes: 3,4–3,5 / 4,1–4,6 |
-| `--ring` | `#1f7a69` | `#7fd3b8` | cor do foco sobre o papel: 4,9 / 9,8 |
+| `--secondary` / `--muted` / `--accent` | `#e8eee3` / `#eaf0e6` / `#e1ebdf` | `#213833` / `#1a2f2a` / `#23403a` | superfícies de apoio, nunca contorno funcional |
+| `--border` | `#b9c9b7` | `#2e4740` | divisória e borda de cartões; contornos de campos usam `--input` |
+| `--input` | `#8f8676` | `#6a8a80` | contorno funcional de campos, selects e checkboxes: 3,2 / 4,1–4,6 |
+| `--ring` | `#1b6957` | `#7fd3b8` | cor do foco sobre papel e cartões verdes claros: 5,1 / 9,8 |
 | `--focus-ring` | `var(--ring)` | `var(--ring)` | cor efetiva do foco; vira `var(--energy)` dentro de `.ink-panel` e `.on-ink` (7,7:1) |
 | `--energy` (âmbar) | `#f2b53c` | `#f5c463` | ação e ênfase (veja a regra do âmbar) |
 | `--energy-foreground` | `#2b1e04` | `#2b1e04` | texto sobre âmbar: 8,9 / 10,0 |
-| `--ink-panel` | `#12302a` | `#0b1614` | blocos escuros, rodapé, barra lateral do painel |
+| `--ink-panel` | `#193c31` | `#0b1614` | blocos escuros e barra lateral do painel |
 | `--ink-panel-foreground` | `#eef3ee` | `#eef3ee` | texto nos blocos escuros |
+| `--forest` / `--forest-surface` | `#193c31` / `#285842` | igual | plano escuro público e cartões internos |
+| `--surface-green` / `--surface-green-raised` | `#dae7d0` / `#e6efdf` | igual | cartões, filtros e convites sobre fundo floresta |
+| `--surface-green-foreground` / `--surface-green-muted` | `#17392e` / `#405a49` | igual | texto principal e secundário sobre superfícies verdes claras |
+| `--cream` | `#f6efe2` | igual | rodapé e base translúcida do cabeçalho |
 | `--color-logo-surface` | `#ffffff` | `#ffffff` | quadro dos logotipos, claro nos dois temas |
 
 **Contexto escuro (`.ink-panel`, `.on-ink`).** Texto principal em `--ink-panel-foreground`; secundário em `text-ink-foreground/75` (≈ 8,4:1); sobretítulo, links de destaque e palavra de ênfase em âmbar (7,7:1); foco em âmbar. Na barra lateral do painel, o item ativo tem fundo âmbar com `--energy-foreground` (8,9:1) e mantém `aria-current="page"`; os demais itens usam `text-sidebar-foreground/80`.
@@ -47,6 +51,8 @@ Contrastes medidos pela fórmula da WCAG, no formato claro / escuro.
 **Regra do âmbar.** Âmbar sobre o papel tem só 1,7:1, então no fundo claro nunca é texto nem a única pista de nada: só traço decorativo, fundo de botão com texto escuro ou ponto ao lado de um rótulo. Texto em âmbar só no contexto escuro.
 
 **Foco.** Contorno opaco de 2 px com afastamento de 3 px em todo elemento com `:focus-visible`, na cor `--focus-ring`. A regra fica fora de `@layer` em `globals.css` de propósito: regras sem camada vencem as utilidades do Tailwind 4, então o `outline-none` dos componentes do shadcn não apaga o contorno (o halo `ring-ring/50` continua só como reforço). O teste `e2e/foco.spec.ts` confere o contorno nos botões e campos sobre o papel, nos blocos escuros, na barra lateral e no menu móvel do painel.
+
+**Páginas públicas.** A página inicial usa `--surface-green` no fundo e `--forest` nos blocos principais; a descoberta inverte os planos. Cartões, filtros, convite e prévia do quiz compartilham `.public-card`, com superfície verde clara, borda de musgo e sombra discreta. O quiz usa `.public-card-quiet` nas etapas para criar hierarquia sem introduzir outra cor. Cabeçalho e rodapé usam o mesmo creme; o cabeçalho combina transparência e desfoque para preservar contexto sem perder contraste.
 
 Raio base `0.9rem`; botões em pílula. Sombras suaves, só em elementos que respondem ao toque.
 

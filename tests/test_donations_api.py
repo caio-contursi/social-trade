@@ -3,6 +3,65 @@
 import pytest
 
 
+def test_seeded_pix_demo_needs_moderation_and_accepts_people_and_company_intentions(client, api):
+    from app.seed import DEMO_PROJECT_CNPJ, DEMO_PROJECT_PIX_KEY, seed_demo_users
+
+    seed_demo_users(environment="test")
+
+    def authenticate(document, account_type):
+        response = client.post("/api/auth/login", json={
+            "document": document,
+            "password": "SocialTrade123!",
+            "account_type": account_type,
+        })
+        assert response.status_code == 200, response.text
+        return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+    projects = client.get("/api/public/projects").json()
+    project = next(item for item in projects if item["slug"] == "projeto-de-teste-pix")
+    assert project["pix_donations_available"] is False
+    assert "cnpj" not in project and "pix_key" not in project
+
+    company_headers = authenticate("12345678000195", "donor")
+    person_headers = authenticate("11111111111", "project")
+    project_headers = authenticate(DEMO_PROJECT_CNPJ, "project")
+    moderator_headers = authenticate("33333333333", "project")
+    private_project = next(
+        item for item in client.get("/api/organizations/mine", headers=project_headers).json()
+        if item["slug"] == "projeto-de-teste-pix"
+    )
+    assert private_project["cnpj"] == DEMO_PROJECT_CNPJ
+    assert private_project["pix_key"] == DEMO_PROJECT_PIX_KEY
+    assert private_project["pix_key_verified_at"] is None
+
+    payload = {"project_id": project["id"], "amount_cents": 1250}
+    unavailable = client.post("/api/donations", headers=company_headers, json=payload)
+    assert unavailable.status_code == 409
+
+    approval = client.patch(
+        f"/api/moderation/projects/{project['id']}/pix-verification",
+        headers=moderator_headers,
+        json={"verified": True},
+    )
+    assert approval.status_code == 200, approval.text
+    public_project = next(
+        item for item in client.get("/api/public/projects").json()
+        if item["id"] == project["id"]
+    )
+    assert public_project["pix_donations_available"] is True
+    assert "cnpj" not in public_project and "pix_key" not in public_project
+
+    for headers in (company_headers, person_headers):
+        created = client.post("/api/donations", headers=headers, json=payload)
+        assert created.status_code == 201, created.text
+        assert created.json()["pix_key"] == DEMO_PROJECT_PIX_KEY
+        assert created.json()["status"] == "awaiting_payment"
+
+    rows = client.get("/api/donations/mine", headers=project_headers).json()
+    assert len(rows) == 2
+    assert all(row["status"] == "awaiting_payment" for row in rows)
+
+
 def setup_donation_accounts(client, user_factory, organization_factory, login, *, approve_pix=True):
     donor = user_factory(kind="donor", email="doadora@example.test")
     beneficiary = user_factory(kind="project", email="projeto@example.test")

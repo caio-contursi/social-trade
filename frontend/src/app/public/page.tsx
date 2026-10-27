@@ -7,5 +7,5 @@ export default async function LegacyPublicPage({
 }) {
   const { slug } = await searchParams;
   const value = (Array.isArray(slug) ? slug[0] : slug)?.trim();
-  redirect(value ? `/projetos/${encodeURIComponent(value)}` : "/projetos");
+  redirect(value ? `/projetos/${encodeURIComponent(value)}` : "/?explorar=projetos#projetos");
 }

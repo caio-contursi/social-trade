@@ -1,15 +1,18 @@
 """Explicit, additive demo data: python -m app.seed --environment development."""
 import argparse
 
+DEMO_PROJECT_CNPJ = "90000001000129"
+DEMO_PROJECT_PIX_KEY = "projeto-pix@example.test"
+
 
 def seed_demo_users(*, environment: str) -> None:
     if environment not in {"development", "test"}:
         raise ValueError("O seed só pode ser executado explicitamente em desenvolvimento ou teste.")
 
-    from sqlalchemy import func, insert, or_, select
+    from sqlalchemy import func, insert, or_, select, update
     from app.database import transaction
     from app.main import create_org, generate_registration_number
-    from app.models import announcements, project_memberships, users
+    from app.models import announcements, organizations, project_memberships, users
     from app.security import hash_password
 
     demo_users = [
@@ -18,7 +21,7 @@ def seed_demo_users(*, environment: str) -> None:
         ("Moderador", "mod@socialtrade.local", "mod", "moderator", "33333333333", "person"),
         ("Voluntário", "voluntario@socialtrade.local", "voluntario", "volunteer", "44444444444", "person"),
         ("Empresa Doadora", "doador@socialtrade.local", "doador", "member", "12345678000195", "donor"),
-        ("Projeto de Teste Pix", "projeto-pix@socialtrade.local", "projeto_pix", "member", "90000001000129", "project"),
+        ("Projeto de Teste Pix", "projeto-pix@socialtrade.local", "projeto_pix", "member", DEMO_PROJECT_CNPJ, "project"),
     ]
     with transaction() as db:
         for name, email, username, role, document, account_type in demo_users:
@@ -29,6 +32,19 @@ def seed_demo_users(*, environment: str) -> None:
             ))).first()
             if exists:
                 # Do not change credentials, role, document, profile or memberships.
+                # Only fill the reserved test Pix key on this exact demo profile
+                # when it is still empty; a moderator must approve it separately.
+                if username == "projeto_pix":
+                    demo_project = db.execute(select(organizations.c.id, organizations.c.pix_key).where(
+                        organizations.c.owner_id == exists[0],
+                        organizations.c.slug == "projeto-de-teste-pix",
+                        organizations.c.institution_kind == "project",
+                    )).mappings().first()
+                    if demo_project and not demo_project["pix_key"]:
+                        db.execute(update(organizations).where(
+                            organizations.c.id == demo_project["id"],
+                            organizations.c.pix_key.is_(None),
+                        ).values(pix_key=DEMO_PROJECT_PIX_KEY))
                 continue
             user_id = db.execute(insert(users).values(
                 full_name=name, username=username, email=email, password_hash=hash_password("SocialTrade123!"),
@@ -61,7 +77,8 @@ def seed_demo_users(*, environment: str) -> None:
                     "short_description": "Perfil fictício para testar doações diretas por Pix em ambiente local.",
                     "objective": "Validar o fluxo técnico de doação direta sem movimentar fundos pela plataforma.",
                     "impact_summary": "Projeto exclusivamente demonstrativo; não representa uma iniciativa beneficiária real.",
-                    "description": "Use apenas em desenvolvimento, com uma chave Pix de uma conta que você controla.",
+                    "description": "Projeto, CNPJ e chave Pix fictícios para simular o fluxo em desenvolvimento e testes. Não faça transferências reais.",
+                    "pix_key": DEMO_PROJECT_PIX_KEY,
                     "areas": ["technology"], "interested_services": ["public_profile"],
                 })
         if not db.execute(select(announcements.c.id).limit(1)).first():

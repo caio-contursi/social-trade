@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Building2,
   CheckCircle2,
-  LifeBuoy,
+  Headset,
   Megaphone,
   ShieldCheck,
   UsersRound,
@@ -162,7 +162,7 @@ function ModeratorWorkspace() {
         {
           label: "Solicitações em aberto",
           value: overview.data.counts.open_tickets,
-          icon: LifeBuoy,
+          icon: Headset,
         },
       ]
     : [];
@@ -235,7 +235,7 @@ function ModeratorWorkspace() {
           <div className="grid items-start gap-7 xl:grid-cols-[1.25fr_1fr]">
             <section>
               <div className="mb-5 flex items-center gap-3">
-                <LifeBuoy className="size-5 text-primary" />
+                <Headset className="size-5 text-primary" />
                 <h2 className="text-xl font-semibold">
                   Solicitações de suporte
                 </h2>
@@ -301,7 +301,7 @@ function ModeratorWorkspace() {
                 <EmptyState
                   title="Nenhuma solicitação por aqui"
                   description="As mensagens enviadas pelo suporte aparecerão nesta área para atendimento."
-                  icon={<LifeBuoy className="size-6" />}
+                  icon={<Headset className="size-6" />}
                 />
               )}
             </section>

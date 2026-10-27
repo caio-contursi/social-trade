@@ -20,7 +20,7 @@ export default function NotFound() {
           projetos da nossa rede.
         </p>
         <Button asChild className="mt-8">
-          <Link href="/projetos">
+          <Link href="/?explorar=projetos#projetos">
             <ArrowLeft />
             Explorar projetos
           </Link>
