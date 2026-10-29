@@ -29,17 +29,43 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { WorkspaceError, WorkspaceLoading } from "./shared";
+import type { Announcement } from "@/lib/types";
+import { useWorkspaceResource, WorkspaceError, WorkspaceLoading } from "./shared";
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const { user, loading, error, retrySession, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const announcements = useWorkspaceResource<Announcement[]>("/api/announcements");
+  const [unreadAnnouncements, setUnreadAnnouncements] = useState(0);
+  const userId = user?.id;
   useEffect(() => {
     if (!loading && !error && !user)
       router.replace(`/entrar?proximo=${encodeURIComponent(pathname)}`);
   }, [loading, error, user, router, pathname]);
+  useEffect(() => {
+    if (!userId || !announcements.data) return;
+    const storageKey = `socialtrade-read-announcements-${userId}`;
+    let readIds: number[] = [];
+    try {
+      readIds = JSON.parse(window.localStorage.getItem(storageKey) || "[]") as number[];
+    } catch {
+      readIds = [];
+    }
+    if (pathname === "/painel/avisos") {
+      const nextReadIds = [...new Set([...readIds, ...announcements.data.map((notice) => notice.id)])];
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(nextReadIds));
+      } catch {
+        // A indisponibilidade do armazenamento local não deve bloquear os avisos.
+      }
+      setUnreadAnnouncements(0);
+      return;
+    }
+    const read = new Set(readIds);
+    setUnreadAnnouncements(announcements.data.filter((notice) => !read.has(notice.id)).length);
+  }, [announcements.data, pathname, userId]);
   if (error)
     return (
       <main id="conteudo" className="page-container py-16">
@@ -68,7 +94,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const items = [
     { href: "/painel", label: "Visão geral", icon: LayoutDashboard },
     { href: "/?explorar=projetos#projetos", label: "Explorar projetos", icon: Compass },
-    { href: "/painel/doacoes", label: "Doações por Pix", icon: HandCoins },
+    { href: "/painel/doacoes", label: "Doações", icon: HandCoins },
     organizationItem,
     { href: "/painel/avisos", label: "Avisos", icon: Bell },
     { href: "/painel/perfil", label: "Minha conta", icon: UserRound },
@@ -107,13 +133,21 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              data-route-transition={item.label === "Suporte" ? true : undefined}
+              data-route-transition={item.label === "Suporte" || item.label === "Explorar projetos" ? true : undefined}
               onClick={() => setMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={`flex min-h-11 items-center gap-3 rounded-full px-4 py-3 text-sm font-medium transition-colors ${active ? "bg-energy font-semibold text-energy-foreground shadow-sm" : "text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground"}`}
             >
               <item.icon className="size-[18px] shrink-0" />
               {item.label}
+              {item.href === "/painel/avisos" && unreadAnnouncements > 0 && (
+                <span
+                  className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] leading-none font-bold text-white"
+                  aria-label={`${unreadAnnouncements} ${unreadAnnouncements === 1 ? "aviso não lido" : "avisos não lidos"}`}
+                >
+                  {unreadAnnouncements > 99 ? "99+" : unreadAnnouncements}
+                </span>
+              )}
               {item.href.includes("explorar=projetos") && (
                 <ArrowUpRight className="ml-auto size-3.5 opacity-65" />
               )}
@@ -122,14 +156,6 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
       <div className="mt-auto pt-8">
-        <div className="rounded-2xl bg-white/[.06] p-4 ring-1 ring-white/10">
-          <p className="font-display text-base font-medium">
-            Conexões que fazem a diferença.
-          </p>
-          <p className="mt-2 text-xs leading-relaxed text-sidebar-foreground/75">
-            Um espaço para aproximar quem quer apoiar de quem transforma.
-          </p>
-        </div>
         <Button
           type="button"
           variant="ghost"

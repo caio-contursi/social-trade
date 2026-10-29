@@ -78,6 +78,7 @@ export interface Announcement {
 export type TicketStatus = "open" | "in_progress" | "resolved";
 export interface Ticket {
   id: number;
+  protocol: string;
   subject: string;
   message: string;
   status: TicketStatus;
@@ -142,6 +143,7 @@ export interface LoginResponse {
 }
 export interface MessageResponse {
   message: string;
+  protocol?: string;
   registration_number?: string;
   id?: number;
 }

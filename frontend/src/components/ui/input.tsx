@@ -1,8 +1,13 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { FieldError, useFieldIssue } from "./validated-form";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  const issue = useFieldIssue(props.id || props.name);
   return (
+    <>
     <input
       type={type}
       data-slot="input"
@@ -13,7 +18,11 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className,
       )}
       {...props}
+      aria-invalid={issue ? true : props["aria-invalid"]}
+      aria-describedby={[props["aria-describedby"], issue?.errorId].filter(Boolean).join(" ") || undefined}
     />
+    <FieldError id={issue?.errorId}>{issue?.message}</FieldError>
+    </>
   );
 }
 

@@ -91,6 +91,7 @@ describe("busca de projetos em tempo real", () => {
   it("filtra enquanto digita sem exigir Enter ou botão de busca", async () => {
     const user = userEvent.setup();
     render(<ProjectExplorer projects={projects} />);
+    expect(screen.getByRole("link", { name: "Apresentar meu projeto" })).toHaveAttribute("data-route-transition");
 
     expect(screen.getByText("3", { selector: "strong" })).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Buscar projetos/), "cenu");
@@ -119,6 +120,18 @@ describe("busca de projetos em tempo real", () => {
     expect(screen.getByRole("link", { name: "Conhecer Projeto Saúde Viva" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Conhecer Instituto Cenu" })).not.toBeInTheDocument();
     expect(navigation.replace).toHaveBeenCalledWith("/projetos?causa=health", { scroll: false });
+  });
+
+  it("oferece somente as causas compartilhadas com os resultados do quiz", async () => {
+    const user = userEvent.setup();
+    render(<ProjectExplorer projects={projects} />);
+
+    await user.click(screen.getByRole("combobox", { name: "Causa" }));
+    const options = screen.getByRole("listbox", { name: "Opções de causa" });
+    expect(options.querySelectorAll('[role="option"]')).toHaveLength(11); // opção de limpar + 10 causas
+    expect(screen.getByRole("option", { name: "Alimentação" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Pessoas em situação de rua" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Apoio emergencial" })).not.toBeInTheDocument();
   });
 
   it("pesquisa estados por nome e cidades da UF selecionada", async () => {
@@ -191,6 +204,16 @@ describe("busca de projetos em tempo real", () => {
         "/projetos/projeto-saude-viva#conteudo",
       ]);
     expect(screen.queryByText(/estrelas|avaliação interna|pontuação/i)).not.toBeInTheDocument();
+  });
+
+  it("mostra a ordem recente apenas uma vez ao abrir o seletor", async () => {
+    const user = userEvent.setup();
+    render(<ProjectExplorer projects={projects} showInvite={false} />);
+    const order = screen.getByRole("combobox", { name: "Ordenar por" });
+
+    expect(order).toHaveAttribute("placeholder", "Selecione a ordem");
+    await user.click(order);
+    expect(screen.getAllByRole("option", { name: "Projetos recentemente adicionados" })).toHaveLength(1);
   });
 
   it("filtra projetos conforme o Pix, SOL ou disponibilidade dos dois", async () => {

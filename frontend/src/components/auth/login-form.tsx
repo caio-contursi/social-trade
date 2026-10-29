@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FieldError } from "@/components/ui/validated-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,20 @@ const accountOptions = [
   { value: "donor" as const, label: "Empresa", icon: Building2 },
   { value: "project" as const, label: "Projeto social", icon: HeartHandshake },
   { value: "person" as const, label: "Pessoa", icon: UserRound },
+];
+
+const demoPassword = "SocialTrade123!";
+const demoAccounts = [
+  {
+    intent: "project" as const,
+    label: "Projeto de Teste Pix",
+    document: "90000001000129",
+  },
+  {
+    intent: "donor" as const,
+    label: "Empresa Doadora Exemplo",
+    document: "12345678000195",
+  },
 ];
 
 export function LoginForm() {
@@ -58,6 +73,10 @@ export function LoginForm() {
     };
   }, []);
 
+  function clearFieldError(field: string) {
+    setErrors((previous) => { const next = { ...previous }; delete next[field]; delete next.form; return next; });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
@@ -79,7 +98,7 @@ export function LoginForm() {
           : intent === "person"
             ? "Informe o CPF com 11 dígitos."
             : "Informe seu CPF (11 dígitos) ou CNPJ (14 caracteres).";
-    if (!password) nextErrors.password = "Informe sua senha.";
+    if (!password.trim()) nextErrors.password = "Informe sua senha.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       requestAnimationFrame(() =>
@@ -190,22 +209,21 @@ export function LoginForm() {
             }
             maxLength={18}
             value={document}
-            onChange={(event) =>
+            onChange={(event) => {
+              clearFieldError("document");
               setDocument(
                 intent === "person"
                   ? digits(event.target.value)
                   : event.target.value,
-              )
-            }
+              );
+            }}
             disabled={pending}
             aria-invalid={!!errors.document}
             aria-describedby={errors.document ? "document-error" : undefined}
             className="h-12"
           />
           {errors.document && (
-            <p id="document-error" className="mt-2 text-sm text-destructive">
-              {errors.document}
-            </p>
+            <FieldError id="document-error">{errors.document}</FieldError>
           )}
         </div>
         <div>
@@ -220,7 +238,7 @@ export function LoginForm() {
               autoComplete="current-password"
               placeholder="Sua senha"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => { setPassword(event.target.value); clearFieldError("password"); }}
               maxLength={128}
               disabled={pending}
               aria-invalid={!!errors.password}
@@ -245,9 +263,7 @@ export function LoginForm() {
             </Button>
           </div>
           {errors.password && (
-            <p id="password-error" className="mt-2 text-sm text-destructive">
-              {errors.password}
-            </p>
+            <FieldError id="password-error">{errors.password}</FieldError>
           )}
         </div>
         <Button
@@ -281,23 +297,32 @@ export function LoginForm() {
             Ambiente de demonstração
           </summary>
           <div className="mt-3 space-y-2 leading-relaxed text-muted-foreground">
-            <p>Use os dados abaixo apenas para conhecer o ambiente local.</p>
+            <p>Use estes acessos fictícios apenas para conhecer o ambiente local.</p>
+            {demoAccounts.map((account) => (
+              <div key={account.intent} className="rounded-lg border bg-background/70 p-3">
+                <p className="font-medium text-foreground">{account.label}</p>
+                <p>CNPJ {account.document}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 w-full"
+                  onClick={() => {
+                    setIntent(account.intent);
+                    setDocument(account.document);
+                    setPassword(demoPassword);
+                    setErrors({});
+                  }}
+                >
+                  Usar acesso do {account.intent === "project" ? "projeto" : "doador"}
+                </Button>
+              </div>
+            ))}
             <p>
-              <strong className="text-foreground">Projeto social para teste Pix:</strong>{" "}
-              CNPJ 90000001000129
+              <strong className="text-foreground">Senha dos dois acessos:</strong>{" "}
+              {demoPassword}
             </p>
-            <p>
-              <strong className="text-foreground">Empresa:</strong>{" "}
-              12345678000195
-            </p>
-            <p>
-              <strong className="text-foreground">Moderador:</strong>{" "}
-              CPF 33333333333
-            </p>
-            <p>
-              <strong className="text-foreground">Senha:</strong>{" "}
-              SocialTrade123!
-            </p>
+            <p>O Pix desta demonstração é fictício e não recebe transferências reais.</p>
           </div>
         </details>
       )}

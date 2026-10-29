@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import { ValidatedForm } from "@/components/ui/validated-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -247,7 +248,7 @@ function ModeratorWorkspace() {
                     <article key={ticket.id} className="surface">
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                         <span className="text-xs text-muted-foreground">
-                          #{ticket.id} · {formatDate(ticket.created_at)}
+                          Protocolo #{ticket.protocol} · {formatDate(ticket.created_at)}
                         </span>
                         <TicketStatusBadge status={ticket.status} />
                       </div>
@@ -261,7 +262,7 @@ function ModeratorWorkspace() {
                         {ticket.message}
                       </p>
                       <Label htmlFor={`ticket-status-${ticket.id}`}>
-                        Status da solicitação #{ticket.id}
+                        Status da solicitação #{ticket.protocol}
                       </Label>
                       <Select
                         value={ticket.status}
@@ -314,7 +315,7 @@ function ModeratorWorkspace() {
                 O comunicado ficará disponível para todas as pessoas com uma
                 conta na plataforma.
               </p>
-              <form onSubmit={publish} className="space-y-5">
+              <ValidatedForm onSubmit={publish} onChange={() => setPublishError(null)} className="space-y-5">
                 <div>
                   <Label htmlFor="announcement-title">Título</Label>
                   <Input
@@ -354,7 +355,7 @@ function ModeratorWorkspace() {
                   <Megaphone className="size-4" />
                   {publishing ? "Publicando…" : "Publicar aviso"}
                 </Button>
-              </form>
+              </ValidatedForm>
               <Link
                 href="/painel/avisos"
                 className="mt-5 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"

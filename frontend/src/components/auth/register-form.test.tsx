@@ -61,6 +61,19 @@ describe("cadastro institucional com CNPJ alfanumérico", () => {
     return user;
   }
 
+  it("aponta todos os campos de acesso não preenchidos e mantém a etapa atual", async () => {
+    const user = userEvent.setup();
+    render(<RegisterForm />);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    for (const label of ["Nome completo do responsável", "CPF da pessoa responsável", "CNPJ da instituição", "E-mail", "Crie uma senha", "Confirme a senha"]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByLabelText(label)).toHaveAttribute("aria-describedby");
+    }
+    expect(screen.queryByRole("button", { name: "Criar minha conta" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([path]) => path === "/api/projects/open")).toBe(true);
+  });
+
   it("preserva letras do CNPJ e limita a cidade às opções do estado cadastradas", async () => {
     const user = await fillAccess("12.abc.345/01de-35");
     const organizationName = screen.getByLabelText("Nome da empresa");

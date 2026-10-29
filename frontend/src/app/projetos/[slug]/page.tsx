@@ -143,25 +143,15 @@ export default async function ProjectPage({
                   ))}
                 </div>
                 <div className="mt-7 flex flex-wrap items-center gap-3">
-                  {project.pix_donations_available ? (
-                    <Button asChild variant="energy" className="h-12 px-6 text-base shadow-sm">
-                      <Link href="/painel/doacoes">
-                        <HeartHandshake className="size-5" />
-                        Faça sua contribuição!
-                        <ArrowUpRight className="size-4" />
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button type="button" variant="energy" disabled className="h-12 px-6 text-base" title="A contribuição Pix ficará disponível após a conferência dos dados do projeto.">
+                  <Button asChild variant="energy" className="h-12 px-6 text-base shadow-sm">
+                    <Link href="/painel/doacoes">
                       <HeartHandshake className="size-5" />
                       Faça sua contribuição!
-                    </Button>
-                  )}
+                      <ArrowUpRight className="size-4" />
+                    </Link>
+                  </Button>
                   <ShareProjectButton />
                 </div>
-                {!project.pix_donations_available && (
-                  <p className="mt-2 text-xs text-muted-foreground">A contribuição Pix será liberada após a conferência dos dados do projeto.</p>
-                )}
               </div>
               <ProjectVisual
                 project={project}
@@ -353,16 +343,14 @@ export default async function ProjectPage({
                     aria-hidden="true"
                     className="size-1.5 rounded-full bg-energy"
                   />
-                  {project.pix_donations_available ? "Pix direto disponível" : "Doações Pix em conferência"}
+                  "Pagamentos pela plataforma em configuração"
                 </p>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  {project.pix_donations_available
-                    ? "Pessoas físicas e empresas podem iniciar uma doação pelo painel. A transferência vai diretamente para a chave Pix conferida do projeto; a SocialTrade registra a intenção, mas não recebe nem retém o dinheiro."
-                    : "A transferência Pix direta fica disponível depois que a equipe confere o CNPJ e a chave informados pelo projeto. A SocialTrade não recebe nem retém valores."}
+                  "Os pagamentos Pix estão temporariamente suspensos enquanto a conversão BRL→SOL é integrada. O endereço SOL no painel recebe na carteira intermediária da SocialTrade; o envio não é conciliado automaticamente nem vinculado a este projeto."
                 </p>
                 {project.is_demo && project.pix_donations_available && (
                   <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs leading-relaxed">
-                    Projeto, CNPJ e chave são fictícios para teste. Não faça transferências reais.
+                    Este é um perfil de demonstração. Não faça transferências reais em nome deste projeto.
                   </p>
                 )}
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">

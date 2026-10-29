@@ -3,7 +3,21 @@ import {
   fetchDonationReceipt,
   normalizeDonationAmount,
   parseDonationAmount,
+  parseSolAmount,
+  convertDonationCurrency,
 } from "./donations";
+
+describe("conversão indicativa SOL/BRL", () => {
+  it.each([
+    ["25,00", "BRL", 500, "0,05"], ["0,05", "SOL", 500, "25,00"],
+    ["100", "BRL", 10, "10"], ["1", "BRL", 3, "0,333333333"],
+    ["", "BRL", 500, ""], ["abc", "SOL", 500, ""],
+    ["-1", "BRL", 500, ""], ["1", "SOL", 0, ""],
+    ["1", "BRL", Infinity, ""], ["1,123", "BRL", 500, ""],
+  ] as const)("converte %s %s usando a cotação %s", (value, from, rate, expected) => {
+    expect(convertDonationCurrency(value, from, rate)).toBe(expected);
+  });
+});
 
 describe("normalizeDonationAmount", () => {
   it.each([
@@ -29,6 +43,21 @@ describe("parseDonationAmount", () => {
   it.each(["", "0", "0,00", "1.234,56", "1,234", "-1", "abc", "1000000000"]) (
     "rejects invalid or unsupported amount %s",
     (value) => expect(parseDonationAmount(value)).toBeNull(),
+  );
+});
+
+describe("parseSolAmount", () => {
+  it.each([
+    ["0,0001", 100_000],
+    ["1.25", 1_250_000_000],
+    ["100", 100_000_000_000],
+  ])("converts %s SOL to exact lamports", (value, expected) => {
+    expect(parseSolAmount(value)).toBe(expected);
+  });
+
+  it.each(["", "0", "0.00001", "100.000000001", "1.1234567890", "-1", "1,2.3", "101"]) (
+    "rejects invalid SOL amount %s",
+    (value) => expect(parseSolAmount(value)).toBeNull(),
   );
 });
 

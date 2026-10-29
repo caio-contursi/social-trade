@@ -15,13 +15,13 @@ const steps = [
 ];
 
 const available = [
-  { title: "Doações Pix diretas", description: "Quando habilitada, a transferência é feita diretamente para a chave conferida do projeto. A SocialTrade não recebe nem retém esse valor." },
+  { title: "Pagamentos pela plataforma", description: "A carteira intermediária da SocialTrade recebe SOL na rede Solana. A conciliação e a destinação ainda são manuais." },
   { title: "Informações dos projetos", description: "Histórias, objetivos, ações e resultados são apresentados pelas próprias organizações." },
   { title: "Busca por causa e cidade", description: "Filtros ajudam a localizar iniciativas por tema e região." },
 ];
 
 const future = [
-  "Pagamentos automatizados por PSP e cartão",
+  "Conversão automatizada de Pix (BRL) para SOL por provedor",
   "Registro das doações na rede Solana",
   "Prestação de contas ampliada dos projetos",
 ];
@@ -69,7 +69,7 @@ export default async function HomePage() {
                   </article>
                   <article className="rounded-2xl border bg-background p-6">
                     <h4 className="font-semibold">Escolha como contribuir</h4>
-                    <p className="mt-2 text-justify text-sm leading-relaxed text-muted-foreground">Quando disponível, faça o Pix diretamente para a chave conferida do projeto. Você também pode conversar com a organização sobre voluntariado ou doações de itens, se ela aceitar. A SocialTrade não recebe nem retém valores; cartão e pagamentos pela plataforma ainda não estão disponíveis.</p>
+                    <p className="mt-2 text-justify text-sm leading-relaxed text-muted-foreground">O Pix está temporariamente suspenso enquanto a conversão BRL→SOL é integrada. O endereço SOL no painel recebe na carteira intermediária da SocialTrade e ainda não vincula automaticamente o pagamento a uma iniciativa. Você também pode conversar com a organização sobre voluntariado ou doações de itens, se ela aceitar.</p>
                   </article>
                 </div>
               </div>

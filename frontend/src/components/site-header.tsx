@@ -113,7 +113,7 @@ export function SiteHeader() {
             </Link>
           </Button>
           {(!user || (isLanding && !exploring)) && <Button asChild className="hidden sm:inline-flex">
-            <Link href={user ? "/?explorar=projetos#projetos" : "/cadastro"} onClick={user ? (event) => {
+            <Link data-route-transition={!user ? "" : undefined} href={user ? "/?explorar=projetos#projetos" : "/cadastro"} onClick={user ? (event) => {
               event.preventDefault();
               window.history.replaceState(window.history.state, "", "/?explorar=projetos#projetos");
               setExploring(true);
@@ -190,7 +190,7 @@ export function SiteHeader() {
                   </Link>
                 </Button>}
                 {!isLanding && <Button asChild>
-                  <Link href="/cadastro" onClick={() => setOpen(false)}>
+                  <Link data-route-transition href="/cadastro" onClick={() => setOpen(false)}>
                     Fazer parte
                   </Link>
                 </Button>}
@@ -211,7 +211,7 @@ export function SiteHeader() {
                       </Link>
                     </Button>
                     <Button asChild>
-                      <Link href={user ? "/?explorar=projetos#projetos" : "/cadastro"} onClick={(event) => {
+                      <Link data-route-transition={!user ? "" : undefined} href={user ? "/?explorar=projetos#projetos" : "/cadastro"} onClick={(event) => {
                         setOpen(false);
                         if (user) {
                           event.preventDefault();
@@ -230,28 +230,16 @@ export function SiteHeader() {
           </Sheet>
         </div>
       </div>
-      {isLanding && exploring && (
-        <nav aria-label="Navegação de projetos" className="page-container grid grid-cols-3 gap-2 border-t py-2 xl:hidden">
-          <Link href="#projetos" className="rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold text-primary hover:bg-accent sm:px-3 sm:text-sm">
-            Procurar projeto/instituição
-          </Link>
-          <Link href="#meu-projeto" className="rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold text-primary hover:bg-accent sm:px-3 sm:text-sm">
-            Meu projeto
-          </Link>
-          <ComingSoonMenuItem compact />
-        </nav>
-      )}
+
     </header>
   );
 }
 
 function ComingSoonMenuItem({
   mobile = false,
-  compact = false,
   onClick,
 }: {
   mobile?: boolean;
-  compact?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -271,12 +259,11 @@ function ComingSoonMenuItem({
       aria-label="Encontre sua causa"
       className={cn(
         "inline-flex shrink-0 items-center gap-2 rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        mobile && "justify-between px-3 py-4 font-display text-xl",
-        compact && "justify-center px-1 py-1 text-center text-[11px] leading-tight font-semibold",
-        !mobile && !compact && "whitespace-nowrap py-1 text-[13px]",
+        mobile && "justify-between rounded-xl px-3 py-4 font-display text-xl transition-colors hover:bg-accent",
+        !mobile && "whitespace-nowrap py-1 text-[13px]",
       )}
     >
-      <span>Encontre sua causa</span>
+      <span>Faça o quiz de causas</span>
     </Link>
   );
 }

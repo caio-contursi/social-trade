@@ -43,13 +43,13 @@ export function SiteFooter() {
             <OpenProjectsLink className={linkClass}>
               Encontre um projeto
             </OpenProjectsLink>
-            <Link href="/cadastro?tipo=donor" className={linkClass}>
+            <Link data-route-transition href="/cadastro?tipo=donor" className={linkClass}>
               Cadastre sua empresa
             </Link>
-            <Link href="/cadastro?tipo=project" className={linkClass}>
+            <Link data-route-transition href="/cadastro?tipo=project" className={linkClass}>
               Apresente seu projeto
             </Link>
-            <Link href={suggestionHref} className={linkClass}>
+            <Link data-route-transition href={suggestionHref} className={linkClass}>
               Deixe uma sugestão!
             </Link>
           </div>
@@ -57,8 +57,9 @@ export function SiteFooter() {
         <div>
           <p className="eyebrow mb-4">Vamos começar?</p>
           <Link
+            data-route-transition
             href="/entrar"
-            className="inline-flex items-center gap-2 rounded-sm text-sm font-semibold text-[#145b4b] underline-offset-4 hover:underline"
+            className="inline-flex items-center gap-2 rounded-sm text-sm font-semibold text-[var(--cream-link)] underline-offset-4 hover:underline"
           >
             Acesse sua conta
             <ArrowUpRight className="size-4" />
@@ -67,14 +68,14 @@ export function SiteFooter() {
             Perfis e resultados são informados pelas organizações. Conheça os detalhes antes de apoiar.
           </p>
           <p className="footer-copy mt-3 max-w-sm text-justify text-xs leading-6">
-            Quando disponível, o Pix é transferido diretamente ao projeto; a SocialTrade não recebe nem retém valores. A doação não garante abatimento no Imposto de Renda ou outro benefício fiscal.
+            O Pix está temporariamente suspenso enquanto a conversão BRL→SOL é integrada. Pagamentos em SOL vão à carteira da SocialTrade e ainda exigem conferência manual. A doação não garante abatimento no Imposto de Renda ou outro benefício fiscal.
           </p>
           <p className="footer-copy mt-3 max-w-sm text-justify text-xs leading-6">
             Consulte orientações oficiais do governo e um profissional de contabilidade para verificar se alguma regra se aplica ao seu caso.
           </p>
         </div>
       </div>
-      <div className="footer-rule page-container flex flex-wrap justify-between gap-3 border-t py-5 text-xs text-[#596a5e]">
+      <div className="footer-rule page-container flex flex-wrap justify-between gap-3 border-t py-5 text-xs">
         <span>© {new Date().getFullYear()} SocialTrade</span>
         <span>Conexões com propósito.</span>
       </div>
