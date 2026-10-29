@@ -1,6 +1,7 @@
 """PostgreSQL schema; importing this module never connects or changes data."""
 
 import sqlalchemy as sa
+import secrets
 
 
 metadata = sa.MetaData(naming_convention={
@@ -162,6 +163,36 @@ donations = sa.Table(
 sa.Index("ix_donations_donor_created", donations.c.donor_user_id, donations.c.created_at.desc(), donations.c.id.desc())
 sa.Index("ix_donations_project_created", donations.c.project_organization_id, donations.c.created_at.desc(), donations.c.id.desc())
 
+solana_payment_intents = sa.Table(
+    "solana_payment_intents", metadata,
+    identity_column(),
+    sa.Column("donor_user_id", sa.BigInteger, sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
+    sa.Column("target", sa.Text, nullable=False),
+    sa.Column("project_organization_id", sa.BigInteger, sa.ForeignKey("organizations.id", ondelete="RESTRICT")),
+    sa.Column("cause_code", sa.Text, sa.ForeignKey("areas.code", ondelete="RESTRICT")),
+    sa.Column("amount_lamports", sa.BigInteger, nullable=False),
+    sa.Column("reference", sa.String(44), nullable=False, unique=True),
+    sa.Column("status", sa.Text, nullable=False, server_default="pending"),
+    sa.Column("transaction_signature", sa.String(100), unique=True),
+    timestamp_column(),
+    sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("confirmed_at", sa.DateTime(timezone=True)),
+    sa.CheckConstraint("target IN ('project','socialtrade')", name="target"),
+    sa.CheckConstraint(
+        "(target = 'project' AND project_organization_id IS NOT NULL) OR "
+        "(target = 'socialtrade' AND project_organization_id IS NULL)",
+        name="target_project_matches",
+    ),
+    sa.CheckConstraint("amount_lamports BETWEEN 100000 AND 100000000000", name="amount_lamports_range"),
+    sa.CheckConstraint("status IN ('pending','confirmed','expired','cancelled')", name="status"),
+    sa.CheckConstraint(
+        "(status = 'confirmed' AND transaction_signature IS NOT NULL AND confirmed_at IS NOT NULL) OR "
+        "(status <> 'confirmed' AND transaction_signature IS NULL AND confirmed_at IS NULL)",
+        name="confirmation_matches_status",
+    ),
+)
+sa.Index("ix_solana_intents_donor_created", solana_payment_intents.c.donor_user_id, solana_payment_intents.c.created_at.desc(), solana_payment_intents.c.id.desc())
+
 announcements = sa.Table(
     "announcements", metadata,
     identity_column(),
@@ -173,12 +204,15 @@ announcements = sa.Table(
 support_tickets = sa.Table(
     "support_tickets", metadata,
     identity_column(),
+    sa.Column("protocol", sa.String(6), nullable=False, unique=True,
+              default=lambda: f"{secrets.randbelow(1_000_000):06d}"),
     sa.Column("user_id", sa.BigInteger, sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
     sa.Column("subject", sa.Text, nullable=False),
     sa.Column("message", sa.Text, nullable=False),
     sa.Column("status", sa.Text, nullable=False, server_default="open"),
     timestamp_column(),
     sa.CheckConstraint("status IN ('open','in_progress','resolved')", name="status"),
+    sa.CheckConstraint("protocol ~ '^[0-9]{6}$'", name="protocol_format"),
 )
 sa.Index("ix_support_tickets_user_created", support_tickets.c.user_id, support_tickets.c.created_at.desc(), support_tickets.c.id.desc())
 sa.Index("ix_support_tickets_status_created", support_tickets.c.status, support_tickets.c.created_at.desc(), support_tickets.c.id.desc())

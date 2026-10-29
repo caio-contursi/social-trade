@@ -102,6 +102,17 @@ describe("editor de organização", () => {
     );
   }
 
+  it("destaca todos os textos obrigatórios vazios e impede o salvamento", async () => {
+    const user = userEvent.setup();
+    renderEditor(organization({ name: "", short_description: "", objective: "", impact_summary: "" }));
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    expect(screen.getByLabelText(/Nome do projeto/)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/Apresentação em poucas palavras/)).toHaveAccessibleDescription(/Preencha o campo/);
+    expect(screen.getByLabelText(/Objetivos do projeto/)).toHaveAccessibleDescription(/Preencha o campo/);
+    expect(screen.getByLabelText(/Resultados e impacto relatados/)).toHaveAccessibleDescription(/Preencha o campo/);
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH" || init?.method === "POST")).toBe(false);
+  });
+
   it("sem Estado, marca o campo, mostra o erro nele e leva o foco até ele", async () => {
     const user = userEvent.setup();
     renderEditor(organization({ state: "" }));

@@ -1,5 +1,6 @@
 """Support, moderation, announcements, and public/private boundaries."""
 import pytest
+from unittest.mock import patch
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -88,8 +89,57 @@ def test_support_tickets_are_visible_only_to_their_creator(client, user_factory,
     assert ticket["subject"] == "Atualização de cadastro"
     assert ticket["message"] == "Preciso atualizar meus dados cadastrais."
     assert ticket["status"] == "open"
-    assert set(ticket) == {"id", "subject", "message", "status", "created_at"}
+    assert set(ticket) == {"id", "protocol", "subject", "message", "status", "created_at"}
     assert client.get("/api/support/mine", headers=login(second)).json() == []
+
+
+def test_ticket_protocol_retries_collision_preserves_zeroes_and_never_changes_with_status(client, user_factory, login):
+    headers = login(user_factory())
+    moderator_headers = login(user_factory(role="moderator"))
+    payload = {"subject": "Protocolo de teste", "message": "Relato fictício para validar o protocolo."}
+    with patch("app.main.secrets.randbelow", side_effect=[7, 7, 42]):
+        first = client.post("/api/support", headers=headers, json=payload)
+        second = client.post("/api/support", headers=headers, json=payload)
+    assert first.status_code == second.status_code == 201
+    assert first.json()["protocol"] == "000007"
+    assert second.json()["protocol"] == "000042"
+    tickets = client.get("/api/support/mine", headers=headers).json()
+    assert {ticket["protocol"] for ticket in tickets} == {"000007", "000042"}
+    for state in ["in_progress", "resolved"]:
+        response = client.patch(f"/api/moderation/tickets/{first.json()['id']}", headers=moderator_headers, json={"status": state})
+        assert response.status_code == 200
+        persisted = next(ticket for ticket in client.get("/api/support/mine", headers=headers).json() if ticket["id"] == first.json()["id"])
+        assert persisted["protocol"] == "000007"
+        assert persisted["status"] == state
+    overview = client.get("/api/moderation/overview", headers=moderator_headers).json()
+    assert next(ticket for ticket in overview["tickets"] if ticket["id"] == first.json()["id"])["protocol"] == "000007"
+
+
+def test_ticket_protocol_collision_limit_never_creates_duplicate_or_incomplete_ticket(client, user_factory, login):
+    headers = login(user_factory())
+    payload = {"subject": "Protocolo de teste", "message": "Relato fictício para validar a colisão."}
+    with patch("app.main.secrets.randbelow", return_value=0):
+        assert client.post("/api/support", headers=headers, json=payload).json()["protocol"] == "000000"
+        failed = client.post("/api/support", headers=headers, json=payload)
+    assert failed.status_code == 503
+    listing = client.get("/api/support/mine", headers=headers).json()
+    assert len(listing) == 1
+    assert listing[0]["protocol"] == "000000"
+
+
+def test_concurrent_tickets_receive_distinct_six_digit_protocols(client, user_factory, login):
+    from concurrent.futures import ThreadPoolExecutor
+    import re
+    headers = login(user_factory())
+    def submit(index):
+        return client.post("/api/support", headers=headers, json={"subject": f"Solicitação {index}", "message": "Mensagem sintética de teste concorrente."})
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        responses = list(pool.map(submit, range(8)))
+    assert all(response.status_code == 201 for response in responses)
+    codes = [response.json()["protocol"] for response in responses]
+    assert len(set(codes)) == 8
+    assert all(re.fullmatch(r"[0-9]{6}", code) for code in codes)
+    assert len(client.get("/api/support/mine", headers=headers).json()) == 8
 
 
 @pytest.mark.parametrize("payload", [

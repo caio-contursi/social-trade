@@ -12,6 +12,20 @@ export const areaLabels: Record<string, string> = {
   technology: "Tecnologia",
   emergency_relief: "Apoio emergencial",
 };
+
+/** Causas disponíveis tanto no filtro de projetos quanto no resultado do quiz. */
+export const projectFilterCauseCodes = [
+  "food",
+  "education",
+  "health",
+  "housing",
+  "children",
+  "animals",
+  "environment",
+  "sports",
+  "culture",
+  "technology",
+] as const;
 export const organizationLabels: Record<string, string> = {
   company: "Empresa",
   formal_ngo: "ONG formalizada",

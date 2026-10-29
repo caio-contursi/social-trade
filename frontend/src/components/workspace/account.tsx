@@ -15,6 +15,7 @@ import {
   lettersAndNamePunctuation,
 } from "@/components/auth/validation";
 import { Badge } from "@/components/ui/badge";
+import { ValidatedForm } from "@/components/ui/validated-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,7 +114,7 @@ export function AccountProfile() {
             <UserRound className="size-5 text-primary" />
             <h2 className="text-xl font-semibold">Informações pessoais</h2>
           </div>
-          <form onSubmit={submit} className="space-y-5">
+          <ValidatedForm onSubmit={submit} onChange={() => setError(null)} className="space-y-5">
             <div>
               <Label htmlFor="profile-name">Nome completo</Label>
               <Input
@@ -193,7 +194,7 @@ export function AccountProfile() {
             <Button disabled={pending} type="submit">
               <SubmitLabel pending={pending}>Salvar alterações</SubmitLabel>
             </Button>
-          </form>
+          </ValidatedForm>
         </section>
         <aside className="surface">
           <p className="eyebrow mb-4">Seu cadastro</p>
@@ -295,7 +296,7 @@ export function SupportPage({ suggestion = false }: { suggestion?: boolean }) {
     setError(null);
     setConfirmation(null);
     try {
-      const result = await request<MessageResponse>("/api/support", {
+      const result = await request<MessageResponse & { protocol: string }>("/api/support", {
         method: "POST",
         body: JSON.stringify({
           subject: String(form.get("subject")).trim(),
@@ -304,7 +305,7 @@ export function SupportPage({ suggestion = false }: { suggestion?: boolean }) {
       });
       formElement.reset();
       setConfirmation(
-        `Ticket aberto com sucesso. Protocolo ${result.id ?? "gerado"}. A moderação avaliará seu relato e você pode acompanhar o andamento abaixo.`,
+        `Ticket aberto com sucesso. Protocolo ${result.protocol}. A moderação avaliará seu relato e você pode acompanhar o andamento abaixo.`,
       );
       toast.success("Ticket aberto com sucesso.");
       tickets.reload();
@@ -334,7 +335,7 @@ export function SupportPage({ suggestion = false }: { suggestion?: boolean }) {
             <Headset className="size-5 text-primary" />
             <h2 className="text-xl font-semibold">Novo ticket</h2>
           </div>
-          <form onSubmit={submit} className="space-y-5">
+          <ValidatedForm onSubmit={submit} onChange={() => setError(null)} className="space-y-5">
             <div>
               <Label htmlFor="support-subject">Assunto</Label>
               <Input
@@ -374,7 +375,7 @@ export function SupportPage({ suggestion = false }: { suggestion?: boolean }) {
               <Send className="size-4" />
               {pending ? "Abrindo ticket…" : "Abrir ticket"}
             </Button>
-          </form>
+          </ValidatedForm>
         </section>
         <section>
           <div className="mb-5 flex items-center gap-3">
@@ -394,7 +395,7 @@ export function SupportPage({ suggestion = false }: { suggestion?: boolean }) {
                 >
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <span className="text-xs text-muted-foreground">
-                      #{ticket.id} · {formatDate(ticket.created_at)}
+                      Protocolo #{ticket.protocol} · {formatDate(ticket.created_at)}
                     </span>
                     <TicketStatusBadge status={ticket.status} />
                   </div>

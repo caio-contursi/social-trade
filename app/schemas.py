@@ -3,9 +3,19 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationInfo, field_validator, model_validator
 from app.documents import normalize_document, valid_cnpj, valid_cpf
+from app.form_validation import FIELD_LABELS
 
 
 class PostgresInput(BaseModel):
+    @field_validator("*", mode="before")
+    @classmethod
+    def required_text_cannot_be_blank(cls, value, info: ValidationInfo):
+        field = cls.model_fields.get(info.field_name)
+        if field and field.is_required() and isinstance(value, str) and not value.strip():
+            label = FIELD_LABELS.get(info.field_name, info.field_name.replace("_", " "))
+            raise ValueError(f"Preencha o campo “{label}” para continuar.")
+        return value
+
     @field_validator("*")
     @classmethod
     def reject_nul_text(cls, value, info: ValidationInfo):
@@ -231,6 +241,21 @@ class DonationPaymentReportInput(PostgresInput):
         if not re.fullmatch(r"[A-Za-z0-9._-]{8,100}", value):
             raise ValueError("Informe o identificador E2E informado no comprovante do Pix.")
         return value
+
+
+class SolanaPaymentIntentInput(PostgresInput):
+    amount_lamports: int = Field(ge=100_000, le=100_000_000_000)
+    target: Literal["project", "socialtrade"]
+    project_id: int | None = Field(default=None, ge=1)
+    cause_code: str | None = Field(default=None, min_length=1, max_length=80)
+
+    @model_validator(mode="after")
+    def validate_target(self):
+        if self.target == "project" and self.project_id is None:
+            raise ValueError("Selecione o projeto que deseja apoiar.")
+        if self.target == "socialtrade" and self.project_id is not None:
+            raise ValueError("A doação por categoria não pode apontar para um projeto específico.")
+        return self
 
 
 class PixVerificationInput(PostgresInput):

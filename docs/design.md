@@ -17,7 +17,7 @@ O SocialTrade liga quem apoia (empresas e pessoas) a quem transforma (projetos s
 1. **Honestidade visível.** Nada de números, depoimentos, logotipos de parceiros ou selos inventados. Demonstração, imagem ilustrativa e recursos ainda não disponíveis sempre aparecem sinalizados. Selos de disponibilidade qualificam funcionalidades, nunca validam organizações.
 2. **Contraste primeiro.** Texto com 4,5:1 (AA) no claro e no escuro, inclusive o secundário. Contornos de campos e indicadores de foco com 3:1 contra o fundo ao lado. Cor nunca é a única pista (causas também têm nome e ícone).
 3. **Uma ação principal por bloco.** Os demais caminhos são links ou botões secundários.
-4. **Mesmo vocabulário em todas as telas.** Os componentes públicos usam superfícies, raios, bordas e sombras compartilhados (`.public-card` e `.public-card-quiet`). Os componentes de `components/ui` herdam os tokens; cores de marca ficam em `globals.css` e as cores próprias das causas em `lib/causes.ts`.
+4. **Mesmo vocabulário em todas as telas.** Os componentes públicos usam superfícies, raios, bordas e sombras compartilhados (`.public-card` e `.public-card-quiet`). Os componentes de `components/ui` herdam os tokens; cores de marca ficam em `globals.css` e as cores próprias das causas em `lib/causes.ts`. `color-scheme` acompanha o tema no documento para que controles nativos também usem a paleta correta.
 
 ## Tokens
 
@@ -40,10 +40,12 @@ Contrastes medidos pela fórmula da WCAG, no formato claro / escuro.
 | `--energy-foreground` | `#2b1e04` | `#2b1e04` | texto sobre âmbar: 8,9 / 10,0 |
 | `--ink-panel` | `#193c31` | `#0b1614` | blocos escuros e barra lateral do painel |
 | `--ink-panel-foreground` | `#eef3ee` | `#eef3ee` | texto nos blocos escuros |
-| `--forest` / `--forest-surface` | `#193c31` / `#285842` | igual | plano escuro público e cartões internos |
-| `--surface-green` / `--surface-green-raised` | `#dae7d0` / `#e6efdf` | igual | cartões, filtros e convites sobre fundo floresta |
-| `--surface-green-foreground` / `--surface-green-muted` | `#17392e` / `#405a49` | igual | texto principal e secundário sobre superfícies verdes claras |
-| `--cream` | `#f6efe2` | igual | rodapé e base translúcida do cabeçalho |
+| `--forest` / `--forest-surface` | `#193c31` / `#285842` | `#091410` / `#14251d` | blocos escuros e cartões internos |
+| `--surface-green` / `--surface-green-raised` | `#dae7d0` / `#e6efdf` | `#15241f` / `#1d3028` | apresentação e cartões de descoberta |
+| `--surface-green-foreground` / `--surface-green-muted` | `#17392e` / `#405a49` | `#e8f0eb` / `#b6c7bd` | texto principal e secundário das superfícies verdes |
+| `--surface-green-accent` / `--moss-highlight` | `#285842` / `#c9dda9` | `#83d6b7` / `#c4dda2` | links e destaques sobre as superfícies públicas |
+| `--cream` | `#f6efe2` | `#17231f` | rodapé e base translúcida do cabeçalho |
+| `--cream-foreground` / `--cream-muted` / `--cream-link` | `#17392e` / `#485f50` / `#344e40` | `#eaf0eb` / `#b6c4bb` / `#c2d2c8` | texto, observações e links no rodapé |
 | `--color-logo-surface` | `#ffffff` | `#ffffff` | quadro dos logotipos, claro nos dois temas |
 
 **Contexto escuro (`.ink-panel`, `.on-ink`).** Texto principal em `--ink-panel-foreground`; secundário em `text-ink-foreground/75` (≈ 8,4:1); sobretítulo, links de destaque e palavra de ênfase em âmbar (7,7:1); foco em âmbar. Na barra lateral do painel, o item ativo tem fundo âmbar com `--energy-foreground` (8,9:1) e mantém `aria-current="page"`; os demais itens usam `text-sidebar-foreground/80`.

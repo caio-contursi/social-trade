@@ -17,6 +17,7 @@ import json
 import os
 from pathlib import Path
 import re
+import random
 import sqlite3
 import sys
 from typing import Any
@@ -427,7 +428,13 @@ def migrate(source: str | Path, engine: Engine, *, apply: bool = False, allow_de
                 return report
             for name in TABLES:
                 if snapshot.rows[name]:
-                    db.execute(metadata.tables[name].insert(), snapshot.rows[name])
+                    payloads = snapshot.rows[name]
+                    if name == "support_tickets":
+                        if len(payloads) > 1_000_000:
+                            raise MigrationError("ticket_protocol_capacity_exceeded")
+                        codes = random.SystemRandom().sample(range(1_000_000), len(payloads))
+                        payloads = [dict(row, protocol=f"{code:06d}") for row, code in zip(payloads, codes)]
+                    db.execute(metadata.tables[name].insert(), payloads)
             report["verified"] = _verify_import(db, snapshot)
             if fingerprint(snapshot.path) != snapshot.fingerprint:
                 raise MigrationError("source_changed")

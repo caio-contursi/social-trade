@@ -51,6 +51,8 @@ describe("ícones de suporte no painel", () => {
     const link = screen.getByRole("link", { name: /Solicitações em aberto/ });
     expect(link).toHaveAttribute("href", "/painel/suporte");
     expect(link.querySelector("svg")).toHaveClass("lucide-headset");
+    expect(screen.queryByText("Empresa cadastrada")).not.toBeInTheDocument();
+    expect(screen.queryByText("Avisos da plataforma")).not.toBeInTheDocument();
   });
 
   it("usa headset nos formulários e estados vazios da central de suporte", () => {

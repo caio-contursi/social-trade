@@ -65,30 +65,6 @@ export function Dashboard() {
   const isDonor = user.account_type === "donor";
   const mainOrg = orgs[0];
   const incomplete = orgs.find((org) => (org.profile_completeness ?? 0) < 100);
-  const stats = [
-    {
-      label: isPerson
-        ? "Vínculos com projetos"
-        : isDonor
-          ? "Empresa cadastrada"
-          : "Projetos cadastrados",
-      value: isPerson ? links.length : orgs.length,
-      icon: isPerson ? HeartHandshake : Building2,
-      href: user.account_type === "project" ? "/painel/meu-projeto" : "/painel/organizacoes",
-    },
-    {
-      label: "Avisos da plataforma",
-      value: notices.length,
-      icon: Bell,
-      href: "/painel/avisos",
-    },
-    {
-      label: "Solicitações em aberto",
-      value: pendingTickets,
-      icon: Headset,
-      href: "/painel/suporte",
-    },
-  ];
   return (
     <>
       <WorkspaceHeading
@@ -135,29 +111,6 @@ export function Dashboard() {
           </Button>
         </div>
       </section>
-      <div className="my-6 grid gap-4 sm:grid-cols-3">
-        {stats.map((stat) => (
-          <Link
-            key={stat.label}
-            href={stat.href}
-            className="group flex items-start justify-between gap-3 rounded-2xl border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md"
-          >
-            <div>
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <stat.icon
-                  className="size-4 shrink-0 text-primary"
-                  aria-hidden="true"
-                />
-                {stat.label}
-              </p>
-              <p className="mt-3 font-display text-4xl font-medium tabular-nums">
-                {stat.value}
-              </p>
-            </div>
-            <ArrowUpRight className="mt-auto size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </Link>
-        ))}
-      </div>
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
         <section className="surface">
           <div className="mb-6 flex items-center justify-between gap-3">
@@ -297,6 +250,24 @@ export function Dashboard() {
           )}
         </section>
       </div>
+      <Link
+        href="/painel/suporte"
+        className="group mt-6 flex items-center justify-between gap-4 rounded-2xl border bg-card px-5 py-4 transition hover:border-primary/45 hover:shadow-md"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-primary">
+            <Headset className="size-5" aria-hidden="true" />
+          </span>
+          <span>
+            <span className="block font-medium">Solicitações em aberto</span>
+            <span className="mt-0.5 block text-sm text-muted-foreground">Acompanhe seus atendimentos com o suporte</span>
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          <span className="font-display text-2xl font-medium tabular-nums" aria-label={`${pendingTickets} solicitações em aberto`}>{pendingTickets}</span>
+          <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        </span>
+      </Link>
       <div className="mt-6 flex items-start gap-3 rounded-2xl border bg-muted/50 p-5">
         <LockKeyhole className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
         <div>

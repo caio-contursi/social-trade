@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FieldError } from "@/components/ui/validated-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -173,13 +174,13 @@ export function RegisterForm() {
             : "Informe um CNPJ válido.";
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))
         next.email = "Informe um e-mail válido.";
-      if (values.password.length < 10)
+      if (!values.password.trim() || values.password.length < 10)
         next.password = "Crie uma senha com ao menos 10 caracteres.";
       if (
         values.password_confirmation !== values.password ||
         !values.password_confirmation
       )
-        next.password_confirmation = "As senhas precisam ser iguais.";
+        next.password_confirmation = !values.password_confirmation.trim() ? "Confirme sua senha para continuar." : "As senhas precisam ser iguais.";
     }
     if (currentStep === 3 && intent === "person") {
       if (!/^[a-z0-9_]{3,30}$/.test(values.username.trim().toLowerCase()))
@@ -336,9 +337,7 @@ export function RegisterForm() {
           </p>
         )}
         {errors[name] && (
-          <p id={`${name}-error`} className="mt-2 text-sm text-destructive">
-            {errors[name]}
-          </p>
+          <FieldError id={`${name}-error`}>{errors[name]}</FieldError>
         )}
       </div>
     );
@@ -378,9 +377,7 @@ export function RegisterForm() {
           </SelectContent>
         </Select>
         {errors[name] && (
-          <p id={`${name}-error`} className="mt-2 text-sm text-destructive">
-            {errors[name]}
-          </p>
+          <FieldError id={`${name}-error`}>{errors[name]}</FieldError>
         )}
       </div>
     );
@@ -429,9 +426,7 @@ export function RegisterForm() {
           </span>
         </div>
         {errors[name] && (
-          <p id={`${name}-error`} className="mt-2 text-sm text-destructive">
-            {errors[name]}
-          </p>
+          <FieldError id={`${name}-error`}>{errors[name]}</FieldError>
         )}
       </div>
     );
@@ -714,12 +709,7 @@ export function RegisterForm() {
                 utiliza.
               </p>
               {errors.password && (
-                <p
-                  id="password-error"
-                  className="mt-2 text-sm text-destructive"
-                >
-                  {errors.password}
-                </p>
+                <FieldError id="password-error">{errors.password}</FieldError>
               )}
             </div>
             {field("password_confirmation", "Confirme a senha", {
@@ -920,12 +910,7 @@ export function RegisterForm() {
                     ))}
                   </div>
                   {errors.areas && (
-                    <p
-                      id="areas-error"
-                      className="mt-3 text-sm text-destructive"
-                    >
-                      {errors.areas}
-                    </p>
+                    <FieldError id="areas-error">{errors.areas}</FieldError>
                   )}
                 </fieldset>
                 {textareaField(

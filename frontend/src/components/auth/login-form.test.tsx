@@ -46,6 +46,16 @@ describe("formulário de entrada", () => {
     expect(loginRequest).not.toHaveBeenCalled();
   });
 
+  it("trata senha só com espaços como não preenchida", async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    await user.type(screen.getByLabelText("CPF ou CNPJ"), "11111111111");
+    await user.type(screen.getByLabelText("Senha"), "     ");
+    await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
+    expect(screen.getByLabelText("Senha")).toHaveAccessibleDescription("Informe sua senha.");
+    expect(loginRequest).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["Empresa", "CNPJ da empresa", "52998224725", "Informe o CNPJ com 14 caracteres (letras ou números e 2 dígitos finais)."],
     ["Pessoa", "Seu CPF", "04252011000110", "Informe o CPF com 11 dígitos."],
@@ -172,8 +182,32 @@ describe("formulário de entrada", () => {
     render(<LoginForm />);
     expect(await screen.findByText("Ambiente de demonstração")).toBeInTheDocument();
     expect(screen.getByText("CNPJ 90000001000129")).toBeInTheDocument();
-    expect(screen.getByText("CPF 33333333333")).toBeInTheDocument();
-    expect(screen.getByText("12345678000195")).toBeInTheDocument();
+    expect(screen.getByText("CNPJ 12345678000195")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["projeto", "Projeto social", "CPF ou CNPJ", "90000001000129", "project"],
+    ["doador", "Empresa", "CNPJ da empresa", "12345678000195", "donor"],
+  ])("preenche o acesso de demonstração do %s com o tipo de conta correto", async (kind, option, field, document, accountType) => {
+    demoEnabled = true;
+    loginRequest.mockResolvedValueOnce(jsonResponse(makeSession("demo", { account_type: accountType as "project" | "donor" })));
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    await user.click(await screen.findByText("Ambiente de demonstração"));
+    await user.click(screen.getByRole("button", { name: `Usar acesso do ${kind}` }));
+
+    expect(screen.getByRole("radio", { name: option })).toBeChecked();
+    expect(screen.getByLabelText(field)).toHaveValue(document);
+    expect(screen.getByLabelText("Senha")).toHaveValue("SocialTrade123!");
+    await user.click(screen.getByRole("button", { name: "Entrar na minha conta" }));
+
+    await waitFor(() => expect(auth.login).toHaveBeenCalled());
+    const request = fetchMock.mock.calls.find(([path]) => path === "/api/auth/login");
+    expect(JSON.parse(request?.[1]?.body as string)).toEqual({
+      document,
+      password: "SocialTrade123!",
+      account_type: accountType,
+    });
   });
 
   it("permite exibir e ocultar a senha sem enviar o formulário", async () => {

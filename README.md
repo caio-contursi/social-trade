@@ -1,6 +1,6 @@
 # SocialTrade
 
-Plataforma para conectar empresas doadoras de todos os portes, pessoas físicas e projetos sociais. A SocialTrade apresenta objetivos, áreas de atuação e resultados informados pelos projetos para apoiar decisões de investimento social. A descoberta planejada permitirá buscar por nome ou interesse, filtrar por tipo de projeto e navegar por categorias sugeridas por IA. A avaliação interna poderá influenciar a ordem dos resultados sem ser exibida a doadores ou projetos; essas funções ainda não estão implementadas. A integração com Solana está desativada nesta etapa.
+Plataforma para conectar empresas doadoras de todos os portes, pessoas físicas e projetos sociais. A SocialTrade apresenta objetivos, áreas de atuação e resultados informados pelos projetos para apoiar decisões de investimento social. A descoberta planejada permitirá buscar por nome ou interesse, filtrar por tipo de projeto e navegar por categorias sugeridas por IA. A avaliação interna poderá influenciar a ordem dos resultados sem ser exibida a doadores ou projetos; essas funções ainda não estão implementadas. A modalidade SOL usa Solana Pay, cria referências únicas e verifica a transferência na rede antes de mostrar sucesso.
 
 A interface principal fica em `frontend/` e utiliza Next.js, TypeScript, Tailwind CSS e componentes oficiais do shadcn/ui. A API usa FastAPI, PostgreSQL e SQLAlchemy 2 Core, com migrações explícitas pelo Alembic. As informações apresentadas pelos projetos são autodeclaradas: cadastro ou perfil completo não representam verificação independente.
 
@@ -39,8 +39,9 @@ O FastAPI na porta **8000** é somente o backend da aplicação; ele não serve 
 - Acesso e cadastro de empresa doadora ou projeto social, com login por CPF/CNPJ.
 - Perfil institucional, página pública e edição pelo proprietário autorizado.
 - Cadastro de pessoas por CPF, matrícula numérica única de seis dígitos e vínculo com projetos como funcionário ou pessoa assistida.
-- Sessão assinada, senhas armazenadas com scrypt, avisos, suporte e moderação.
+- Sessão assinada, senhas armazenadas com scrypt, avisos, suporte e moderação. Tickets recebem protocolos aleatórios únicos de seis dígitos, persistidos e exibidos no histórico em todos os status.
 - Tema claro, escuro ou conforme o sistema e interface adaptada para dispositivos móveis.
+- Doações em SOL para a carteira intermediária SocialTrade, com QR por valor e referência únicos e confirmação on-chain em tempo real. A escolha de projeto ou causa registra a intenção de destinação; o repasse não é automático.
 
 O backend registra intenções de doação por Pix direto feitas por empresas ou pessoas físicas para projetos com CNPJ e chave Pix conferidos por moderação. Acompanha o E2E informado por quem doa e permite que o projeto confirme manualmente o crédito e emita um recibo HTML imprimível, identificado pelo CNPJ empresarial ou CPF pessoal. Este é o único fluxo Pix implementado: uma futura modalidade poderá receber na tesouraria da SocialTrade, sujeita a definições operacionais e jurídicas sobre recebimento, custódia, conciliação e repasse. O fluxo atual não tem PSP nem taxa da plataforma. A SocialTrade não garante abatimento no Imposto de Renda nem outro benefício fiscal; quem doa deve consultar orientações oficiais do governo e um profissional de contabilidade para verificar se alguma regra se aplica ao próprio caso. O registro da doação e o recibo privado não substituem o comprovante bancário, nota fiscal, validação fiscal ou confirmação de elegibilidade. O fluxo está descrito em [docs/doacoes-pix.md](docs/doacoes-pix.md). Categorizações por IA, avaliação interna, ordenação por avaliação, pagamentos por cartão, conciliação automática e criptoativos/Solana seguem fora da implementação atual.
 

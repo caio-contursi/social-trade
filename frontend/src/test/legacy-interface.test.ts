@@ -183,7 +183,7 @@ describe("datas da API na interface legada", () => {
     loadScript();
     context.account = { ...account, created_at: createdAt };
     context.org = { ...organization, created_at: createdAt };
-    const ticket = { id: 1, subject: "Solicitação de teste", message: "Mensagem fictícia", status: "open", created_at: createdAt, full_name: account.full_name, email: account.email };
+    const ticket = { id: 1, protocol: "000123", subject: "Solicitação de teste", message: "Mensagem fictícia", status: "open", created_at: createdAt, full_name: account.full_name, email: account.email };
     fetchMock.mockImplementation(async (path: string) => respond({
       "/api/organizations/mine": [context.org],
       "/api/announcements": [{ id: 1, category: "teste", title: "Aviso fictício", body: "Texto do aviso", published_at: createdAt }],

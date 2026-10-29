@@ -67,4 +67,15 @@ describe("edição dos dados pessoais", () => {
       phone: "2199990000",
     });
   });
+
+  it("exige nome completo sem enviar alterações vazias", async () => {
+    const user = userEvent.setup();
+    render(<AccountProfile />);
+    await user.clear(screen.getByLabelText("Nome completo"));
+    await user.type(screen.getByLabelText("Nome completo"), "   ");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    expect(screen.getByLabelText("Nome completo")).toHaveAccessibleDescription("Preencha o campo “Nome completo” para continuar.");
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.refreshUser).not.toHaveBeenCalled();
+  });
 });

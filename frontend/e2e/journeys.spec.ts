@@ -40,18 +40,18 @@ test("página 1 apresenta as três seções institucionais e a situação atual 
   await expect(navigation.getByRole("link", { name: "Transparência" })).toHaveAttribute("href", "/#transparencia");
   if (mobile) await navigation.getByRole("link", { name: "Quem somos" }).click();
   await expect(page.getByRole("heading", { name: /Conectamos quem quer apoiar/ })).toBeVisible();
-  await expect(page.getByRole("main").getByText("Doações Pix diretas", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("main").getByText("Pagamentos pela plataforma", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("contentinfo").getByText(/não garante abatimento no Imposto de Renda ou outro benefício fiscal/).first()).toBeVisible();
-  await expect(page.getByRole("main").getByText("Pagamentos automatizados por PSP e cartão", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("main").getByText("Conversão automatizada de Pix (BRL) para SOL por provedor", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Como escolher e apoiar um projeto?" })).toBeVisible();
-  await expect(page.getByText(/faça o Pix diretamente para a chave conferida do projeto/)).toBeVisible();
+  await expect(page.getByRole("main").getByText(/O Pix está temporariamente suspenso enquanto a conversão BRL→SOL é integrada/)).toBeVisible();
   await expect(page.getByText(/voluntariado ou doações de itens/)).toBeVisible();
   await expect(page.getByText("Doações pela plataforma", { exact: true })).toHaveCount(0);
 });
 
 test("rolagem do menu até a transparência é gradual em desktop e mobile", async ({ page, isMobile }) => {
   await page.goto("/");
-  const target = page.locator("#transparencia");
+  const target = page.locator("#transparencia").first();
   const destination = await target.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
     const offset = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
@@ -93,15 +93,15 @@ test("página 1 não reserva espaço para o painel de projetos fechado", async (
   await expect.poll(() => projectsPanel.evaluate((element) => Number.parseFloat(getComputedStyle(element).minHeight))).toBeGreaterThan(0);
 });
 
-test("carrossel começa na foto comunitária e troca após 3,5 segundos", async ({ page }) => {
+test("carrossel é automático, sem controles ou contador, e troca após 5 segundos", async ({ page }) => {
   await page.goto("/");
   const carousel = page.getByRole("region", { name: "Imagens ilustrativas da SocialTrade" });
   await expect(carousel.getByRole("img", { name: "Pessoa voluntária durante uma atividade comunitária" })).toBeVisible();
-  await expect(carousel.getByText("Imagem 1 de 6")).toBeVisible();
-  await expect(carousel.getByRole("button", { name: /^Ir para imagem/ })).toHaveCount(6);
-  await page.waitForTimeout(3550);
+  await expect(carousel.getByText(/Imagem \d de/)).toHaveCount(0);
+  await expect(carousel.getByRole("button")).toHaveCount(0);
+  await page.waitForTimeout(5050);
   await expect(carousel.getByRole("img", { name: "Maçãs vermelhas frescas" })).toBeVisible();
-  await expect(carousel.getByText("Imagem 2 de 6")).toBeVisible();
+  await expect(carousel.getByText(/Imagem \d de/)).toHaveCount(0);
 });
 
 test("carrossel troca as fotos com um crossfade gradual", async ({ page }) => {
@@ -110,14 +110,14 @@ test("carrossel troca as fotos com um crossfade gradual", async ({ page }) => {
   await expect(carousel.getByRole("img", { name: "Pessoa voluntária durante uma atividade comunitária" })).toBeVisible();
   await expect(carousel.locator(".hero-carousel-image")).toHaveCount(6);
   await expect(carousel.locator(".hero-carousel-image.is-active")).toHaveCSS("transition-duration", "1.2s");
-  await carousel.getByRole("button", { name: "Próxima imagem" }).click();
+  await page.waitForTimeout(5050);
   const incomingImage = carousel.locator(".hero-carousel-image.is-active");
   await page.waitForTimeout(250);
   const transitionOpacity = Number(await incomingImage.evaluate((element) => getComputedStyle(element).opacity));
   expect(transitionOpacity).toBeGreaterThan(0);
   expect(transitionOpacity).toBeLessThan(1);
   await expect(carousel.getByRole("img", { name: "Maçãs vermelhas frescas" })).toBeVisible();
-  await expect(carousel.getByText("Imagem 2 de 6")).toBeVisible();
+  await expect(carousel.getByText(/Imagem \d de/)).toHaveCount(0);
   await page.waitForTimeout(1000);
   await expect.poll(() => incomingImage.evaluate((element) => Number(getComputedStyle(element).opacity))).toBe(1);
 });
@@ -179,16 +179,19 @@ test("atalho Explorar projetos do painel abre a página 2 atualizada", async ({ 
     );
   }
   const causeCard = page.locator("#encontre-sua-causa");
-  await expect(causeCard.locator(".eyebrow svg")).toHaveCount(0);
-  await expect(causeCard.locator(".eyebrow")).toHaveCSS("color", "rgb(33, 76, 59)");
+  await expect(causeCard.getByRole("button", { name: "Começar quiz" })).toBeVisible();
+  await expect(causeCard.locator(".eyebrow")).toHaveCSS("color", "rgb(40, 88, 66)");
 });
 
 test("retorno da página 2 anima para a página 1 e preserva contraste e textos revisados", async ({ page }) => {
   await page.goto("/");
   const heroTitle = page.getByRole("heading", { level: 1, name: /Apoiar uma causa/ });
-  const heroSummary = page.getByRole("region", { name: "Apresentação da SocialTrade" }).getByText(/Aproximamos empresas, pessoas e projetos sociais/);
+  const hero = page.getByRole("region", { name: "Apresentação da SocialTrade" });
   await expect(heroTitle).toHaveCSS("color", "rgb(23, 57, 46)");
-  await expect(heroSummary).toHaveCSS("color", "rgb(64, 90, 73)");
+  await expect(heroTitle).toHaveClass(/discovery-title/);
+  await expect(hero.getByText(/Aproximamos empresas, pessoas e projetos sociais/)).toHaveCount(0);
+  await expect(hero.getByText("Para quem quer apoiar")).toHaveCount(0);
+  await expect(hero.getByText("Para projetos sociais")).toHaveCount(0);
   await page.getByRole("button", { name: "Encontrar um projeto" }).click();
   await expect(page.getByRole("heading", { level: 1, name: /Existe uma causa que conecta você/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Voltar ao início" })).toBeVisible();
@@ -271,45 +274,46 @@ test("CTA principal desliza para a tela de projetos sem recarregar a página", a
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { level: 1, name: /Existe uma causa que conecta você/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
-  const projectSearch = page.getByRole("link", { name: "Procurar projeto/instituição", exact: true });
-  const myProject = page.getByRole("link", { name: "Meu projeto", exact: true });
-  await expect(projectSearch).toBeVisible();
-  await expect(myProject).toHaveAttribute("href", "#meu-projeto");
-  const causeMenuItem = isMobile
-    ? page.getByRole("navigation", { name: "Navegação de projetos" }).getByLabel("Encontre sua causa")
-    : page.getByRole("navigation", { name: "Navegação principal" }).getByLabel("Encontre sua causa");
+  await expect(page.getByRole("navigation", { name: "Navegação de projetos" })).toHaveCount(0);
+  if (isMobile) await page.getByRole("button", { name: "Abrir navegação" }).click();
+  const projectNavigation = page.getByRole("navigation", { name: isMobile ? "Navegação móvel" : "Navegação principal" });
+  await expect(projectNavigation.getByRole("link", { name: "Procurar projeto/instituição", exact: true })).toBeVisible();
+  await expect(projectNavigation.getByRole("link", { name: "Meu projeto", exact: true })).toHaveAttribute("href", "#meu-projeto");
+  const causeMenuItem = projectNavigation.getByLabel("Encontre sua causa");
   await expect(causeMenuItem).toBeVisible();
   await expect(causeMenuItem).toHaveAttribute("href", "#encontre-sua-causa");
   await expect(causeMenuItem).not.toContainText("Em breve");
+  if (isMobile) await page.getByRole("button", { name: "Fechar", exact: true }).click();
   await expect.poll(() => page.locator(".discovery-viewport").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(25, 60, 49)");
-  await expect.poll(() => page.getByRole("banner").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgba(246, 239, 226, 0.58)");
+  await expect.poll(() => page.getByRole("banner").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("color(srgb 0.964706 0.937255 0.886274 / 0.58)");
   await expect(page.locator("[data-filter-card]")).toHaveCSS("background-color", "rgb(218, 231, 208)");
   const projectCard = page.locator("[data-projects-panel] article").first();
   await expect(projectCard).toHaveCSS("background-color", "rgb(218, 231, 208)");
   await expect(await contrastRatio(projectCard.locator("p").nth(1), projectCard)).toBeGreaterThanOrEqual(4.5);
   await expect(page.locator(".site-footer-cream")).toHaveCSS("background-color", "rgb(246, 239, 226)");
-  await page.getByRole("button", { name: "Alterar tema" }).click();
-  await page.getByRole("menuitem", { name: "Escuro" }).click();
-  await expect(page.locator("#project-search")).toHaveCSS("background-color", "rgb(230, 239, 223)");
-  await expect(page.locator("#project-search")).toHaveCSS("color", "rgb(23, 57, 46)");
-  await page.getByRole("button", { name: "Alterar tema" }).click();
-  await page.getByRole("menuitem", { name: "Claro" }).click();
+  await page.getByRole("switch", { name: "Tema escuro" }).click();
+  await expect(page.getByRole("switch", { name: "Tema escuro" })).toBeChecked();
+  await expect(page.locator("#project-search")).toHaveCSS("background-color", "rgb(29, 48, 40)");
+  await expect(page.locator("#project-search")).toHaveCSS("color", "rgb(232, 240, 235)");
+  await page.getByRole("switch", { name: "Tema escuro" }).click();
+  await expect(page.getByRole("switch", { name: "Tema escuro" })).not.toBeChecked();
   await expect(page.getByRole("link", { name: /Apresentar meu projeto/ })).toBeVisible();
-  await projectSearch.click();
+  if (isMobile) await page.getByRole("button", { name: "Abrir navegação" }).click();
+  await projectNavigation.getByRole("link", { name: "Procurar projeto/instituição", exact: true }).click();
   await expect(page).toHaveURL(/#projetos$/);
   await expect(page.getByRole("heading", { name: "Projetos encontrados" })).toBeVisible();
-  await myProject.click();
+  if (isMobile) await page.getByRole("button", { name: "Abrir navegação" }).click();
+  await projectNavigation.getByRole("link", { name: "Meu projeto", exact: true }).click();
   await expect(page).toHaveURL(/#meu-projeto$/);
   await expect(page.getByRole("region", { name: "Cadastre seu projeto" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Apresentar meu projeto/ })).toHaveAttribute("href", "/cadastro?tipo=project");
+  if (isMobile) await page.getByRole("button", { name: "Abrir navegação" }).click();
   await causeMenuItem.click();
   await expect(page).toHaveURL(/#encontre-sua-causa$/);
-  const quizSection = page.getByRole("region", { name: "Descubra causas que combinam com você." });
+  const quizSection = page.locator("#encontre-sua-causa");
   await expect(quizSection).toBeVisible();
-  await expect(quizSection).toContainText("Em construção");
-  await expect(quizSection.locator(".public-card")).toHaveCSS("background-color", "rgb(218, 231, 208)");
-  await expect(quizSection.locator("li.public-card-quiet")).toHaveCount(3);
-  await expect(await contrastRatio(quizSection.locator("p").nth(1), quizSection.locator(".public-card"))).toBeGreaterThanOrEqual(4.5);
+  await expect(quizSection.getByRole("button", { name: "Começar quiz" })).toBeVisible();
+  await expect(quizSection).not.toContainText("Em construção");
   await page.getByRole("banner").getByRole("link", { name: "SocialTrade, início" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { level: 1, name: /Apoiar uma causa/ })).toBeVisible();
@@ -319,10 +323,11 @@ test("CTA principal desliza para a tela de projetos sem recarregar a página", a
   await expect(await contrastRatio(page.locator("#como-funciona article p").first(), page.locator("#como-funciona article").first())).toBeGreaterThanOrEqual(4.5);
 });
 
-test("Meu projeto aponta para o convite de cadastro na página de descoberta", async ({ page }) => {
+test("Meu projeto aponta para o convite de cadastro na página de descoberta", async ({ page, isMobile }) => {
   await login(page, "90000001000129", "project", "SocialTrade123!");
   await page.goto("/");
   await page.getByRole("button", { name: "Encontrar um projeto", exact: false }).click();
+  if (isMobile) await page.getByRole("button", { name: "Abrir navegação" }).click();
   await expect(page.getByRole("link", { name: "Meu projeto", exact: true })).toHaveAttribute(
     "href", "#meu-projeto",
   );
@@ -331,14 +336,16 @@ test("Meu projeto aponta para o convite de cadastro na página de descoberta", a
   await expect(page.getByRole("link", { name: /Apresentar meu projeto/ })).toHaveAttribute("href", "/cadastro?tipo=project");
 });
 
-test("CTA da transparência abre a lista de projetos no início", async ({ page }) => {
+test("CTA da transparência abre a lista de projetos no início", async ({ page, isMobile }) => {
   await page.goto("/#transparencia");
   await page.getByRole("link", { name: "Conhecer os projetos", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { level: 1, name: /Existe uma causa que conecta você/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
   await expect(page.locator("html")).toHaveAttribute("data-exploring-projects", "true");
+  if (isMobile) await page.getByRole("button", { name: "Abrir navegação" }).click();
   await expect(page.getByRole("link", { name: "Meu projeto", exact: true })).toBeVisible();
+  if (isMobile) await page.getByRole("button", { name: "Fechar", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Confiança se constrói com informação/ })).toHaveCount(0);
   await expect(page.getByRole("contentinfo")).toBeVisible();
 });
@@ -431,117 +438,161 @@ test("links de projetos abrem os destinos no início sem herdar a rolagem anteri
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
 });
 
-test("doação Pix direta de empresa e pessoa física passa por pagamento, confirmação e recibo", async ({ page, request }, testInfo) => {
-  const api = process.env.SOCIALTRADE_API_URL!;
-  const projectLogin = await request.post(`${api}/api/auth/login`, { data: {
-    document: "90000001000129", password: "SocialTrade123!", account_type: "project",
-  } });
-  expect(projectLogin.ok(), await projectLogin.text()).toBeTruthy();
-  const projectToken = (await projectLogin.json()).access_token as string;
-  const auth = { Authorization: `Bearer ${projectToken}` };
-  const mine = await request.get(`${api}/api/organizations/mine`, { headers: auth });
-  expect(mine.ok()).toBeTruthy();
-  const project = (await mine.json())[0];
-  const updated = await request.patch(`${api}/api/organizations/${project.id}`, {
-    headers: auth,
-    data: {
-      name: project.name, organization_type: project.organization_type, institution_kind: "project",
-      cnpj: project.cnpj, city: project.city, state: project.state,
-      short_description: project.short_description, objective: project.objective,
-      impact_summary: project.impact_summary, description: project.description,
-      founding_year: project.founding_year, website_url: project.website_url,
-      instagram_url: project.instagram_url, areas: project.areas,
-      interested_services: project.interested_services, pix_key: "pix-e2e@example.org",
-    },
-  });
-  expect(updated.ok(), await updated.text()).toBeTruthy();
-  const moderatorLogin = await request.post(`${api}/api/auth/login`, { data: {
-    document: "33333333333", password: "SocialTrade123!", account_type: "project",
-  } });
-  expect(moderatorLogin.ok(), await moderatorLogin.text()).toBeTruthy();
-  const moderatorToken = (await moderatorLogin.json()).access_token as string;
-  const approval = await request.patch(`${api}/api/moderation/projects/${project.id}/pix-verification`, {
-    headers: { Authorization: `Bearer ${moderatorToken}` }, data: { verified: true },
-  });
-  expect(approval.ok(), await approval.text()).toBeTruthy();
-  const publicProfile = await request.get(`${api}/api/public/organizations/${project.slug}`);
-  expect(publicProfile.ok()).toBeTruthy();
-  const publicData = await publicProfile.json();
-  expect(publicData.pix_donations_available).toBe(true);
-  expect(publicData).not.toHaveProperty("pix_key");
-
-  await page.goto(`/projetos/${project.slug}`);
-  await expect(page.getByRole("complementary").getByText("Pix direto disponível", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Faça sua contribuição!" })).toHaveAttribute("href", "/painel/doacoes");
-  await expect(page.getByRole("button", { name: "Compartilhar projeto" })).toBeVisible();
-  await expect(page.getByRole("complementary").getByText(/Pessoas físicas e empresas podem iniciar uma doação/)).toBeVisible();
-  await expect(page.getByRole("complementary").getByText(/não recebe nem retém o dinheiro/)).toBeVisible();
-
+test("a tela de doações confirma SOL e apresenta prévia Pix sem receber transferências ainda", async ({ page }) => {
   await login(page, "12345678000195", "donor", "SocialTrade123!");
+  await page.route("**/api/solana-payments/quote", async (route) => route.fulfill({ json: { brl_per_sol: "500", updated_at: Math.floor(Date.now() / 1000), expires_at: Math.floor(Date.now() / 1000) + 300, source: "CoinGecko" } }));
+  let pixPostCount = 0;
+  let solanaIntentCounter = 40;
+  await page.route("**/api/solana-payments/intents", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    solanaIntentCounter += 1;
+    const intentId = solanaIntentCounter;
+    const reference = "11111111111111111111111111111111";
+    const recipient = "4BwSYD8V8KffnCBYYdP4rRXiaRn55UMpUPMbgUzbVRry";
+    await route.fulfill({ json: {
+      id: intentId, target: "project", project_id: 1, cause_code: "education", amount_lamports: 50_000_000,
+      reference, recipient_address: recipient,
+      payment_uri: `solana:${recipient}?amount=0.05&reference=${reference}&label=SocialTrade&message=Doacao%20SocialTrade`,
+      status: "pending", transaction_signature: null, expires_at: new Date(Date.now() + 600_000).toISOString(),
+    } });
+  });
+  await page.route("**/api/solana-payments/intents/*/verify", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/intents")) return route.continue();
+    await route.fulfill({ json: {
+      id: Number(url.pathname.split("/").at(-2)), target: "project", project_id: 1, cause_code: "education",
+      amount_lamports: 50_000_000, reference: "11111111111111111111111111111111",
+      recipient_address: "4BwSYD8V8KffnCBYYdP4rRXiaRn55UMpUPMbgUzbVRry",
+      payment_uri: "solana:4BwSYD8V8KffnCBYYdP4rRXiaRn55UMpUPMbgUzbVRry?amount=0.05&reference=11111111111111111111111111111111&label=SocialTrade&message=Doacao%20SocialTrade",
+      status: "confirmed", transaction_signature: "5yM4signaturedeTeste", expires_at: new Date(Date.now() + 600_000).toISOString(),
+    } });
+  });
+  await page.route("**/api/donations", async (route) => {
+    if (route.request().method() === "POST") pixPostCount += 1;
+    await route.continue();
+  });
   await page.goto("/painel/doacoes");
-  const indirectChoice = page.getByRole("button", { name: /Doe indiretamente/ });
-  await indirectChoice.click();
+  await expect(page.getByRole("heading", { name: "Contribua com uma causa." })).toBeVisible();
+  await expect(page.getByTestId("solana-pay-qr")).toHaveCount(0);
+  await page.getByLabel("Projeto social").selectOption({ index: 1 });
+  await page.getByRole("button", { name: /SOL · Solana Pay/ }).click();
+  await page.getByLabel("Valor da doação em reais", { exact: true }).fill("25,00");
+  await expect(page.getByLabel("Valor da doação em SOL", { exact: true })).toHaveValue("0,05");
+  await page.getByLabel("Valor da doação em SOL", { exact: true }).fill("0,1");
+  await expect(page.getByLabel("Valor da doação em reais", { exact: true })).toHaveValue("50,00");
+  await page.getByLabel("Valor da doação em reais", { exact: true }).fill("25,00");
+  await page.getByRole("button", { name: "Visualizar QR Code" }).click();
+  await expect(page.getByRole("button", { name: "Copiar endereço da carteira Solana SocialTrade" })).toContainText("4BwSYD8V8KffnCBYYdP4rRXiaRn55UMpUPMbgUzbVRry");
+  const walletQr = page.getByTestId("solana-pay-qr");
+  await expect(walletQr).toBeVisible();
+  await expect(walletQr).toHaveAttribute("data-payment-uri", /^solana:4BwSYD8V8KffnCBYYdP4rRXiaRn55UMpUPMbgUzbVRry\?amount=0.05&reference=/);
+  await expect(page.getByTestId("sol-payment-confirmed")).toContainText("Pagamento confirmado na rede Solana");
+  await expect(page.getByText("5yM4signaturedeTeste")).toBeVisible();
+  await page.getByRole("button", { name: "Fechar", exact: true }).first().click();
+  await page.getByRole("button", { name: /Pix · BRL/ }).click();
+  await expect(page.getByTestId("solana-pay-qr")).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByLabel("Valor da doação em reais", { exact: true }).fill("25,00");
+  await page.getByRole("button", { name: "Visualizar QR Code" }).click();
+  await expect(page.getByTestId("pix-demo-warning")).toContainText("não é um código Pix válido");
+  await expect(page.getByTestId("pix-demo-qr").locator("svg")).toBeVisible();
+  await expect(page.getByTestId("pix-demo-qr")).toHaveAttribute("data-payload", "SOCIALTRADE_PIX_DEMO|NAO_PAGAVEL|valor=25.00");
+  await expect(page.getByText(/confirmação em tempo real será ativada/)).toBeVisible();
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
+  await page.getByRole("button", { name: /Doe indiretamente/ }).click();
   await expect(page.getByRole("heading", { name: "Doação por categoria" })).toBeVisible();
-  await expect(page.getByText(/conta recebedora da SocialTrade e a carteira Solana ainda serão definidas/i)).toBeVisible();
-  await expect(page.getByText(/estrelas|nota por IA/i)).toHaveCount(0);
-  await page.getByRole("button", { name: /Ajude seu projeto favorito!/ }).click();
-  await page.getByLabel("Projeto social").selectOption(String(project.id));
-  await page.getByLabel("Valor em reais").fill("0,01");
-  await page.getByRole("button", { name: "Continuar para o Pix" }).click();
-  await expect(page.getByText("pix-e2e@example.org", { exact: true })).toBeVisible();
-  await expect(page.locator('[aria-live="polite"]').getByText(/não garante abatimento no Imposto de Renda nem qualquer benefício fiscal/)).toBeVisible();
-  const e2e = `E${Date.now()}1234567890`;
-  await page.getByLabel("Identificador E2E do comprovante Pix").fill(e2e);
-  await page.getByRole("button", { name: "Informar pagamento" }).click();
-  await expect(page.getByText("Aguardando confirmação do projeto")).toBeVisible();
+  await page.getByRole("button", { name: /SOL · Solana Pay/ }).click();
+  await page.getByLabel("Valor da doação em SOL").fill("0,05");
+  await page.getByRole("button", { name: "Visualizar QR Code" }).click();
+  await expect(page.getByTestId("solana-pay-qr")).toBeVisible();
+  await expect(page.getByText(/distribuição ainda precisa ser tratada manualmente/i)).toBeVisible();
+  expect(pixPostCount).toBe(0);
+});
 
-  await login(page, "90000001000129", "project", "SocialTrade123!");
+test("pedido SOL não expira e pode ser cancelado para gerar outro QR ou escolher Pix", async ({ page, isMobile }) => {
+  await login(page, "12345678000195", "donor", "SocialTrade123!");
+  await page.route("**/api/solana-payments/quote", async (route) => route.fulfill({ json: { brl_per_sol: "500", updated_at: Math.floor(Date.now() / 1000), expires_at: Math.floor(Date.now() / 1000) + 300, source: "CoinGecko" } }));
+  let latest: Record<string, unknown> = {};
+  await page.route("**/api/solana-payments/intents/*/verify", async (route) => route.fulfill({ json: latest }));
   await page.goto("/painel/doacoes");
-  const donation = page.locator("article").filter({ hasText: e2e });
-  await expect(donation.getByRole("button", { name: "Confirmar que recebi" })).toBeVisible();
-  await donation.getByRole("button", { name: "Confirmar que recebi" }).click();
-  await expect(donation.getByRole("button", { name: "Baixar recibo" })).toBeVisible();
-
-  let personDocument = `90000000${testInfo.project.name.startsWith("mobile") ? "2" : "1"}`;
-  for (const length of [9, 10]) {
-    const sum = [...personDocument].reduce((total, digit, index) => total + Number(digit) * (length + 1 - index), 0);
-    const check = (sum * 10) % 11;
-    personDocument += String(check === 10 ? 0 : check);
+  await page.getByRole("button", { name: /SOL · Solana Pay/ }).click();
+  await page.getByLabel("Valor da doação em reais", { exact: true }).fill("25,00");
+  const generateButton = page.getByRole("button", { name: "Visualizar QR Code" });
+  await expect(generateButton).toBeDisabled();
+  await expect(generateButton).toHaveCSS("opacity", "0.5");
+  if (!isMobile) {
+    await page.getByTestId("payment-qr-trigger").hover();
+    await expect(page.getByRole("tooltip")).toHaveText("Escolha um projeto para ajudar!");
+    await expect(page.getByRole("tooltip")).toHaveCSS("opacity", "1");
   }
-  const accountSuffix = testInfo.project.name.startsWith("mobile") ? "mobile" : "desktop";
-  const registered = await request.post(`${api}/api/auth/register`, { data: {
-    full_name: "Doadora pessoa física E2E", username: `doadora_pf_${accountSuffix}`,
-    email: `doadora-pf-e2e-${accountSuffix}@example.org`, password: "SocialTrade123!",
-    password_confirmation: "SocialTrade123!", responsible_title: "Pessoa doadora",
-    role: "member", document: personDocument,
-  } });
-  expect(registered.status(), await registered.text()).toBe(201);
-  await login(page, personDocument, "person", "SocialTrade123!");
-  await page.goto("/painel/doacoes");
-  await expect(page.getByRole("heading", { name: "Doações por Pix." })).toBeVisible();
-  await page.getByLabel("Projeto social").selectOption(String(project.id));
-  await page.getByLabel("Valor em reais").fill("0,02");
-  await page.getByRole("button", { name: "Continuar para o Pix" }).click();
-  await expect(page.getByText("pix-e2e@example.org", { exact: true })).toBeVisible();
-  await expect(page.locator('[aria-live="polite"]').getByText(/não garante abatimento no Imposto de Renda nem qualquer benefício fiscal/)).toBeVisible();
-  const personE2e = `E${Date.now()}9876543210`;
-  await page.getByLabel("Identificador E2E do comprovante Pix").fill(personE2e);
-  await page.getByRole("button", { name: "Informar pagamento" }).click();
-  await expect(page.getByText("Aguardando confirmação do projeto")).toBeVisible();
-
-  await login(page, "90000001000129", "project", "SocialTrade123!");
-  await page.goto("/painel/doacoes");
-  const personalDonation = page.locator("article").filter({ hasText: personE2e });
-  await expect(personalDonation.getByText("Doadora pessoa física E2E")).toBeVisible();
-  await personalDonation.getByRole("button", { name: "Confirmar que recebi" }).click();
-  await expect(personalDonation.getByRole("button", { name: "Baixar recibo" })).toBeVisible();
-  const projectDonations = await request.get(`${api}/api/donations/mine`, { headers: auth });
-  const personalRecord = (await projectDonations.json()).find((item: { end_to_end_id: string }) => item.end_to_end_id === personE2e);
-  expect(personalRecord).toBeTruthy();
-  const personalReceipt = await request.get(`${api}/api/donations/${personalRecord.id}/receipt`, { headers: auth });
-  expect(personalReceipt.status()).toBe(200);
-  expect(await personalReceipt.text()).toContain("CPF do doador");
-  expect(await personalReceipt.text()).toContain(personDocument);
+  await page.getByTestId("payment-qr-trigger").click();
+  await expect(page.getByLabel("Projeto social")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByText("Selecione o campo “Projeto social” para continuar.")).toBeVisible();
+  await expect(page.getByLabel("Projeto social")).toBeFocused();
+  await page.getByLabel("Projeto social").selectOption({ index: 1 });
+  await expect(page.getByText("Selecione o campo “Projeto social” para continuar.")).toHaveCount(0);
+  await expect(generateButton).toBeEnabled();
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await page.getByLabel("Valor da doação em reais", { exact: true }).fill("");
+  await expect(generateButton).toBeDisabled();
+  await expect(generateButton).toHaveCSS("opacity", "0.5");
+  if (!isMobile) {
+    await page.getByTestId("payment-qr-trigger").hover();
+    await expect(page.getByRole("tooltip")).toHaveText("Digite um valor válido em reais ou SOL!");
+    await expect(page.getByRole("tooltip")).toHaveCSS("opacity", "1");
+  }
+  await page.getByLabel("Valor da doação em SOL", { exact: true }).fill("0");
+  await expect(generateButton).toBeDisabled();
+  await page.getByLabel("Valor da doação em SOL", { exact: true }).fill("0,05");
+  await expect(generateButton).toBeEnabled();
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  const firstResponse = page.waitForResponse((response) => response.url().endsWith("/api/solana-payments/intents") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Visualizar QR Code" }).click();
+  latest = await (await firstResponse).json();
+  expect(latest.expires_at).toBeNull();
+  await expect(page.getByText("O QR Code não expira.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Abrir em carteira compatível" })).toHaveCount(0);
+  await expect(page.getByText(/Utilização de outra rede pode causar perda permanente/)).toBeVisible();
+  const copyAddress = page.getByRole("button", { name: "Copiar endereço da carteira Solana SocialTrade" });
+  if (!isMobile) {
+    await page.getByText(/ATENÇÃO! Transação somente na rede Solana/).hover();
+    await expect(page.getByTestId("wallet-copy-hint")).toHaveCSS("opacity", "0");
+    await copyAddress.hover();
+    await expect(page.getByTestId("wallet-copy-hint")).toHaveCSS("opacity", "1");
+  }
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (value: string) => document.body.setAttribute("data-copied-address", value) } }));
+  await copyAddress.click();
+  await expect(page.locator("body")).toHaveAttribute("data-copied-address", "4BwSYD8V8KffnCBYYdP4rRXiaRn55UMpUPMbgUzbVRry");
+  const firstReference = latest.reference;
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
+  await page.reload();
+  await page.getByRole("button", { name: /SOL · Solana Pay/ }).click();
+  await expect(page.getByLabel("Valor da doação em SOL", { exact: true })).toHaveValue("0.05");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(generateButton).toBeDisabled();
+  await page.getByLabel("Projeto social").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Visualizar QR Code" }).click();
+  await expect(page.getByTestId("solana-pay-qr")).toHaveAttribute("data-payment-uri", String(latest.payment_uri));
+  await page.getByRole("button", { name: "Cancelar pagamento" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByLabel("Valor da doação em reais", { exact: true })).toBeEnabled();
+  expect(await page.evaluate(() => sessionStorage.getItem("socialtrade_solana_payment_intent_id"))).toBeNull();
+  await page.getByLabel("Projeto social").selectOption({ index: 1 });
+  await page.getByLabel("Valor da doação em reais", { exact: true }).fill("25,00");
+  const nextResponse = page.waitForResponse((response) => response.url().endsWith("/api/solana-payments/intents") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Visualizar QR Code" }).click();
+  latest = await (await nextResponse).json();
+  expect(latest.reference).not.toBe(firstReference);
+  await page.getByRole("button", { name: "Cancelar pagamento" }).click();
+  await page.getByRole("button", { name: /Pix · BRL/ }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByLabel("Valor da doação em reais", { exact: true }).fill("25,00");
+  await page.getByRole("button", { name: "Visualizar QR Code" }).click();
+  await expect(page.getByTestId("pix-demo-qr")).toBeVisible();
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
+  await page.reload();
+  await page.getByRole("button", { name: /SOL · Solana Pay/ }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("painel exige sessão e login inválido apresenta erro sem autenticar", async ({ page }) => {
@@ -554,6 +605,55 @@ test("painel exige sessão e login inválido apresenta erro sem autenticar", asy
   await page.getByRole("button", { name: "Entrar na minha conta" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Não foi possível entrar" })).toContainText("CPF/CNPJ ou senha incorretos.");
   expect(await page.evaluate(() => sessionStorage.getItem("socialtrade_token"))).toBeNull();
+});
+
+test("atalhos de demonstração autenticam projeto Pix e empresa doadora por CNPJ", async ({ page }) => {
+  const donorPage = await page.context().newPage();
+  const demoAccounts = [
+    { page, button: "Usar acesso do projeto", kind: "project", label: "CPF ou CNPJ", cnpj: "90000001000129", greeting: "Olá, Projeto." },
+    { page: donorPage, button: "Usar acesso do doador", kind: "donor", label: "CNPJ da empresa", cnpj: "12345678000195", greeting: "Olá, Empresa." },
+  ] as const;
+
+  for (const account of demoAccounts) {
+    await account.page.goto("/entrar");
+    await account.page.getByText("Ambiente de demonstração").click();
+    await account.page.getByRole("button", { name: account.button }).click();
+    await expect(account.page.getByRole("radio", { name: account.kind === "project" ? "Projeto social" : "Empresa" })).toBeChecked();
+    await expect(account.page.getByLabel(account.label, { exact: true })).toHaveValue(account.cnpj);
+    await expect(account.page.getByLabel("Senha", { exact: true })).toHaveValue("SocialTrade123!");
+    await account.page.getByRole("button", { name: "Entrar na minha conta" }).click();
+    await expect(account.page).toHaveURL(/\/painel$/);
+    await expect(account.page.getByRole("heading", { name: account.greeting, exact: true })).toBeVisible();
+    await expect(account.page.getByRole("link", { name: /Solicitações em aberto/ })).toBeVisible();
+    await expect(account.page.getByText("Empresa cadastrada", { exact: true })).toHaveCount(0);
+    await expect(account.page.getByText("Avisos da plataforma", { exact: true })).toHaveCount(0);
+  }
+
+  await donorPage.close();
+});
+
+test("menu mostra a quantidade de avisos não lidos e zera após consultá-los", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await login(page);
+  await expect(page.getByRole("heading", { name: "Da comunidade" })).toBeVisible();
+  const menuButton = page.getByRole("button", { name: "Abrir menu do painel" });
+  if (await menuButton.isVisible()) await menuButton.click();
+  await expect(page.getByRole("navigation", { name: "Navegação do painel" })).toBeVisible();
+  const noticesLink = page.getByRole("link", { name: /Avisos.*avisos não lidos/ });
+  await expect(noticesLink).toBeVisible();
+  await noticesLink.click();
+  await expect(page.getByRole("heading", { name: "Avisos da plataforma." })).toBeVisible();
+  const unreadCount = await page.evaluate(() => {
+    const value = Object.entries(localStorage).find(([key]) => key.startsWith("socialtrade-read-announcements-"))?.[1];
+    return value ? JSON.parse(value).length : 0;
+  });
+  expect(unreadCount).toBeGreaterThan(0);
+  const returnMenuButton = page.getByRole("button", { name: "Abrir menu do painel" });
+  if (await returnMenuButton.isVisible()) await returnMenuButton.click();
+  await expect(page.getByRole("navigation", { name: "Navegação do painel" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Avisos", exact: true })).toBeVisible();
+  await expect(page.getByLabel(/aviso[s]? não lido[s]?/)).toHaveCount(0);
 });
 
 test("login, restauração da sessão, edição persistida e logout", async ({ page }, testInfo) => {
@@ -581,11 +681,25 @@ test("suporte envia e mantém solicitação após recarregar", async ({ page }, 
   const subject = `Ajuda no cadastro ${testInfo.project.name} tentativa ${testInfo.retry}`;
   await page.getByLabel("Assunto", { exact: true }).fill(subject);
   await page.getByLabel("Relato", { exact: true }).fill("Preciso de orientação para atualizar os dados da organização.");
+  const createdResponse = page.waitForResponse((response) => response.url().endsWith("/api/support") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Abrir ticket" }).click();
-  await expect(page.getByRole("status").filter({ hasText: /Ticket aberto com sucesso\. Protocolo \d+/ })).toBeVisible();
+  const created = await (await createdResponse).json();
+  expect(created.protocol).toMatch(/^[0-9]{6}$/);
+  await expect(page.getByRole("status").filter({ hasText: `Ticket aberto com sucesso. Protocolo ${created.protocol}.` })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Seus tickets" })).toBeVisible();
   await page.reload();
   await expect(page.getByText(subject, { exact: true })).toBeVisible();
+  const card = page.locator("article").filter({ hasText: subject });
+  await expect(card).toContainText(`Protocolo #${created.protocol}`);
+  await expect(card).toContainText("Recebida");
+  const moderatorLogin = await page.request.post("/api/auth/login", { data: { document: "33333333333", password: "SocialTrade123!", account_type: "project" } });
+  expect(moderatorLogin.ok()).toBeTruthy();
+  const moderator = await moderatorLogin.json();
+  const resolved = await page.request.patch(`/api/moderation/tickets/${created.id}`, { data: { status: "resolved" }, headers: { Authorization: `Bearer ${moderator.access_token}` } });
+  expect(resolved.ok()).toBeTruthy();
+  await page.reload();
+  await expect(card).toContainText(`Protocolo #${created.protocol}`);
+  await expect(card).toContainText("Resolvida");
 });
 
 test("cadastro em etapas cria pessoa e permite entrar", async ({ page }, testInfo) => {
@@ -668,7 +782,10 @@ test("navegação móvel funciona por teclado e página não transborda", async 
   await expect(navigation).toHaveCount(0);
   await page.getByRole("button", { name: "Encontrar um projeto", exact: false }).click();
   await expect(page.locator("#projetos")).toBeInViewport();
-  await expect(page.getByRole("link", { name: "Meu projeto", exact: true })).toBeVisible();
+  await toggle.click();
+  await expect(navigation.getByRole("link", { name: "Meu projeto", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(navigation).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /Confiança se constrói com informação/ })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });

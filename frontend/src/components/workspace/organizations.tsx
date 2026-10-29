@@ -20,6 +20,7 @@ import {
   validCnpj,
 } from "@/components/auth/validation";
 import { Badge } from "@/components/ui/badge";
+import { FieldError, ValidatedForm } from "@/components/ui/validated-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -537,7 +538,7 @@ export function OrganizationEditor({
             Campos com * são obrigatórios.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="mt-3 space-y-7">
+        <ValidatedForm onSubmit={submit} onChange={() => setError(null)} className="mt-3 space-y-7">
           <fieldset className="space-y-5">
             <legend className="mb-4 text-sm font-semibold text-primary">
               1. Sobre a organização
@@ -606,9 +607,7 @@ export function OrganizationEditor({
                   className="mt-2"
                 />
                 {fieldErrors.founding_year && (
-                  <p id="org-year-error" className="mt-1.5 text-xs font-medium text-destructive">
-                    {fieldErrors.founding_year}
-                  </p>
+                  <FieldError id="org-year-error">{fieldErrors.founding_year}</FieldError>
                 )}
               </div>
             </div>
@@ -654,9 +653,7 @@ export function OrganizationEditor({
                   </SelectContent>
                 </Select>
                 {fieldErrors.city && (
-                  <p id="org-city-error" className="mt-1.5 text-xs font-medium text-destructive">
-                    {fieldErrors.city}
-                  </p>
+                  <FieldError id="org-city-error">{fieldErrors.city}</FieldError>
                 )}
                 {state && !locations.loading && locations.error && (
                   <p role="status" className="mt-1.5 text-xs text-muted-foreground">
@@ -704,12 +701,7 @@ export function OrganizationEditor({
                   </SelectContent>
                 </Select>
                 {fieldErrors.state && (
-                  <p
-                    id="org-state-error"
-                    className="mt-1.5 text-xs font-medium text-destructive"
-                  >
-                    {fieldErrors.state}
-                  </p>
+                  <FieldError id="org-state-error">{fieldErrors.state}</FieldError>
                 )}
               </div>
             </div>
@@ -791,12 +783,7 @@ export function OrganizationEditor({
                 2. Áreas de atuação *
               </legend>
               {fieldErrors.areas && (
-                <p
-                  id="org-areas-error"
-                  className="-mt-2 mb-3 text-xs font-medium text-destructive"
-                >
-                  {fieldErrors.areas}
-                </p>
+                <FieldError id="org-areas-error">{fieldErrors.areas}</FieldError>
               )}
               <div className="grid gap-3 sm:grid-cols-2">
                 {catalog.areas.map((area) => (
@@ -905,9 +892,7 @@ export function OrganizationEditor({
                 className="mt-2 read-only:bg-muted"
               />
               {fieldErrors.cnpj && (
-                <p id="org-cnpj-error" className="mt-1.5 text-xs font-medium text-destructive">
-                  {fieldErrors.cnpj}
-                </p>
+                <FieldError id="org-cnpj-error">{fieldErrors.cnpj}</FieldError>
               )}
             </div>
             {isProject && (
@@ -992,7 +977,7 @@ export function OrganizationEditor({
               </Button>
             </div>
           </div>
-        </form>
+        </ValidatedForm>
       </DialogContent>
     </Dialog>
   );

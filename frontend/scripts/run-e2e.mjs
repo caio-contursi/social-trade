@@ -27,7 +27,9 @@ const env = {
   // nunca é usada como alternativa para preparar ou limpar os dados do E2E.
   SOCIALTRADE_DATABASE_URL: process.env.SOCIALTRADE_TEST_DATABASE_URL || "",
   SOCIALTRADE_DATABASE_SCHEMA: databaseSchema,
-  SOCIALTRADE_DEMO_USERS: "false",
+  // O schema E2E isolado contém apenas contas fictícias; habilitamos os atalhos
+  // para verificar o fluxo público de demonstração sem expor contas reais.
+  SOCIALTRADE_DEMO_USERS: "true",
   SOCIALTRADE_TOKEN_SECRET: "isolated-e2e-secret-not-for-production",
   PYTHON_DOTENV_DISABLED: "1",
   PYTHONDONTWRITEBYTECODE: "1",

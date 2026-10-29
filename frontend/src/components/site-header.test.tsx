@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SiteHeader } from "./site-header";
 
@@ -23,6 +23,7 @@ describe("navegação do cabeçalho", () => {
     expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/entrar");
     expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("data-route-transition");
     expect(screen.getByRole("link", { name: "Fazer cadastro" })).toHaveAttribute("href", "/cadastro");
+    expect(screen.getByRole("link", { name: "Fazer cadastro" })).toHaveAttribute("data-route-transition");
   });
 
   it("mostra suporte ao lado das ações da conta e aponta para o painel", () => {
@@ -43,7 +44,7 @@ describe("navegação do cabeçalho", () => {
     expect(screen.queryByRole("link", { name: "Explorar projetos" })).not.toBeInTheDocument();
   });
 
-  it("mantém somente as três seções institucionais na página 1", () => {
+  it("exibe as três seções institucionais sem o quiz na página inicial", () => {
     auth.user = null;
     auth.pathname = "/";
     render(<SiteHeader />);
@@ -53,6 +54,7 @@ describe("navegação do cabeçalho", () => {
     expect(screen.getByRole("link", { name: "Quem somos" })).toHaveAttribute("href", "/#quem-somos");
     expect(screen.getByRole("link", { name: "Como funciona" })).toHaveAttribute("href", "/#como-funciona");
     expect(screen.getByRole("link", { name: "Transparência" })).toHaveAttribute("href", "/#transparencia");
+    expect(screen.queryByRole("link", { name: /quiz de causas|Encontre sua causa/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fazer cadastro" })).toBeInTheDocument();
   });
@@ -73,4 +75,23 @@ describe("navegação do cabeçalho", () => {
     expect(causeFinder).toHaveAttribute("href", "#encontre-sua-causa");
     expect(causeFinder).not.toHaveTextContent("Em breve");
   });
+  it("mantém o quiz apenas no menu lateral da página 2 em telas menores", () => {
+    auth.user = null;
+    auth.pathname = "/";
+    render(<SiteHeader />);
+    fireEvent.click(screen.getByRole("button", { name: "Abrir navegação" }));
+    const mobile = screen.getByRole("navigation", { name: "Navegação móvel" });
+    expect(within(mobile).queryByRole("link", { name: /quiz de causas|Encontre sua causa/ })).not.toBeInTheDocument();
+    act(() => window.dispatchEvent(new CustomEvent("socialtrade:explore-projects", { detail: true })));
+    expect(within(mobile).getByRole("link", { name: "Procurar projeto/instituição" })).toHaveAttribute("href", "#projetos");
+    expect(within(mobile).getByRole("link", { name: "Meu projeto" })).toHaveAttribute("href", "#meu-projeto");
+    expect(within(mobile).getByRole("link", { name: "Encontre sua causa" }))
+      .toHaveAttribute("href", "#encontre-sua-causa");
+    expect(within(mobile).getByRole("link", { name: "Encontre sua causa" }))
+      .toHaveClass("hover:bg-accent", "transition-colors");
+    expect(screen.queryByRole("navigation", { name: "Navegação de projetos" })).not.toBeInTheDocument();
+    act(() => window.dispatchEvent(new CustomEvent("socialtrade:explore-projects", { detail: false })));
+    expect(within(mobile).queryByRole("link", { name: "Encontre sua causa" })).not.toBeInTheDocument();
+  });
+
 });

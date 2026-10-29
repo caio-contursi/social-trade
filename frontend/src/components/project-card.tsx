@@ -70,17 +70,12 @@ export function ProjectCard({ project }: { project: Project }) {
       <div className="relative">
         <ProjectVisual project={project} />
         {project.is_demo && (
-          <Badge className="absolute top-3 right-3 gap-1.5 border border-border bg-card/95 text-[#17392e]">
+          <Badge className="absolute top-3 right-3 gap-1.5 border border-border bg-card/95 text-[var(--surface-green-foreground)]">
             <span
               aria-hidden="true"
               className="size-1.5 rounded-full bg-energy"
             />
             Demonstração
-          </Badge>
-        )}
-        {project.pix_donations_available && (
-          <Badge variant="secondary" className="absolute right-3 bottom-3 bg-card/95 text-[#17392e]">
-            Pix direto disponível
           </Badge>
         )}
       </div>
@@ -108,7 +103,7 @@ export function ProjectCard({ project }: { project: Project }) {
               <li key={area}>
                 <Badge
                   variant="outline"
-                  className="gap-1.5 bg-background text-[11px] font-medium text-[#17392e]"
+                  className="gap-1.5 bg-background text-[11px] font-medium text-[var(--surface-green-foreground)]"
                 >
                   <span
                     aria-hidden="true"
@@ -126,7 +121,7 @@ export function ProjectCard({ project }: { project: Project }) {
             <li>
               <Badge
                 variant="outline"
-                className="bg-background text-[11px] font-medium text-[#17392e]"
+                className="bg-background text-[11px] font-medium text-[var(--surface-green-foreground)]"
               >
                 +{project.areas.length - 2} causas
               </Badge>
@@ -137,7 +132,7 @@ export function ProjectCard({ project }: { project: Project }) {
           href={`/projetos/${encodeURIComponent(project.slug)}#conteudo`}
           scroll
           aria-label={`Conhecer ${project.name}`}
-          className="mt-auto inline-flex items-center justify-between gap-3 border-t pt-4 text-sm font-semibold text-[#145b4b]"
+          className="mt-auto inline-flex items-center justify-between gap-3 border-t pt-4 text-sm font-semibold text-[var(--surface-green-accent)]"
         >
           Conhecer o projeto
           <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:translate-x-0.5">

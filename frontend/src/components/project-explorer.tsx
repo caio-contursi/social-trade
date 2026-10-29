@@ -9,7 +9,7 @@ import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { areaLabels, brazilStates, compareRecentProjects } from "@/lib/catalog";
+import { areaLabels, brazilStates, compareRecentProjects, projectFilterCauseCodes } from "@/lib/catalog";
 import type { Project } from "@/lib/types";
 
 function normalize(value: string) {
@@ -119,7 +119,7 @@ export function ProjectExplorer({
     label: `${stateNames[uf]} (${uf})`,
     keywords: uf,
   })).sort((a, b) => a.label.localeCompare(b.label, "pt-BR")), []);
-  const causeOptions = useMemo(() => Object.entries(areaLabels).map(([value, label]) => ({ value, label })), []);
+  const causeOptions = useMemo(() => projectFilterCauseCodes.map((value) => ({ value, label: areaLabels[value] })), []);
   const cityOptions = useMemo(() => {
     const names = new Set(cities);
     if (city && !names.has(city)) names.add(city);
@@ -230,7 +230,7 @@ export function ProjectExplorer({
             label="Ordenar por"
             value={order}
             options={sortOptions}
-            placeholder="Projetos recentemente adicionados"
+            placeholder="Selecione a ordem"
             searchPlaceholder="Digite para localizar uma opção"
             onValueChange={(value) => {
               const next = value || "recentes";
@@ -249,11 +249,11 @@ export function ProjectExplorer({
         <p
           role="status"
           aria-live="polite"
-          className="flex items-center gap-2 text-sm text-[#e1eadf]"
+          className="flex items-center gap-2 text-sm text-[var(--forest-muted)]"
         >
           <ListFilter className="size-4" aria-hidden="true" />
           <span>
-            <strong className="font-semibold text-white">
+            <strong className="font-semibold text-[var(--forest-foreground)]">
               {filtered.length}
             </strong>{" "}
             {filtered.length === 1
@@ -266,7 +266,7 @@ export function ProjectExplorer({
             variant="ghost"
             size="sm"
             onClick={reset}
-            className="text-[#e1eadf]"
+            className="text-[var(--forest-muted)]"
           >
             <X className="size-3.5" /> Limpar filtros
           </Button>
@@ -309,7 +309,7 @@ export function ProjectExplorer({
               {hasFilters ? (
                 "Limpar filtros"
               ) : (
-                <Link href="/cadastro?tipo=project">
+                <Link data-route-transition href="/cadastro?tipo=project">
                   Cadastrar meu projeto <ArrowRight className="size-4" />
                 </Link>
               )}
@@ -334,12 +334,12 @@ export function ProjectInvite() {
         <h2 className="font-display text-2xl leading-tight font-medium sm:text-3xl">
           Sua iniciativa pode transformar ainda mais histórias.
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-[#405e4c] sm:text-base">
+        <p className="mt-3 text-sm leading-relaxed text-[var(--surface-green-muted)] sm:text-base">
           Apresente seu trabalho, conte seus objetivos e aproxime pessoas e empresas que querem apoiar boas causas.
         </p>
       </div>
       <Button asChild variant="energy" size="lg" className="relative w-full shrink-0 sm:w-auto">
-        <Link href="/cadastro?tipo=project">
+        <Link data-route-transition href="/cadastro?tipo=project">
           Apresentar meu projeto <ArrowRight className="size-4" />
         </Link>
       </Button>

@@ -84,7 +84,7 @@ export function WorkspaceHeading({
 }: {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   action?: React.ReactNode;
 }) {
   return (
@@ -92,9 +92,9 @@ export function WorkspaceHeading({
       <div className="max-w-2xl">
         {eyebrow && <p className="eyebrow mb-3">{eyebrow}</p>}
         <h1 className="page-title">{title}</h1>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+        {description && <p className="mt-3 text-base leading-relaxed text-muted-foreground">
           {description}
-        </p>
+        </p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -149,7 +149,7 @@ export function EmptyState({
   icon,
 }: {
   title: string;
-  description: string;
+  description?: string;
   action?: React.ReactNode;
   icon?: React.ReactNode;
 }) {

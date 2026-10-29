@@ -207,6 +207,35 @@ def test_deleting_owner_or_ticket_author_cannot_erase_entities(db_connection):
     reject(db_connection, support_tickets.update().where(support_tickets.c.id == ticket).values(status="deleted"))
 
 
+def test_ticket_protocol_constraints_and_default(db_connection):
+    owner = insert_user(db_connection)
+    values = {"user_id": owner, "subject": "Ticket de teste", "message": "Relato fictício para teste."}
+    db_connection.execute(support_tickets.insert().values(**values, protocol="000007"))
+    for protocol in ["000007", "12345", "12a456", None]:
+        reject(db_connection, support_tickets.insert().values(**values, protocol=protocol))
+    db_connection.execute(support_tickets.delete().where(support_tickets.c.protocol == "000007"))
+    generated = db_connection.execute(support_tickets.insert().values(**values).returning(support_tickets.c.protocol)).scalar_one()
+    assert len(generated) == 6 and generated.isascii() and generated.isdigit()
+
+
+def test_ticket_protocol_migration_backfills_existing_open_and_resolved_tickets(db_connection):
+    import re
+    owner = insert_user(db_connection)
+    for index, state in enumerate(["open", "resolved"]):
+        db_connection.execute(support_tickets.insert().values(user_id=owner, protocol=f"{index:06d}", subject=f"Ticket {state}", message="Relato mantido após migração.", status=state))
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    config.attributes["connection"] = db_connection
+    command.downgrade(config, "20261028_0005")
+    before = list(db_connection.execute(sa.text("SELECT id, subject, message, status FROM support_tickets ORDER BY id")))
+    command.upgrade(config, "head")
+    after = list(db_connection.execute(sa.select(support_tickets).order_by(support_tickets.c.id)).mappings())
+    assert [(row["id"], row["subject"], row["message"], row["status"]) for row in after] == [tuple(row) for row in before]
+    codes = [row["protocol"] for row in after]
+    assert len(set(codes)) == 2 and all(re.fullmatch(r"[0-9]{6}", code) for code in codes)
+    command.upgrade(config, "head")
+    assert list(db_connection.execute(sa.select(support_tickets.c.protocol).order_by(support_tickets.c.id)).scalars()) == codes
+
+
 def test_only_dependent_relationships_cascade_when_parent_is_deleted(db_connection):
     owner, member = insert_user(db_connection), insert_user(db_connection)
     project = insert_organization(db_connection, owner)

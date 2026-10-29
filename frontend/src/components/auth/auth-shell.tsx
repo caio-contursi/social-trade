@@ -23,6 +23,7 @@ export function AuthShell({
           className="dot-pattern absolute inset-0 opacity-[.06]"
         />
         <Link
+          data-route-transition
           href="/"
           aria-label="SocialTrade, página inicial"
           className="relative w-fit rounded-sm"
@@ -68,6 +69,7 @@ export function AuthShell({
           </div>
         </div>
         <Link
+          data-route-transition
           href="/?explorar=projetos#projetos"
           className="relative inline-flex w-fit items-center gap-2 rounded-sm text-sm font-semibold text-energy underline-offset-4 hover:underline"
         >
@@ -77,6 +79,7 @@ export function AuthShell({
       <div className="flex min-h-screen flex-col">
         <header className="flex items-center justify-between gap-4 px-5 py-6 sm:px-10">
           <Link
+            data-route-transition
             href="/"
             className="lg:hidden"
             aria-label="SocialTrade, página inicial"
@@ -84,6 +87,7 @@ export function AuthShell({
             <Brand compact />
           </Link>
           <Link
+            data-route-transition
             href="/"
             className="hidden items-center gap-2 text-sm text-muted-foreground hover:text-foreground lg:inline-flex"
           >

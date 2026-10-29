@@ -6,6 +6,27 @@ export function parseDonationAmount(value: string): number | null {
   return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
 }
 
+/** Converte SOL em lamports sem arredondar além das nove casas da moeda. */
+export function parseSolAmount(value: string): number | null {
+  const match = /^(\d{1,3})(?:[.,](\d{1,9}))?$/.exec(value.trim());
+  if (!match) return null;
+  const lamports = Number(match[1]) * 1_000_000_000
+    + Number((match[2] || "").padEnd(9, "0") || "0");
+  if (!Number.isSafeInteger(lamports) || lamports < 100_000 || lamports > 100_000_000_000) return null;
+  return lamports;
+}
+
+/** Indicative conversion; SOL output is rounded once to whole lamports. */
+export function convertDonationCurrency(value: string, from: "BRL" | "SOL", rate: number): string {
+  const pattern = from === "BRL" ? /^\d{1,9}(?:[.,]\d{0,2})?$/ : /^\d{1,3}(?:[.,]\d{0,9})?$/;
+  if (!pattern.test(value) || !Number.isFinite(rate) || rate <= 0) return "";
+  const number = Number(value.replace(",", "."));
+  const converted = from === "BRL" ? number / rate : number * rate;
+  if (!Number.isFinite(converted) || converted < 0) return "";
+  const formatted = converted.toFixed(from === "BRL" ? 9 : 2);
+  return (from === "BRL" ? formatted.replace(/\.?0+$/, "") || "0" : formatted).replace(".", ",");
+}
+
 /** Mantém somente dígitos e um separador decimal, com até duas casas. */
 export function normalizeDonationAmount(value: string): string {
   const normalized = value.replace(/[^\d,.]/g, "");

@@ -80,7 +80,7 @@ def isolated_database(api, pytestconfig):
     assert importlib.import_module("app.database").engine.url == pytestconfig._socialtrade_admin_engine.url
     with api.transaction() as db:
         assert db.exec_driver_sql("SELECT current_schema()").scalar_one() == pytestconfig._socialtrade_schema
-        for name in ("support_tickets", "donations", "project_memberships", "organization_services", "organization_areas", "organizations", "users", "announcements"):
+        for name in ("support_tickets", "solana_payment_intents", "donations", "project_memberships", "organization_services", "organization_areas", "organizations", "users", "announcements"):
             db.execute(delete(getattr(models, name)))
 
 

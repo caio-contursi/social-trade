@@ -2,29 +2,46 @@ import re
 import secrets
 import unicodedata
 import html
+from datetime import datetime, timezone
 from uuid import uuid4
 from contextlib import contextmanager
 from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from app.form_validation import validation_detail
 from sqlalchemy import delete, func, insert, select, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.auth import current_user, moderator
 from app.catalog import ROLE_LABELS, get_catalog_codes, load_catalog
-from app.config import DEMO_USERS_ENABLED
+from app.config import DEMO_USERS_ENABLED, SOLANA_WALLET_ADDRESS
 from app.database import connect, transaction
 from app.models import (
     announcements as announcement_table, donations, organization_areas, organization_services,
-    organizations, project_memberships, support_tickets, users,
+    organizations, project_memberships, solana_payment_intents, support_tickets, users,
 )
 from app.schemas import (
     AnnouncementInput, DonationCreateInput, DonationPaymentReportInput,
     InstitutionRegisterInput, LoginInput, OrganizationCreate, PixVerificationInput, ProfileUpdate,
+    SolanaPaymentIntentInput,
     RegisterInput, TicketInput, TicketStatusInput,
 )
 from app.security import hash_password, issue_token, verify_password
+from app.exchange_rates import QuoteUnavailable, sol_brl_quote
+from app.solana import (
+    SolanaRpcError, find_confirmed_payment, is_solana_address,
+    new_payment_reference, payment_intent_view,
+)
 
 
 app = FastAPI(title="SocialTrade", version="0.1.0", description="Cadastro e acompanhamento de organizações sociais.")
+
+
+@app.exception_handler(RequestValidationError)
+async def form_validation_error(request, error: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": [validation_detail(item) for item in error.errors()]})
+
+
 PUBLIC_ORGANIZATION_FIELDS = (
     "id", "name", "slug", "organization_type", "city", "state", "founding_year",
     "short_description", "objective", "impact_summary", "description", "website_url",
@@ -410,6 +427,117 @@ def create_donation(payload: DonationCreateInput, user=Depends(current_user)):
     }
 
 
+@app.get("/api/solana-payments/quote")
+def get_solana_quote(user=Depends(current_user)):
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente doadores podem consultar a cotação de pagamento.")
+    try:
+        return sol_brl_quote()
+    except QuoteUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@app.post("/api/solana-payments/intents", status_code=status.HTTP_201_CREATED)
+def create_solana_payment_intent(payload: SolanaPaymentIntentInput, user=Depends(current_user)):
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente empresas ou pessoas físicas podem iniciar um pagamento.")
+    if not is_solana_address(SOLANA_WALLET_ADDRESS):
+        raise HTTPException(status_code=503, detail="A carteira Solana da SocialTrade não está configurada corretamente.")
+    with write_transaction() as db:
+        if user["account_type"] == "donor" and not db.execute(select(organizations.c.id).where(
+            organizations.c.owner_id == user["id"], organizations.c.institution_kind == "donor",
+        )).first():
+            raise HTTPException(status_code=409, detail="A conta da empresa doadora precisa ter um perfil institucional cadastrado.")
+        if payload.project_id is not None:
+            project_exists = db.execute(select(organizations.c.id).where(
+                organizations.c.id == payload.project_id, organizations.c.institution_kind == "project",
+            )).first()
+            if project_exists is None:
+                raise HTTPException(status_code=404, detail="Projeto social não encontrado.")
+        if payload.cause_code is not None and payload.cause_code not in get_catalog_codes(db)["areas"]:
+            raise HTTPException(status_code=422, detail="Selecione uma causa válida.")
+
+        payment_id = db.execute(insert(solana_payment_intents).values(
+            donor_user_id=user["id"], target=payload.target,
+            project_organization_id=payload.project_id,
+            cause_code=payload.cause_code, amount_lamports=payload.amount_lamports,
+            reference=new_payment_reference(), status="pending",
+            expires_at=None,
+        ).returning(solana_payment_intents.c.id)).scalar_one()
+        row = db.execute(select(solana_payment_intents).where(
+            solana_payment_intents.c.id == payment_id,
+        )).mappings().one()
+    return payment_intent_view(dict(row))
+
+
+@app.post("/api/solana-payments/intents/{payment_id}/verify")
+def read_solana_payment_intent(payment_id: int, user=Depends(current_user)):
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente quem iniciou o pagamento pode consultar seu status.")
+    with connect() as db:
+        row = db.execute(select(solana_payment_intents).where(
+            solana_payment_intents.c.id == payment_id,
+            solana_payment_intents.c.donor_user_id == user["id"],
+        )).mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado.")
+    intent = dict(row)
+    if intent["status"] != "pending":
+        return payment_intent_view(intent)
+
+    try:
+        signature = find_confirmed_payment(
+            intent["reference"], SOLANA_WALLET_ADDRESS, intent["amount_lamports"],
+        )
+    except SolanaRpcError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+    now = datetime.now(timezone.utc)
+    if signature:
+        with write_transaction() as db:
+            db.execute(update(solana_payment_intents).where(
+                solana_payment_intents.c.id == payment_id,
+                solana_payment_intents.c.donor_user_id == user["id"],
+                solana_payment_intents.c.status == "pending",
+            ).values(
+                status="confirmed", transaction_signature=signature,
+                confirmed_at=now,
+            ))
+            row = db.execute(select(solana_payment_intents).where(
+                solana_payment_intents.c.id == payment_id,
+                solana_payment_intents.c.donor_user_id == user["id"],
+            )).mappings().one()
+        return payment_intent_view(dict(row))
+
+    with connect() as db:
+        row = db.execute(select(solana_payment_intents).where(
+            solana_payment_intents.c.id == payment_id,
+            solana_payment_intents.c.donor_user_id == user["id"],
+        )).mappings().one()
+    return payment_intent_view(dict(row))
+
+
+@app.post("/api/solana-payments/intents/{payment_id}/cancel")
+def cancel_solana_payment_intent(payment_id: int, user=Depends(current_user)):
+    if user["account_type"] not in {"donor", "person"}:
+        raise HTTPException(status_code=403, detail="Somente quem iniciou o pagamento pode cancelar o pedido.")
+    with write_transaction() as db:
+        row = db.execute(select(solana_payment_intents).where(
+            solana_payment_intents.c.id == payment_id,
+            solana_payment_intents.c.donor_user_id == user["id"],
+        ).with_for_update()).mappings().first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Pagamento não encontrado.")
+        if row["status"] == "confirmed":
+            raise HTTPException(status_code=409, detail="Pagamento já confirmado. A transferência não pode ser cancelada.")
+        db.execute(update(solana_payment_intents).where(
+            solana_payment_intents.c.id == payment_id,
+        ).values(status="cancelled"))
+        result = dict(row)
+        result["status"] = "cancelled"
+    return payment_intent_view(result)
+
+
 @app.get("/api/donations/mine")
 def my_donations(user=Depends(current_user)):
     if user["account_type"] in {"donor", "person"}:
@@ -574,16 +702,19 @@ def announcements(user=Depends(current_user)):
 
 @app.post("/api/support", status_code=status.HTTP_201_CREATED)
 def create_ticket(payload: TicketInput, user=Depends(current_user)):
-    with transaction() as db:
-        ticket_id = db.execute(insert(support_tickets).values(user_id=user["id"], subject=payload.subject.strip(),
-            message=payload.message.strip()).returning(support_tickets.c.id)).scalar_one()
-    return {"id": ticket_id, "message": "Sua solicitação foi enviada para o suporte."}
+    with write_transaction() as db:
+        ticket_id, protocol = insert_with_generated_value(
+            db, support_tickets,
+            {"user_id": user["id"], "subject": payload.subject.strip(), "message": payload.message.strip()},
+            "protocol", lambda: f"{secrets.randbelow(1_000_000):06d}", "uq_support_tickets_protocol",
+        )
+    return {"id": ticket_id, "protocol": protocol, "message": "Sua solicitação foi enviada para o suporte."}
 
 
 @app.get("/api/support/mine")
 def my_tickets(user=Depends(current_user)):
     with connect() as db:
-        return list(db.execute(select(*[support_tickets.c[field] for field in ("id", "subject", "message", "status", "created_at")])
+        return list(db.execute(select(*[support_tickets.c[field] for field in ("id", "protocol", "subject", "message", "status", "created_at")])
             .where(support_tickets.c.user_id == user["id"])
             .order_by(support_tickets.c.created_at.desc(), support_tickets.c.id.desc())).mappings())
 

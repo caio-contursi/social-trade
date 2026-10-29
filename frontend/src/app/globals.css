@@ -64,7 +64,7 @@ html {
 
 .discovery-viewport {
   width: 100%;
-  overflow: hidden;
+  overflow: clip;
   background-color: var(--surface-green);
   transition: background-color 500ms ease;
 }
@@ -78,7 +78,7 @@ html {
 }
 
 .discovery-viewport[data-exploring="false"] [aria-label="Apresentação da SocialTrade"] .title-mark {
-  color: #155e52;
+  color: var(--surface-green-accent);
 }
 
 .discovery-viewport[data-exploring="false"] [aria-label="Apresentação da SocialTrade"] .text-muted-foreground {
@@ -99,7 +99,7 @@ html {
   color: var(--forest-foreground);
   background-color: var(--forest);
   --focus-ring: var(--energy);
-  --forest-number: #f4f6ef;
+  --forest-number: var(--forest-foreground);
 }
 
 .landing-details .ink-panel {
@@ -140,11 +140,19 @@ html {
 }
 
 [data-projects-panel] .my-7 p[role="status"] strong {
-  color: #ffffff;
+  color: var(--forest-foreground);
 }
 
 [data-projects-panel] .text-muted-foreground {
   color: var(--forest-muted);
+}
+
+[data-projects-panel] .cause-quiz-card .text-muted-foreground {
+  color: var(--surface-green-muted);
+}
+
+[data-projects-panel] .cause-quiz-card .title-mark {
+  color: var(--surface-green-accent);
 }
 
 [data-filter-card] .text-muted-foreground {
@@ -153,49 +161,49 @@ html {
 
 [data-filter-card] input {
   background-color: var(--surface-green-raised);
-  color: #17392e;
+  color: var(--surface-green-foreground);
 }
 
 [data-filter-card] [role="combobox"] {
   background-color: var(--surface-green-raised);
-  color: #17392e;
+  color: var(--surface-green-foreground);
 }
 
 .site-header-frost {
-  color: #17392e;
-  border-color: rgb(34 62 47 / 14%);
-  background-color: rgb(246 239 226 / 58%);
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--border) 65%, transparent);
+  background-color: color-mix(in srgb, var(--cream) 58%, transparent);
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   backdrop-filter: blur(18px) saturate(135%);
-  box-shadow: 0 6px 24px rgb(20 48 38 / 7%);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
 .site-header-frost .text-muted-foreground {
-  color: #344b3d;
+  color: var(--muted-foreground);
 }
 
 .site-header-frost a:hover {
-  color: #17392e;
+  color: var(--foreground);
 }
 
 .site-header-frost [data-variant="ghost"],
 .site-header-frost [data-variant="outline"] {
-  color: #17392e;
+  color: var(--foreground);
 }
 
 .site-header-frost [data-variant="outline"] {
-  border-color: #87988b;
+  border-color: var(--input);
 }
 
 .site-header-frost .site-nav-link {
   position: relative;
-  color: #344b3d;
+  color: var(--muted-foreground);
   font-weight: 550;
 }
 
 .site-header-frost a[aria-label="Encontre sua causa"] {
   position: relative;
-  color: #344b3d;
+  color: var(--muted-foreground);
   font-family: inherit;
   font-size: inherit;
   font-weight: 550;
@@ -203,7 +211,7 @@ html {
 
 .site-header-frost .site-nav-link:hover,
 .site-header-frost .site-nav-link[aria-current="page"] {
-  color: #17392e;
+  color: var(--foreground);
 }
 
 .site-header-frost .site-nav-link::after,
@@ -311,24 +319,25 @@ html {
 }
 
 .site-footer-cream {
-  color: #17392e;
+  color: var(--cream-foreground);
   background-color: var(--cream);
 }
 
 .site-footer-cream .footer-copy {
-  color: #485f50;
+  color: var(--cream-muted);
 }
 
 .site-footer-cream .footer-link {
-  color: #344e40;
+  color: var(--cream-link);
 }
 
 .site-footer-cream .footer-link:hover {
-  color: #17392e;
+  color: var(--cream-foreground);
 }
 
 .site-footer-cream .footer-rule {
   border-color: var(--cream-border);
+  color: var(--cream-muted);
 }
 
 .public-card [class*="bg-background"],
@@ -391,20 +400,20 @@ html[data-exploring-projects="true"] .landing-details {
 
 .searchable-option:hover,
 .searchable-option[data-active="true"] {
-  color: #111111 !important;
-  background-color: #e6efdf !important;
+  color: var(--accent-foreground) !important;
+  background-color: var(--accent) !important;
 }
 
 .discovery-viewport #encontre-sua-causa .eyebrow {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #214c3b;
+  color: var(--surface-green-accent);
 }
 
 [data-slot="select-item"][data-highlighted],
 [data-slot="select-item"]:focus {
-  color: #111111 !important;
-  background-color: #e6efdf !important;
+  color: var(--accent-foreground) !important;
+  background-color: var(--accent) !important;
 }
 
 @media (max-width: 1279px) {
@@ -441,6 +450,17 @@ html[data-exploring-projects="true"] .landing-details {
   --color-ink: var(--ink-panel);
   --color-ink-foreground: var(--ink-panel-foreground);
   --color-logo-surface: #ffffff;
+  --color-forest: var(--forest);
+  --color-forest-surface: var(--forest-surface);
+  --color-forest-border: var(--forest-border);
+  --color-forest-foreground: var(--forest-foreground);
+  --color-forest-muted: var(--forest-muted);
+  --color-surface-green: var(--surface-green);
+  --color-surface-green-raised: var(--surface-green-raised);
+  --color-surface-green-border: var(--surface-green-border);
+  --color-surface-green-foreground: var(--surface-green-foreground);
+  --color-surface-green-muted: var(--surface-green-muted);
+  --color-surface-green-accent: var(--surface-green-accent);
   --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
   --radius-sm: calc(var(--radius) - 4px);
@@ -450,6 +470,7 @@ html[data-exploring-projects="true"] .landing-details {
 }
 
 :root {
+  color-scheme: light;
   --background: #f6f2e9;
   --foreground: #12302a;
   --card: #fbf9f3;
@@ -491,8 +512,12 @@ html[data-exploring-projects="true"] .landing-details {
   --moss-highlight: #c9dda9;
   --cream: #f6efe2;
   --cream-border: #cfc5b3;
+  --cream-foreground: #17392e;
+  --cream-muted: #485f50;
+  --cream-link: #344e40;
 }
 .dark {
+  color-scheme: dark;
   --background: #0f1d1a;
   --foreground: #eef3ee;
   --card: #162824;
@@ -518,21 +543,25 @@ html[data-exploring-projects="true"] .landing-details {
   --ink-panel: #0b1614;
   --ink-panel-foreground: #eef3ee;
   --focus-ring: var(--ring);
-  --forest: #193c31;
-  --forest-surface: #285842;
-  --forest-border: #567461;
-  --forest-foreground: #f4f6ef;
-  --forest-muted: #d5e0d2;
-  --forest-muted-strong: #e0e9dc;
-  --surface-green: #dae7d0;
-  --surface-green-raised: #e6efdf;
-  --surface-green-border: #aec2ad;
-  --surface-green-foreground: #17392e;
-  --surface-green-muted: #405a49;
-  --surface-green-accent: #285842;
-  --moss-highlight: #c9dda9;
-  --cream: #f6efe2;
-  --cream-border: #cfc5b3;
+  --forest: #091410;
+  --forest-surface: #14251d;
+  --forest-border: #344b3e;
+  --forest-foreground: #f1f5f1;
+  --forest-muted: #c2d0c7;
+  --forest-muted-strong: #d4ded7;
+  --surface-green: #15241f;
+  --surface-green-raised: #1d3028;
+  --surface-green-border: #3b5347;
+  --surface-green-foreground: #e8f0eb;
+  --surface-green-muted: #b6c7bd;
+  --surface-green-accent: #83d6b7;
+  --moss-highlight: #c4dda2;
+  --cream: #17231f;
+  --cream-border: #3a4a41;
+  --cream-foreground: #eaf0eb;
+  --cream-muted: #b6c4bb;
+  --cream-link: #c2d2c8;
+  --forest-number: var(--forest-foreground);
 }
 @layer base {
   * {
@@ -582,19 +611,9 @@ html[data-exploring-projects="true"] .landing-details {
     @apply rounded-2xl border bg-card p-5 sm:p-7;
   }
   .public-card {
-  --primary: #155e52;
-  --primary-foreground: #ffffff;
-  --secondary: #e6efdf;
-  --secondary-foreground: #17392e;
-  --muted: #e6efdf;
-  --muted-foreground: #405a49;
-  --accent: #e1ebdf;
-  --accent-foreground: #155e52;
-  --border: var(--surface-green-border);
-  --ring: #1b6957;
     border-color: var(--surface-green-border);
     background-color: var(--surface-green);
-    box-shadow: 0 10px 30px rgb(25 60 49 / 7%);
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--foreground) 8%, transparent);
   }
   .public-card .bg-background,
   .public-card .bg-card,
@@ -632,6 +651,9 @@ html[data-exploring-projects="true"] .landing-details {
     font-size: clamp(2.75rem, 6vw, 5rem);
     line-height: 1.02;
     font-weight: 500;
+  }
+  .discovery-title {
+    font-size: clamp(3rem, 6.5vw, 5.75rem);
   }
   .display-2 {
     font-size: clamp(2rem, 4vw, 3.25rem);
