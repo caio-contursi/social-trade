@@ -364,6 +364,15 @@ describe("fluxo de doações à carteira SocialTrade", () => {
     expect(fetchMock.mock.calls.filter(([url]) => String(url) === "/api/solana-payments/intents")).toHaveLength(0);
   });
 
+  it("não exibe aviso de carregamento enquanto busca a cotação SOL/BRL", async () => {
+    const user = userEvent.setup();
+    render(<DonationsPage />);
+    await user.click(await screen.findByRole("button", { name: /SOL · Solana Pay/ }));
+    expect(screen.queryByText(/Buscando cotação/)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Valor da doação em SOL")).toBeEnabled());
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/solana-payments/quote")).toBe(true);
+  });
+
   it("destaca a forma de pagamento escolhida e reduz a outra", async () => {
     const user = userEvent.setup();
     render(<DonationsPage />);

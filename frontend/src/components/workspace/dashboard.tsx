@@ -100,7 +100,7 @@ export function Dashboard() {
                 : "Um perfil claro ajuda as pessoas a entenderem o seu trabalho, suas necessidades e o impacto que você busca."}
           </p>
           <Button asChild variant="energy" className="mt-7">
-            <Link href={isDonor ? "/?explorar=projetos#projetos" : isPerson ? "/painel/organizacoes" : "/painel/meu-projeto"}>
+            <Link data-route-transition href={isDonor ? "/?explorar=projetos#projetos" : isPerson ? "/painel/organizacoes" : "/painel/meu-projeto"}>
               {isDonor
                 ? "Explorar projetos"
                 : isPerson
