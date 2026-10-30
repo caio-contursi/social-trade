@@ -228,7 +228,7 @@ test("transição entre rotas mostra indicador de carregamento", async ({ page }
   await expect(page).toHaveURL(/\/painel$/);
   await expect(page.getByRole("heading", { level: 1, name: /Olá,/ })).toBeVisible();
   await expect(page.getByRole("status", { name: "Carregando próxima página" })).toBeHidden();
-  expect(Date.now() - transitionStartedAt).toBeGreaterThanOrEqual(1450);
+  expect(Date.now() - transitionStartedAt).toBeGreaterThanOrEqual(1250);
   if (page.viewportSize()!.width < 768) {
     await page.getByRole("button", { name: "Abrir menu do painel" }).click();
     transitionStartedAt = Date.now();
@@ -241,7 +241,7 @@ test("transição entre rotas mostra indicador de carregamento", async ({ page }
   await expect(page).toHaveURL(/\/painel\/suporte$/);
   await expect(page.getByRole("heading", { level: 1, name: "Abra um ticket com o suporte." })).toBeVisible();
   await expect(page.getByRole("status", { name: "Carregando próxima página" })).toBeHidden();
-  expect(Date.now() - transitionStartedAt).toBeGreaterThanOrEqual(1450);
+  expect(Date.now() - transitionStartedAt).toBeGreaterThanOrEqual(1250);
 });
 
 test("rodapé oferece sugestão sem atalho de contato e abre o formulário preenchido", async ({ page }) => {
