@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 
 type PendingRoute = { pathname: string; search: string; startedAt: number };
 
+export const ROUTE_TRANSITION_MIN_MS = 1000;
+
 export function RouteTransitionManager() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
@@ -44,7 +46,7 @@ export function RouteTransitionManager() {
     if (!target || target.pathname !== pathname || target.search !== window.location.search) return;
     pending.current = null;
     if (timeout.current) clearTimeout(timeout.current);
-    const remainingLoadingTime = Math.max(0, 1200 - (Date.now() - target.startedAt));
+    const remainingLoadingTime = Math.max(0, ROUTE_TRANSITION_MIN_MS - (Date.now() - target.startedAt));
     timeout.current = setTimeout(() => {
       setClosing(true);
       timeout.current = setTimeout(() => setVisible(false), 300);
