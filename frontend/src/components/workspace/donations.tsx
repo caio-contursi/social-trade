@@ -413,7 +413,7 @@ function SolWalletCard({ request, target, projectId, causeCode, onMissingProject
           <Input id={`sol-amount-${target}`} inputMode="decimal" placeholder="Ex.: 0,05" value={amount} onChange={(event) => { setEntry({ currency: "SOL", value: event.target.value }); setAmountError(null); }} disabled={Boolean(activeIntent) || !quoteFresh} aria-invalid={amountError ? true : undefined} aria-describedby={amountError ? `amount-error-${target}` : undefined} />
         </div>
         {amountError && <div className="-mt-2 sm:col-span-2"><FieldError id={`amount-error-${target}`}>{amountError}</FieldError></div>}
-        {!quote && <p role="status" className="text-xs text-muted-foreground sm:col-span-2">{quoteError || "Buscando cotação SOL/BRL…"}</p>}
+        {!quote && quoteError && <p role="status" className="text-xs text-muted-foreground sm:col-span-2">{quoteError}</p>}
         {quoteError && <Button type="button" variant="outline" onClick={() => setQuoteVersion((value) => value + 1)}>Atualizar cotação</Button>}
         <PaymentQrTrigger requiresProject={requiresProject} requiresAmount={amountLamports === null} disabled={creating || cancelling || (!activeIntent && !quoteFresh)} onMissingProject={onMissingProject} onMissingAmount={() => {
           setAmountError(brlAmount.trim() || amount.trim() ? "Informe um valor válido para o campo “Valor da doação em reais” ou “Valor da doação em SOL”." : "Preencha o campo “Valor da doação em reais” ou “Valor da doação em SOL” para continuar.");
