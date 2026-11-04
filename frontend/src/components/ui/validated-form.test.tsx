@@ -48,11 +48,13 @@ describe("avisos de validação no formulário", () => {
     expect(submit).toHaveBeenCalledTimes(1);
   });
 
-  it("valida no desfoque e limpa avisos quando o formulário é redefinido", async () => {
+  it("exibe avisos somente após tentar enviar e os limpa ao redefinir", async () => {
     const user = userEvent.setup();
     render(<Example />);
     await user.click(screen.getByLabelText("Assunto *"));
     await user.tab();
+    expect(screen.getByLabelText("Assunto *")).not.toHaveAttribute("aria-invalid", "true");
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
     expect(screen.getByLabelText("Assunto *")).toHaveAttribute("aria-invalid", "true");
     await user.click(screen.getByRole("button", { name: "Limpar" }));
     expect(screen.getByLabelText("Assunto *")).not.toHaveAttribute("aria-invalid", "true");

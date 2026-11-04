@@ -5,12 +5,14 @@ import type { Catalog, Organization } from "@/lib/types";
 import { OrganizationEditor } from "./organizations";
 import { jsonResponse } from "@/test/helpers";
 
+const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => router,
   usePathname: () => "/painel/organizacoes",
 }));
+const { expireSession } = vi.hoisted(() => ({ expireSession: vi.fn() }));
 vi.mock("@/components/auth-provider", () => ({
-  useAuth: () => ({ token: "token-de-teste", expireSession: vi.fn() }),
+  useAuth: () => ({ token: "token-de-teste", expireSession }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -172,6 +174,7 @@ describe("editor de organização", () => {
     expect(year).toHaveValue("2026");
 
     const city = screen.getByRole("combobox", { name: /Cidade/ });
+    await waitFor(() => expect(city).toBeEnabled());
     await user.click(city);
     expect(screen.getByRole("option", { name: "Niterói" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Rio de Janeiro" })).toBeInTheDocument();

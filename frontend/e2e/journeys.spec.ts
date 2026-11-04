@@ -821,3 +821,27 @@ test("páginas públicas e administração do projeto cabem na tela móvel", asy
     await expectNoHorizontalOverflow();
   }
 });
+
+test("login destaca os campos obrigatórios antes de enviar", async ({ page }) => {
+  await page.goto("/entrar?tipo=donor");
+  await page.getByRole("button", { name: "Entrar na minha conta" }).click();
+  const document = page.getByLabel("CNPJ da empresa", { exact: true });
+  await expect(document).toBeFocused();
+  await expect(document).toHaveAccessibleDescription(/Informe o CNPJ/);
+  await expect(page.getByLabel("Senha", { exact: true })).toHaveAccessibleDescription("Informe sua senha.");
+});
+
+test("suporte destaca os campos vazios e limpa o aviso ao corrigir", async ({ page }) => {
+  await login(page);
+  await page.goto("/painel/suporte");
+  const subject = page.getByLabel("Assunto", { exact: true });
+  const message = page.getByLabel("Relato", { exact: true });
+  await subject.fill("   ");
+  await page.getByRole("button", { name: "Abrir ticket" }).click();
+  await expect(subject).toBeFocused();
+  await expect(subject).toHaveAccessibleDescription(/Preencha o campo .*Assunto/);
+  await expect(message).toHaveAccessibleDescription(/Preencha o campo .*Relato/);
+  await subject.fill("Ajuda com meu cadastro");
+  await expect(subject).not.toHaveAttribute("aria-invalid", "true");
+  await expect(message).toHaveAttribute("aria-invalid", "true");
+});
