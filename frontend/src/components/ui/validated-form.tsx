@@ -41,15 +41,15 @@ function issueFor(field: Control): Issue | undefined {
   return message ? { message, errorId: `${field.id || field.name}-validation-error` } : undefined;
 }
 
-export function ValidatedForm({ children, onSubmit, onChange, onBlur, onReset, ...props }: React.ComponentProps<"form">) {
+export function ValidatedForm({ children, onSubmit, onChange, onReset, ...props }: React.ComponentProps<"form">) {
   const [issues, setIssues] = useState<Record<string, Issue>>({});
   const [submitted, setSubmitted] = useState(false);
-  function update(field: Control, onlyIfInvalid = false) {
+  function update(field: Control) {
     const key = field.id || field.name;
     if (!key) return;
     const issue = issueFor(field);
     setIssues((previous) => {
-      if (onlyIfInvalid && !previous[key]) return previous;
+      if (!previous[key]) return previous;
       const next = { ...previous };
       if (issue) next[key] = issue; else delete next[key];
       return next;
@@ -71,7 +71,7 @@ export function ValidatedForm({ children, onSubmit, onChange, onBlur, onReset, .
         setSubmitted(Boolean(first));
         if (first) { requestAnimationFrame(() => { if (first?.isConnected) { first.focus(); first.scrollIntoView?.({ block: "nearest", behavior: "smooth" }); } }); return; }
         void onSubmit?.(event);
-      }} onChange={(event) => { if (isControl(event.target)) update(event.target, true); onChange?.(event); }} onBlur={(event) => { if (isControl(event.target)) update(event.target); onBlur?.(event); }} onReset={(event) => { setIssues({}); setSubmitted(false); onReset?.(event); }}>
+      }} onChange={(event) => { if (isControl(event.target)) update(event.target); onChange?.(event); }} onReset={(event) => { setIssues({}); setSubmitted(false); onReset?.(event); }}>
         {submitted && Object.keys(issues).length > 0 && <div role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">Revise os campos destacados para continuar.</div>}
         {children}
       </form>
