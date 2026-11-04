@@ -5,6 +5,9 @@ import html
 from datetime import datetime, timezone
 from uuid import uuid4
 from contextlib import contextmanager
+from pathlib import Path
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -290,6 +293,19 @@ def health():
 def catalog():
     with connect() as db:
         return {**load_catalog(db), "roles": ROLE_LABELS, "demo_users_enabled": DEMO_USERS_ENABLED}
+
+
+@app.get("/api/ready")
+def readiness():
+    expected = set(ScriptDirectory(str(Path(__file__).resolve().parents[1] / "migrations")).get_heads())
+    try:
+        with connect() as db:
+            applied = set(MigrationContext.configure(db).get_current_heads())
+    except SQLAlchemyError as error:
+        raise HTTPException(status_code=503, detail="Banco de dados indisponível.") from error
+    if not expected or applied != expected:
+        raise HTTPException(status_code=503, detail="Banco de dados com migrações incompatíveis.")
+    return {"status": "ready"}
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
